@@ -162,6 +162,12 @@ public:
 					Bitboard f = filterPassedPawn(p->tile(), Color(p->isWhite()));
 					*scoreCurrent += passedPawnTable[p->isWhite() ? Board::row(p->tile()) : BOARD_SIZE - 1 - Board::row(p->tile())] * Value((f & Bitboards::bbPieces[PieceType::PAWN] & Bitboards::bbColors[Color(!p->isWhite())]) == 0);
 
+					Bitboard f2 = filterIsolatedPawn(p->tile());
+					*scoreCurrent -= 50 * Value((f2 & Bitboards::bbPieces[PieceType::PAWN] & Bitboards::bbColors[Color(p->isWhite())] & ~Bitboards::tileToBB(p->tile())) == 0);
+
+					Bitboard f3 = filterDoubledPawn(p->tile());
+					*scoreCurrent -= 20 * Value((f3 & Bitboards::bbPieces[PieceType::PAWN] & Bitboards::bbColors[Color(p->isWhite())] & ~Bitboards::tileToBB(p->tile())) == 0);
+
 					pawnPositions.push_back(pieceIdx);
 					pawnColumns.push_back(Board::column(pieceIdx));
 
@@ -171,7 +177,7 @@ public:
 				}
 			}
 
-			finalScore += i * (*scoreCurrent + pawnMalus(b, pawnPositions, pawnColumns));
+			finalScore += i * (*scoreCurrent);
 		}
 
 		// Once ennemy has less pieces our king attacks the other one
