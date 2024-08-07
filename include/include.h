@@ -11,7 +11,8 @@
 #include <utility>
 
 using UInt = std::uint_fast16_t;
-using Key = uint64_t;
+using Key = std::uint64_t;
+using Bitboard = std::uint64_t;
 using Int = std::int_fast16_t;
 using Value = Int;
 

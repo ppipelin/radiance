@@ -17,12 +17,20 @@
 		},
 		{
 			"type": "cppvsdbg",
+			"preLaunchTask": "${defaultBuildTask}",
 			"request": "launch",
 			"name": "Perft",
 			"program": "${workspaceFolder}/build/Debug/radiance.exe",
 			"args": [
 				"go perft 1",
 			]
+		},
+		{
+			"type": "cppvsdbg",
+			"preLaunchTask": "${defaultBuildTask}",
+			"request": "launch",
+			"name": "Bitboard test",
+			"program": "${workspaceFolder}/build/Debug/bitboardMoves.exe"
 		}
 	]
 }

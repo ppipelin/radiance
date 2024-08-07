@@ -52,7 +52,9 @@ include_directories(
 
 add_executable(perftStart test/perftStart.cpp ${SOURCES})
 add_executable(perftKiwi test/perftKiwi.cpp ${SOURCES})
+add_executable(bitboardMoves test/bitboardMoves.cpp ${SOURCES})
 
 # Define tests
 add_test(NAME perftStart COMMAND perftStart)
 add_test(NAME perftKiwi COMMAND perftKiwi)
+add_test(NAME bitboardMoves COMMAND bitboardMoves)
