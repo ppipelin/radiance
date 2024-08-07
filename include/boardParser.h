@@ -71,6 +71,14 @@ namespace {
 			Bitboards::bbColors[c] |= removeFilter;
 		}
 
+		void removeAdd(PieceType p, Color c, UInt removeTile, UInt addTile)
+		{
+			const Bitboard removeFilter = Bitboards::tileToBB(removeTile) | Bitboards::tileToBB(addTile);
+			Bitboards::bbPieces[p] ^= removeFilter;
+			Bitboards::bbPieces[PieceType::ALL] ^= removeFilter;
+			Bitboards::bbColors[c] ^= removeFilter;
+		}
+
 	}
 
 }
@@ -492,15 +500,16 @@ public:
 		}
 
 		// Remove
-		Bitboards::remove(fromPiece->value(), Color(fromPiece->isWhite()), from);
 		m_s->materialKey ^= Zobrist::psq[(fromPiece->isWhite() ? 0 : 6) + 6 - fromPiece->value()][from];
 		m_board->board()[from] = nullptr;
 
 		// Add
-		Bitboards::add(fromPiece->value(), Color(fromPiece->isWhite()), to);
 		m_s->materialKey ^= Zobrist::psq[(fromPiece->isWhite() ? 0 : 6) + 6 - fromPiece->value()][to];
 		m_board->board()[to] = fromPiece;
 		fromPiece->tile() = to;
+
+		// Remove/Add
+		Bitboards::removeAdd(fromPiece->value(), Color(fromPiece->isWhite()), from, to);
 
 		// Editing color table
 		// TODO : use std::replace_if ? or std::replace to avoid loop over all vector
@@ -571,12 +580,13 @@ public:
 		Piece *toPiece = m_board->board()[to];
 
 		// Add
-		Bitboards::add(toPiece->value(), Color(toPiece->isWhite()), from);
 		m_board->board()[from] = toPiece;
 		toPiece->tile() = from;
 		// Remove
-		Bitboards::remove(toPiece->value(), Color(toPiece->isWhite()), to);
 		m_board->board()[to] = nullptr;
+
+		// Remove/Add
+		Bitboards::removeAdd(toPiece->value(), Color(toPiece->isWhite()), to, from);
 
 		if (!silent)
 		{
