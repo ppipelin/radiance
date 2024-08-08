@@ -1,5 +1,31 @@
 #include "pawn.h"
 
+// Should be precomputed
+Bitboard filterCaptures(UInt tile, Color col)
+{
+	Bitboard filterAdjacent = Bitboards::filterAdjacent(tile);
+	Bitboard filterTopBot = Bitboards::row << (BOARD_SIZE * (Board::row(tile) + ((col == Color::WHITE) ? 1 : -1)));
+	return filterAdjacent & filterTopBot;
+}
+
+Bitboard filterForward(UInt tile, Color col)
+{
+	Bitboard b = 0ULL;
+	if (col == Color::WHITE)
+	{
+		if (Board::row(tile) == 1)
+			b = Bitboards::tileToBB(tile) << BOARD_SIZE * 2;
+		b |= Bitboards::tileToBB(tile) << BOARD_SIZE;
+	}
+	else
+	{
+		if (Board::row(tile) == BOARD_SIZE - 2)
+			b = Bitboards::tileToBB(tile) >> BOARD_SIZE * 2;
+		b |= Bitboards::tileToBB(tile) >> BOARD_SIZE;
+	}
+	return b;
+}
+
 void Pawn::canMove(const Board &b, std::vector<cMove> &v) const
 {
 	const UInt c = Board::column(m_tile);
