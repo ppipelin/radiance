@@ -153,3 +153,104 @@ public:
 		return std::string(1, char('a' + tile % BOARD_SIZE)) + std::string(1, char('1' + (tile / BOARD_SIZE)));
 	}
 };
+
+const enum PieceType : UInt
+{
+	NONE,
+	PAWN,
+	KNIGHT,
+	BISHOP,
+	ROOK,
+	QUEEN,
+	KING,
+	ALL,
+	NB
+};
+
+const enum Color
+{
+	BLACK,
+	WHITE,
+	COLOR_NB
+};
+
+namespace {
+	namespace Bitboards {
+		Bitboard bbPieces[PieceType::NB];
+		Bitboard bbColors[Color::COLOR_NB];
+
+		constexpr Bitboard column = 0x0101010101010101ULL;
+		constexpr Bitboard row = 0xFFULL;
+
+		void clear()
+		{
+			for (UInt p = PieceType::NONE; p < PieceType::NB; ++p)
+			{
+				bbPieces[p] = 0;
+			}
+			bbColors[0] = 0;
+			bbColors[1] = 0;
+		}
+
+		void computeAll()
+		{
+			for (UInt p = PieceType::NONE + 1; p < PieceType::ALL; ++p)
+			{
+				bbPieces[PieceType::ALL] |= bbPieces[p];
+			}
+		}
+
+		std::vector<UInt> getBitIndices(Bitboard bb)
+		{
+			std::vector<UInt> indices;
+			indices.reserve(64);
+			for (UInt i = 0; i < 64; ++i)
+			{
+				if (bb & (1ULL << i))
+				{
+					indices.push_back(i);
+				}
+			}
+			return indices;
+		}
+
+		constexpr Bitboard tileToBB(UInt tile)
+		{
+			return (0b1ULL << tile);
+		}
+
+		void remove(PieceType p, Color c, UInt tile)
+		{
+			const Bitboard removeFilter = ~Bitboards::tileToBB(tile);
+			Bitboards::bbPieces[p] &= removeFilter;
+			Bitboards::bbPieces[PieceType::ALL] &= removeFilter;
+			Bitboards::bbColors[c] &= removeFilter;
+		}
+
+		void add(PieceType p, Color c, UInt tile)
+		{
+			const Bitboard removeFilter = Bitboards::tileToBB(tile);
+			Bitboards::bbPieces[p] |= removeFilter;
+			Bitboards::bbPieces[PieceType::ALL] |= removeFilter;
+			Bitboards::bbColors[c] |= removeFilter;
+		}
+
+		void removeAdd(PieceType p, Color c, UInt removeTile, UInt addTile)
+		{
+			const Bitboard removeFilter = Bitboards::tileToBB(removeTile) | Bitboards::tileToBB(addTile);
+			Bitboards::bbPieces[p] ^= removeFilter;
+			Bitboards::bbPieces[PieceType::ALL] ^= removeFilter;
+			Bitboards::bbColors[c] ^= removeFilter;
+		}
+
+		Bitboard filterAdjacent(UInt tile)
+		{
+			UInt colIdx = Board::column(tile);
+			Int max = 0;
+			UInt min = BOARD_SIZE - 1;
+			if (colIdx == 0) max = 1;
+			if (colIdx == BOARD_SIZE - 1) min = BOARD_SIZE - 2;
+			return (Bitboards::column << std::max(max, Int(colIdx - 1))) | (Bitboards::column << std::min(min, colIdx + 1));
+		}
+	}
+}

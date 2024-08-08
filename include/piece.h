@@ -4,27 +4,6 @@
 #include "board.h"
 #include "cMove.h"
 
-
-const enum PieceType : UInt
-{
-	NONE,
-	PAWN,
-	KNIGHT,
-	BISHOP,
-	ROOK,
-	QUEEN,
-	KING,
-	ALL,
-	NB
-};
-
-const enum Color
-{
-	BLACK,
-	WHITE,
-	COLOR_NB
-};
-
 /**
 	* @brief Piece class.
 	* @details This class is used to represent a piece on the board.

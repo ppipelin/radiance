@@ -25,62 +25,6 @@ namespace {
 		Key castling[4];
 		Key side;
 	}
-	namespace Bitboards {
-		Bitboard bbPieces[PieceType::NB];
-		Bitboard bbColors[Color::COLOR_NB];
-
-		constexpr Bitboard column = 0x0101010101010101ULL;
-		constexpr Bitboard row = 0xFFULL;
-
-		void clear()
-		{
-			for (UInt p = PieceType::NONE; p < PieceType::NB; ++p)
-			{
-				bbPieces[p] = 0;
-			}
-			bbColors[0] = 0;
-			bbColors[1] = 0;
-		}
-
-		void computeAll()
-		{
-			for (UInt p = PieceType::NONE + 1; p < PieceType::ALL; ++p)
-			{
-				bbPieces[PieceType::ALL] |= bbPieces[p];
-			}
-		}
-
-		constexpr Bitboard tileToBB(UInt tile)
-		{
-			return (0b1ULL << tile);
-		}
-
-		void remove(PieceType p, Color c, UInt tile)
-		{
-			const Bitboard removeFilter = ~Bitboards::tileToBB(tile);
-			Bitboards::bbPieces[p] &= removeFilter;
-			Bitboards::bbPieces[PieceType::ALL] &= removeFilter;
-			Bitboards::bbColors[c] &= removeFilter;
-		}
-
-		void add(PieceType p, Color c, UInt tile)
-		{
-			const Bitboard removeFilter = Bitboards::tileToBB(tile);
-			Bitboards::bbPieces[p] |= removeFilter;
-			Bitboards::bbPieces[PieceType::ALL] |= removeFilter;
-			Bitboards::bbColors[c] |= removeFilter;
-		}
-
-		void removeAdd(PieceType p, Color c, UInt removeTile, UInt addTile)
-		{
-			const Bitboard removeFilter = Bitboards::tileToBB(removeTile) | Bitboards::tileToBB(addTile);
-			Bitboards::bbPieces[p] ^= removeFilter;
-			Bitboards::bbPieces[PieceType::ALL] ^= removeFilter;
-			Bitboards::bbColors[c] ^= removeFilter;
-		}
-
-	}
-
 }
 
 /**
