@@ -21,6 +21,54 @@
 
 bool g_stop = false;
 
+// Bitboards definition
+namespace Bitboards {
+	Bitboard Bitboards::bbPieces[PieceType::NB] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	Bitboard Bitboards::bbColors[Color::COLOR_NB] = { 0, 0 };
+
+	void Bitboards::clear()
+	{
+		for (UInt p = PieceType::NONE; p < PieceType::NB; ++p)
+		{
+			Bitboards::bbPieces[p] = 0;
+		}
+		Bitboards::bbColors[0] = 0;
+		Bitboards::bbColors[1] = 0;
+	}
+
+	void remove(PieceType p, Color c, UInt tile)
+	{
+		const Bitboard removeFilter = ~Bitboards::tileToBB(tile);
+		Bitboards::bbPieces[p] &= removeFilter;
+		Bitboards::bbPieces[PieceType::ALL] &= removeFilter;
+		Bitboards::bbColors[c] &= removeFilter;
+	}
+
+	void add(PieceType p, Color c, UInt tile)
+	{
+		const Bitboard removeFilter = Bitboards::tileToBB(tile);
+		Bitboards::bbPieces[p] |= removeFilter;
+		Bitboards::bbPieces[PieceType::ALL] |= removeFilter;
+		Bitboards::bbColors[c] |= removeFilter;
+	}
+
+	void removeAdd(PieceType p, Color c, UInt removeTile, UInt addTile)
+	{
+		const Bitboard removeFilter = Bitboards::tileToBB(removeTile) | Bitboards::tileToBB(addTile);
+		Bitboards::bbPieces[p] ^= removeFilter;
+		Bitboards::bbPieces[PieceType::ALL] ^= removeFilter;
+		Bitboards::bbColors[c] ^= removeFilter;
+	}
+
+	void Bitboards::computeAll()
+	{
+		for (UInt p = PieceType::NONE + 1; p < PieceType::ALL; ++p)
+		{
+			Bitboards::bbPieces[PieceType::ALL] |= Bitboards::bbPieces[p];
+		}
+	}
+}
+
 namespace {
 	const std::string startFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 	const std::string kiwiFen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
