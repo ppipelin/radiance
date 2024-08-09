@@ -14,6 +14,18 @@ public:
 	EvaluateShannon(const EvaluateShannon &) {}
 	~EvaluateShannon() {}
 
+	// Should be precomputed for 64-16 tiles and both colors
+	Bitboard filterPassedPawn(UInt tile, Color col) const
+	{
+		UInt colIdx = Board::column(tile);
+		Bitboard filterAdjacent = (Bitboards::column << colIdx) | (Bitboards::column << std::max(Int(0), Int(colIdx - 1))) | (Bitboards::column << std::min(BOARD_SIZE - 1, colIdx + 1));
+		UInt rowIdx = Board::row(tile);
+		Bitboard filterTopBot = col == Color::WHITE ? bbMax << BOARD_SIZE * (rowIdx + 1) : bbMax >> BOARD_SIZE * (BOARD_SIZE - rowIdx);
+		return filterAdjacent & filterTopBot;
+	}
+
+	Bitboard filterIsolatedPawn(UInt tile) const {}
+
 	Value pawnMalus(const BoardParser &b, const std::vector<UInt> &pawnPositions, const std::vector<UInt> &pawnColumns) const
 	{
 		Value score = 0;

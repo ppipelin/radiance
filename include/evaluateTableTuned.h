@@ -88,6 +88,8 @@ public:
 		-27, -11,   4,  13,  14,   4,  -5, -17,
 		-53, -34, -21, -11, -28, -14, -24, -43 };
 
+	static constexpr std::array<Value, 8> passedPawnTable = { 0, 15, 15, 25, 40, 60, 70 };
+
 	Value evaluate(const BoardParser &b) const override
 	{
 		Value finalScore = 0, scorePieceWhite = 0, scorePieceBlack = 0, mgScore = 0, egScore = 0, scoreKingWhite = 0, scoreKingBlack = 0;
@@ -156,6 +158,10 @@ public:
 				else if (p->value() == PieceType::PAWN)
 				{
 					*scoreCurrent += 100;
+
+					Bitboard f = filterPassedPawn(p->tile(), Color(p->isWhite()));
+					*scoreCurrent += passedPawnTable[p->isWhite() ? Board::row(p->tile()) : BOARD_SIZE - 1 - Board::row(p->tile())] * Value((f & Bitboards::bbPieces[PieceType::PAWN] & Bitboards::bbColors[Color(!p->isWhite())]) == 0);
+
 					pawnPositions.push_back(pieceIdx);
 					pawnColumns.push_back(Board::column(pieceIdx));
 
