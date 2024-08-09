@@ -45,74 +45,105 @@ void Pawn::canMove(const Board &b, std::vector<cMove> &v) const
 		vRef->reserve(vRef->size() + 4);
 	}
 
+	Color col = Color(m_isWhite);
+	// Update filterC in case of enPassant
+	Int enPassantCol = b.enPassant();
+	if (enPassantCol != -1)
+	{
+		Bitboard	enPassantTile = m_isWhite ? Bitboards::row << BOARD_SIZE * 5 : Bitboards::row << BOARD_SIZE * 2; // Row filter
+		enPassantTile &= Bitboards::column << enPassantCol; // Column filter
+		// Once we have the enPassantTile, we assert it can be taken from tile
+		// Create a front 'corner' pattern and check if intersects with tile
+		// Front direction is determined from the current turn
+		Bitboard enPassantFilter = m_isWhite ? (enPassantTile >> (BOARD_SIZE + 1)) | (enPassantTile >> (BOARD_SIZE - 1)) : (enPassantTile << (BOARD_SIZE + 1)) | (enPassantTile << (BOARD_SIZE - 1));
+		// Pattern has to not overlap the board
+		enPassantFilter &= Bitboards::filterAdjacent(Bitboards::getBitIndices(enPassantTile).front());
+		if (enPassantFilter & Bitboards::tileToBB(m_tile))
+			Bitboards::generateMoves(*vRef, enPassantTile, m_tile, 5);
+	}
+	Bitboard filterC = filterCaptures(m_tile, col) & Bitboards::bbColors[Color(!m_isWhite)];
+
+	// A filter way to prevent going through a piece when moving by two tiles is to double the third row up and sixth row down
+	Bitboard thirdOrSixthDoubled = 0ULL;
+	// Remove m_tile in case pawn is on this row
+	const Bitboard tileBB = Bitboards::tileToBB(m_tile);
 	if (m_isWhite)
-	{
-		// Can move forward
-		if (Board::row(m_tile) < BOARD_SIZE - 1)
-		{
-			UInt forward = m_tile + BOARD_SIZE;
-			// Forward and double forward
-			if (b[forward] == nullptr)
-			{
-				vRef->push_back(cMove(m_tile, forward));
-				if (Board::row(m_tile) == 1 && b[forward + BOARD_SIZE] == nullptr)
-					vRef->push_back(cMove(m_tile, forward + BOARD_SIZE));
-			}
-			// Forward left (checks white + not on first column)
-			if (!Board::leftCol(m_tile) && b[forward - 1] != nullptr && !b[forward - 1]->isWhite())
-				vRef->push_back(cMove(m_tile, forward - 1, 4));
-			// Forward right (checks white + not on last column)
-			if (!Board::rightCol(m_tile) && b[forward + 1] != nullptr && !b[forward + 1]->isWhite())
-				vRef->push_back(cMove(m_tile, forward + 1, 4));
-			// Adding en passant
-			Int enPassantCol = b.enPassant();
-			if (Board::row(m_tile) == 4 && enPassantCol != -1)
-			{
-				if (enPassantCol == Int(c + 1))
-				{
-					vRef->push_back(cMove(m_tile, m_tile + BOARD_SIZE + 1, 5));
-				}
-				else if (enPassantCol == Int(c - 1))
-				{
-					vRef->push_back(cMove(m_tile, m_tile + BOARD_SIZE - 1, 5));
-				}
-			}
-		}
-	}
+		thirdOrSixthDoubled = ((Bitboards::row << BOARD_SIZE * 2) & Bitboards::bbPieces[PieceType::ALL] & ~tileBB) << BOARD_SIZE;
 	else
-	{
-		// Can move forward
-		if (Board::row(m_tile) > 0)
-		{
-			UInt forward = m_tile - BOARD_SIZE;
-			// Forward and double forward
-			if (b[forward] == nullptr)
-			{
-				vRef->push_back(cMove(m_tile, forward));
-				if (Board::row(m_tile) == BOARD_SIZE - 2 && b[forward - BOARD_SIZE] == nullptr)
-					vRef->push_back(cMove(m_tile, forward - BOARD_SIZE));
-			}
-			// Forward left (checks black + not on first column)
-			if (!Board::leftCol(m_tile) && b[forward - 1] != nullptr && b[forward - 1]->isWhite())
-				vRef->push_back(cMove(m_tile, forward - 1, 4));
-			// One black forward right (checks black + not on last column)
-			if (!Board::rightCol(m_tile) && b[forward + 1] != nullptr && b[forward + 1]->isWhite())
-				vRef->push_back(cMove(m_tile, forward + 1, 4));
-			// Adding en passant
-			Int enPassantCol = b.enPassant();
-			if (Board::row(m_tile) == 3 && enPassantCol != -1)
-			{
-				if (enPassantCol == Int(c + 1))
-				{
-					vRef->push_back(cMove(m_tile, m_tile - BOARD_SIZE + 1, 5));
-				}
-				else if (enPassantCol == Int(c - 1))
-				{
-					vRef->push_back(cMove(m_tile, m_tile - BOARD_SIZE - 1, 5));
-				}
-			}
-		}
-	}
+		thirdOrSixthDoubled = ((Bitboards::row << BOARD_SIZE * 5) & Bitboards::bbPieces[PieceType::ALL] & ~tileBB) >> BOARD_SIZE;
+	Bitboard filterF = filterForward(m_tile, col) & ~Bitboards::bbPieces[PieceType::ALL] & ~thirdOrSixthDoubled;
+
+	Bitboards::generateMoves(*vRef, filterC, m_tile, 4);
+	Bitboards::generateMoves(*vRef, filterF, m_tile, 0);
+
+	// if (m_isWhite)
+	// {
+	// 	// Can move forward
+	// 	if (Board::row(m_tile) < BOARD_SIZE - 1)
+	// 	{
+	// 		UInt forward = m_tile + BOARD_SIZE;
+	// 		// Forward and double forward
+	// 		if (b[forward] == nullptr)
+	// 		{
+	// 			vRef->push_back(cMove(m_tile, forward));
+	// 			if (Board::row(m_tile) == 1 && b[forward + BOARD_SIZE] == nullptr)
+	// 				vRef->push_back(cMove(m_tile, forward + BOARD_SIZE));
+	// 		}
+	// 		// Forward left (checks white + not on first column)
+	// 		if (!Board::leftCol(m_tile) && b[forward - 1] != nullptr && !b[forward - 1]->isWhite())
+	// 			vRef->push_back(cMove(m_tile, forward - 1, 4));
+	// 		// Forward right (checks white + not on last column)
+	// 		if (!Board::rightCol(m_tile) && b[forward + 1] != nullptr && !b[forward + 1]->isWhite())
+	// 			vRef->push_back(cMove(m_tile, forward + 1, 4));
+	// 		// Adding en passant
+	// 		Int enPassantCol = b.enPassant();
+	// 		if (Board::row(m_tile) == 4 && enPassantCol != -1)
+	// 		{
+	// 			if (enPassantCol == Int(c + 1))
+	// 			{
+	// 				vRef->push_back(cMove(m_tile, m_tile + BOARD_SIZE + 1, 5));
+	// 			}
+	// 			else if (enPassantCol == Int(c - 1))
+	// 			{
+	// 				vRef->push_back(cMove(m_tile, m_tile + BOARD_SIZE - 1, 5));
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// else
+	// {
+	// 	// Can move forward
+	// 	if (Board::row(m_tile) > 0)
+	// 	{
+	// 		UInt forward = m_tile - BOARD_SIZE;
+	// 		// Forward and double forward
+	// 		if (b[forward] == nullptr)
+	// 		{
+	// 			vRef->push_back(cMove(m_tile, forward));
+	// 			if (Board::row(m_tile) == BOARD_SIZE - 2 && b[forward - BOARD_SIZE] == nullptr)
+	// 				vRef->push_back(cMove(m_tile, forward - BOARD_SIZE));
+	// 		}
+	// 		// Forward left (checks black + not on first column)
+	// 		if (!Board::leftCol(m_tile) && b[forward - 1] != nullptr && b[forward - 1]->isWhite())
+	// 			vRef->push_back(cMove(m_tile, forward - 1, 4));
+	// 		// One black forward right (checks black + not on last column)
+	// 		if (!Board::rightCol(m_tile) && b[forward + 1] != nullptr && b[forward + 1]->isWhite())
+	// 			vRef->push_back(cMove(m_tile, forward + 1, 4));
+	// 		// Adding en passant
+	// 		Int enPassantCol = b.enPassant();
+	// 		if (Board::row(m_tile) == 3 && enPassantCol != -1)
+	// 		{
+	// 			if (enPassantCol == Int(c + 1))
+	// 			{
+	// 				vRef->push_back(cMove(m_tile, m_tile - BOARD_SIZE + 1, 5));
+	// 			}
+	// 			else if (enPassantCol == Int(c - 1))
+	// 			{
+	// 				vRef->push_back(cMove(m_tile, m_tile - BOARD_SIZE - 1, 5));
+	// 			}
+	// 		}
+	// 	}
+	// }
 	// If we are going to the last rank, previous computed moves are promotions
 	if (m_isWhite && Board::row(m_tile + BOARD_SIZE) == BOARD_SIZE - 1 || !m_isWhite && Board::row(m_tile - BOARD_SIZE) == 0)
 	{
