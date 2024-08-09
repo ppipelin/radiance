@@ -30,7 +30,7 @@ namespace {
 		Bitboard bbColors[Color::COLOR_NB];
 
 		constexpr Bitboard column = 0x0101010101010101ULL;
-		constexpr Bitboard line = 0xFFULL;
+		constexpr Bitboard row = 0xFFULL;
 
 		void clear()
 		{
@@ -1145,31 +1145,13 @@ public:
 		std::cout << out << std::string("|") << std::endl << std::endl;
 	}
 
-	void displayBBCLI()
+	void displayBBCLI(const Bitboard bb) const
 	{
-		for (UInt p = PieceType::NONE; p < PieceType::NB; ++p)
+		std::string out;
+		for (UInt counter = BOARD_SIZE2 - BOARD_SIZE; counter != BOARD_SIZE - 1; ++counter)
 		{
-			std::string out;
-			for (UInt counter = BOARD_SIZE2 - BOARD_SIZE; counter != BOARD_SIZE - 1; ++counter)
-			{
-				Bitboard value = Bitboards::bbPieces[p] & (0x1ULL << counter);
-				out.append("|");
-				if (value == 0)
-				{
-					out.append(" ");
-				}
-				else
-				{
-					out.append("X");
-				}
-				if (Board::column(counter + 1) == 0)
-				{
-					out.append("|\n");
-					counter -= BOARD_SIZE * 2;
-				}
-			}
+			Bitboard value = bb & (0x1ULL << counter);
 			out.append("|");
-			Bitboard value = Bitboards::bbPieces[p] & (0x1ULL << (BOARD_SIZE - 1));
 			if (value == 0)
 			{
 				out.append(" ");
@@ -1178,43 +1160,36 @@ public:
 			{
 				out.append("X");
 			}
+			if (Board::column(counter + 1) == 0)
+			{
+				out.append("|\n");
+				counter -= BOARD_SIZE * 2;
+			}
+		}
+		out.append("|");
+		Bitboard value = bb & (0x1ULL << (BOARD_SIZE - 1));
+		if (value == 0)
+		{
+			out.append(" ");
+		}
+		else
+		{
+			out.append("X");
+		}
 
-			std::cout << out << std::string("|") << std::endl << std::endl;
+		std::cout << out << std::string("|") << std::endl << std::endl;
+	}
+
+	void displayBBCLI() const
+	{
+		for (UInt p = PieceType::NONE; p < PieceType::NB; ++p)
+		{
+			displayBBCLI(Bitboards::bbPieces[p]);
 		}
 
 		for (UInt c = Color::BLACK; c < Color::COLOR_NB; ++c)
 		{
-			std::string out;
-			for (UInt counter = BOARD_SIZE2 - BOARD_SIZE; counter != BOARD_SIZE - 1; ++counter)
-			{
-				Bitboard value = Bitboards::bbColors[c] & (0x1ULL << counter);
-				out.append("|");
-				if (value == 0)
-				{
-					out.append(" ");
-				}
-				else
-				{
-					out.append("X");
-				}
-				if (Board::column(counter + 1) == 0)
-				{
-					out.append("|\n");
-					counter -= BOARD_SIZE * 2;
-				}
-			}
-			out.append("|");
-			Bitboard value = Bitboards::bbColors[c] & (0x1ULL << (BOARD_SIZE - 1));
-			if (value == 0)
-			{
-				out.append(" ");
-			}
-			else
-			{
-				out.append("X");
-			}
-
-			std::cout << out << std::string("|") << std::endl << std::endl;
+			displayBBCLI(Bitboards::bbColors[c]);
 		}
 	}
 

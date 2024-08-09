@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cassert>
 #include <utility>
+#include <limits>
 
 using UInt = std::uint_fast16_t;
 using Key = std::uint64_t;
@@ -22,6 +23,8 @@ constexpr UInt PATCH = 1;
 
 constexpr UInt BOARD_SIZE = 8;
 constexpr UInt BOARD_SIZE2 = 8 * 8;
+
+constexpr Bitboard bbMax = std::numeric_limits<uint64_t>::max();
 
 constexpr UInt MAX_PLY = 246;
 constexpr UInt MAX_DEPTH = 200;
