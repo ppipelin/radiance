@@ -1,8 +1,12 @@
 #pragma once
 
 #include <algorithm>
-#include <unordered_map>
+#include <array>
 #include <cmath>
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "cMove.h"
 #include "include.h"
@@ -221,10 +225,10 @@ public:
 
 	static void add(PieceType p, Color c, UInt tile)
 	{
-		const Bitboard removeFilter = Bitboards::tileToBB(tile);
-		Bitboards::bbPieces[p] |= removeFilter;
-		Bitboards::bbPieces[PieceType::ALL] |= removeFilter;
-		Bitboards::bbColors[c] |= removeFilter;
+		const Bitboard addFilter = Bitboards::tileToBB(tile);
+		Bitboards::bbPieces[p] |= addFilter;
+		Bitboards::bbPieces[PieceType::ALL] |= addFilter;
+		Bitboards::bbColors[c] |= addFilter;
 	}
 
 	static void removeAdd(PieceType p, Color c, UInt removeTile, UInt addTile)
@@ -372,12 +376,12 @@ public:
 #else
 	static constexpr void generateMoves(std::vector<cMove> &moveList, Bitboard bb, UInt from, UInt flags = 0)
 	{
-		for (UInt i = std::max(Int(0), Int(from) - Int(BOARD_SIZE * 3)); bb != 0ULL && i < std::min(BOARD_SIZE2, from + BOARD_SIZE * 3); ++i)
-			for (UInt i = 0; bb != 0ULL && i < 64; ++i)
+		for (UInt i = std::max<Int>(Int(0), Int(from) - Int(BOARD_SIZE * 3)); bb != 0ULL && i < std::min<UInt>(BOARD_SIZE2, from + BOARD_SIZE * 3); ++i)
+			for (UInt j = 0; bb != 0ULL && j < 64; ++j)
 			{
-				if (bb & Bitboards::tileToBB(i))
+				if (bb & Bitboards::tileToBB(j))
 				{
-					moveList.push_back(cMove(from, i, flags));
+					moveList.push_back(cMove(from, j, flags));
 				}
 			}
 	}
@@ -386,13 +390,13 @@ public:
 	static constexpr Bitboard filterAdjacent(UInt tile)
 	{
 		const UInt colIdx = Board::column(tile);
-		return ((Bitboards::column << std::max(Int(0), Int(colIdx) - 1)) | (Bitboards::column << std::min(BOARD_SIZE - 1, colIdx + 1))) & ~(Bitboards::column << colIdx);
+		return ((Bitboards::column << std::max<Int>(Int(0), Int(colIdx) - 1)) | (Bitboards::column << std::min(BOARD_SIZE - 1, colIdx + 1))) & ~(Bitboards::column << colIdx);
 	}
 
 	static void computeBlockers(const Bitboard mask, std::vector<Bitboard> &v)
 	{
 		std::vector<UInt> bitIndices = Bitboards::getBitIndices(mask);
-		for (Bitboard blockerConfiguration = 1; blockerConfiguration < std::pow(2, bitIndices.size()); ++blockerConfiguration)
+		for (Bitboard blockerConfiguration = 1; blockerConfiguration < (Bitboard(1) << bitIndices.size()); ++blockerConfiguration)
 		{
 			Bitboard currentBlockerBB = 0;
 			for (UInt bitIdx = 0; bitIdx < bitIndices.size(); ++bitIdx)

@@ -10,6 +10,11 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
+
+#if defined(__arm__) || defined(__aarch64__)
+#include <arm_neon.h>
+#endif
 
 using UInt = std::uint_fast16_t;
 using Key = std::uint64_t;
@@ -42,6 +47,16 @@ constexpr Value VALUE_MATED_IN_MAX_DEPTH = -VALUE_MATE_IN_MAX_DEPTH;
 constexpr Value VALUE_TB = VALUE_MATE_IN_MAX_DEPTH - 1;
 constexpr Value VALUE_TB_WIN_IN_MAX_DEPTH = VALUE_TB - MAX_DEPTH;
 constexpr Value VALUE_TB_LOSS_IN_MAX_DEPTH = -VALUE_TB_WIN_IN_MAX_DEPTH;
+
+static UInt min(UInt a, UInt b)
+{
+	return std::min(a, b);
+}
+
+static UInt max(UInt a, UInt b)
+{
+	return std::max(a, b);
+}
 
 static void debug(std::string str)
 {

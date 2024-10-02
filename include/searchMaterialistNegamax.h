@@ -164,7 +164,7 @@ public:
 					if (depth >= 2 && moveCount > 3 && !move.isCapture() && !move.isPromotion() && !b.inCheck(b.isWhiteTurn()))
 					{
 						// Reduced LMR
-						UInt d = std::max(Int(1), Int(depth) - 4);
+						UInt d = std::max<Int>(Int(1), Int(depth) - 4);
 						score = -abSearch<NonPV>(ss + 1, b, e, -(alpha + 1), -alpha, d - 1);
 						// Failed so roll back to full-depth null window
 						if (score > alpha && depth > d)
@@ -328,8 +328,8 @@ public:
 			// Reset aspiration window starting size
 			Value prev = rootMoves[0].averageScore;
 			Value delta = std::abs(prev / 2) + 10;
-			Value alpha = std::max(prev - delta, -VALUE_INFINITE);
-			Value beta = std::min(prev + delta, VALUE_INFINITE);
+			Value alpha = std::max<Value>(prev - delta, -VALUE_INFINITE);
+			Value beta = std::min<Value>(prev + delta, VALUE_INFINITE);
 			Value failedHighCnt = 0;
 			// Aspiration window
 			// Disable by alpha = -VALUE_INFINITE; beta = VALUE_INFINITE;
@@ -347,12 +347,12 @@ public:
 				if (score <= alpha)
 				{
 					beta = (alpha + beta) / 2;
-					alpha = std::max(score - delta, -VALUE_INFINITE);
+					alpha = std::max<Value>(score - delta, -VALUE_INFINITE);
 					failedHighCnt = 0;
 				}
 				else if (score >= beta)
 				{
-					beta = std::min(score + delta, VALUE_INFINITE);
+					beta = std::min<Value>(score + delta, VALUE_INFINITE);
 					++failedHighCnt;
 				}
 				else

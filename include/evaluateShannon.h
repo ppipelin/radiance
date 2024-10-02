@@ -27,11 +27,11 @@ public:
 	Bitboard filterIsolatedPawn(UInt tile) const
 	{
 		UInt colIdx = Board::column(tile);
-		Int max = 0;
-		UInt min = BOARD_SIZE - 1;
-		if (colIdx == 0) max = 1;
-		if (colIdx == BOARD_SIZE - 1) min = BOARD_SIZE - 2;
-		return (Bitboards::column << std::max(max, Int(colIdx - 1))) | (Bitboards::column << std::min(min, colIdx + 1));
+		Int minCol = 0;
+		UInt maxCol = BOARD_SIZE - 1;
+		if (colIdx == 0) minCol = 1;
+		if (colIdx == BOARD_SIZE - 1) maxCol = BOARD_SIZE - 2;
+		return (Bitboards::column << std::max<Int>(minCol, Int(colIdx - 1))) | (Bitboards::column << std::min<UInt>(maxCol, colIdx + 1));
 	}
 
 	Bitboard filterDoubledPawn(UInt tile) const
