@@ -26,7 +26,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up compiler
+    - name: Set up compiler on Ubuntu
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
@@ -34,8 +34,20 @@ jobs:
         sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100
 
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE }} -DCMAKE_CXX_COMPILER=g++-12
+    # - name: Set up compiler on Windows
+    #   if: matrix.os == 'windows-latest'
+    #   run: |
+    #     choco install mingw -y
+    #     echo "C:/tools/mingw64/bin" >> $GITHUB_PATH
+
+    - name: Configure CMake on Ubuntu
+      if: matrix.os == 'ubuntu-latest'
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_CXX_COMPILER=g++-12
+
+    - name: Configure CMake on Windows
+      if: matrix.os == 'windows-latest'
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} # -G "MinGW Makefiles"
+
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
