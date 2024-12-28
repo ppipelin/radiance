@@ -23,6 +23,7 @@ inline TimePoint now()
 namespace {
 	std::unordered_map<Key, std::tuple<Value, UInt, cMove>> transpositionTable;
 	TimePoint remaining = 0;
+	TimePoint increment = 0;
 }
 
 class Search
@@ -443,7 +444,7 @@ public:
 		if (*g_stop)
 			return true;
 		if (Limits.infinite || remaining == 0) return false;
-		return elapsed() > remaining;
+		return elapsed() > std::min<TimePoint>(TimePoint(double(remaining) * 0.95), remaining / TimePoint(30) + increment);
 	}
 
 protected:
