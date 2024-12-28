@@ -101,7 +101,9 @@ public:
 		if (Limits.movetime)
 			remaining = Limits.movetime;
 		else
-			remaining = TimePoint(b.isWhiteTurn() ? Limits.time[WHITE] : Limits.time[BLACK]) / 30;
+			remaining = TimePoint(b.isWhiteTurn() ? Limits.time[WHITE] : Limits.time[BLACK]);
+
+		increment = TimePoint(b.isWhiteTurn() ? Limits.inc[WHITE] : Limits.inc[BLACK]);
 
 		Stack stack[MAX_DEPTH + 10] = {};
 		cMove pv[MAX_DEPTH + 1];
