@@ -1,6 +1,21 @@
 //! This module provides functions types for pieces, colors and bitboards related components
 
 const std = @import("std");
+const position = @import("position.zig");
+
+pub const major = 4;
+pub const minor = 0;
+pub const patch = 0;
+
+pub fn computeVersion() []const u8 {
+    if (minor == 0 and patch == 0) {
+        return std.fmt.comptimePrint("{d}", .{major});
+    } else if (patch == 0) {
+        return std.fmt.comptimePrint("{d}.{d}", .{ major, minor });
+    } else {
+        return std.fmt.comptimePrint("{d}.{d}.{d}", .{ major, minor, patch });
+    }
+}
 
 ////// Chess //////
 
@@ -307,6 +322,53 @@ pub const Move = packed struct {
         return Move{ .flags = flags.index(), .from = @truncate(from.index()), .to = @truncate(to.index()) };
     }
 
+    pub inline fn initFromStr(pos: position.Position, str: []const u8) !Move {
+        if ((str[0] - 'a' >= board_size or str[1] - '1' >= board_size or str[2] - 'a' >= board_size or str[3] - '1' >= board_size))
+            return error.MoveBeyondBoard;
+
+        var from: Square = @enumFromInt((str[0] - 'a') + (str[1] - '1') * board_size);
+        var to: Square = @enumFromInt((str[2] - 'a') + (str[3] - '1') * board_size);
+        const from_piece: Piece = pos.board[from.index()];
+        const to_piece: Piece = pos.board[to.index()];
+
+        var flags: u4 = 0;
+        if (to_piece != Piece.none)
+            flags |= MoveFlags.capture.index();
+
+        if (str.len == 5) {
+            // The promotion piece character must be lowercased
+            const c: u8 = std.ascii.toLower(str[4]);
+            flags |= 0b1000;
+            switch (c) {
+                'n' => flags |= 0x0,
+                'b' => flags |= 0x1,
+                'r' => flags |= 0x2,
+                'q' => flags |= 0x3,
+                else => return error.UnknownPromotion,
+            }
+        }
+
+        // In Chess960, castling is still indicated using the standard UCI move format
+        // (e.g., e1g1 for kingside castling or e1c1 for queenside castling)
+        if (from_piece.pieceToPieceType() == PieceType.king) {
+            if (from == Square.e1.relativeSquare(pos.state.turn) and to == Square.g1.relativeSquare(pos.state.turn)) {
+                flags = MoveFlags.oo.index();
+            } else if (from == Square.e1.relativeSquare(pos.state.turn) and to == Square.c1.relativeSquare(pos.state.turn)) {
+                flags = MoveFlags.ooo.index();
+            }
+        } else if (from_piece.pieceToPieceType() == PieceType.pawn) {
+            if (from.file() != to.file()) {
+                if (to_piece == Piece.none) {
+                    flags |= MoveFlags.en_passant.index();
+                }
+            } else if (@abs(@as(i16, from.index()) - @as(i16, to.index())) == board_size * 2) {
+                flags = MoveFlags.double_push.index();
+            }
+        }
+
+        return Move.init(@enumFromInt(flags), from, to);
+    }
+
     pub inline fn getFlags(self: Move) MoveFlags {
         return @enumFromInt(self.flags);
     }
@@ -459,6 +521,14 @@ pub const value_stalemate: Value = 0;
 pub const value_mate: Value = 32000;
 pub const value_infinite: Value = value_mate + 1;
 pub const value_none: Value = value_mate + 2;
+
+////// Interface //////
+
+pub const TimePoint = i64; // A value in milliseconds
+
+pub inline fn now() TimePoint {
+    return std.time.milliTimestamp();
+}
 
 ////// Bitboard //////
 

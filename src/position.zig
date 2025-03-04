@@ -58,6 +58,8 @@ pub const State = packed struct {
     last_captured_piece: Piece = Piece.none,
     material_key: u64 = 0,
     previous: ?*State = null,
+    checkers: types.Bitboard = 0,
+    pinned: types.Bitboard = 0,
 };
 
 pub const Position = struct {
@@ -67,10 +69,6 @@ pub const Position = struct {
     // Bitboards
     bb_pieces: [PieceType.nb()]Bitboard = undefined,
     bb_colors: [Color.nb()]Bitboard = undefined,
-
-    // Stores the enemy pieces that are attacking the king and pinned pieces
-    checkers: Bitboard = 0,
-    pinned: Bitboard = 0,
 
     // Rook initial positions are recorded for 960
     rook_initial: [4]Square = [_]Square{ Square.a1, Square.h1, Square.a8, Square.h8 },
@@ -312,7 +310,7 @@ pub const Position = struct {
         // Squares that can be moved on
         var quiet_mask: Bitboard = 0;
         var attacked: Bitboard = 0;
-        self.pinned = 0;
+        self.state.pinned = 0;
 
         for (std.enums.values(PieceType)) |pt| {
             if (pt == PieceType.none)
@@ -327,9 +325,9 @@ pub const Position = struct {
 
         // Compute checkers from non blockables piece types
         // All knights can attack the king the same way a knight would attack form the king's square
-        self.checkers = tables.getAttacks(PieceType.knight, color.invert(), our_king, 0) & bb_them & self.bb_pieces[PieceType.knight.index()];
+        self.state.checkers = tables.getAttacks(PieceType.knight, color.invert(), our_king, 0) & bb_them & self.bb_pieces[PieceType.knight.index()];
         // Same method for pawn, transform the king into a pawn
-        self.checkers |= tables.pawn_attacks[color.index()][our_king.index()] & bb_them & self.bb_pieces[PieceType.pawn.index()];
+        self.state.checkers |= tables.pawn_attacks[color.index()][our_king.index()] & bb_them & self.bb_pieces[PieceType.pawn.index()];
 
         // Compute candidate checkers from sliders and pinned pieces, transform the king into a slider
         var candidates: Bitboard = tables.getAttacks(PieceType.bishop, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[color.invert().index()]);
@@ -341,10 +339,10 @@ pub const Position = struct {
 
             if (bb_between == 0) {
                 // No our piece between king and slider: check
-                self.checkers ^= sq.sqToBB();
+                self.state.checkers ^= sq.sqToBB();
             } else if ((bb_between & (bb_between - 1)) == 0) {
                 // Only one of our piece between king and slider: pinned
-                self.pinned ^= bb_between;
+                self.state.pinned ^= bb_between;
             }
         }
 
@@ -353,14 +351,14 @@ pub const Position = struct {
         Move.generateMove(MoveFlags.capture, our_king, to_king & bb_them, list, allocator);
         Move.generateMove(MoveFlags.quiet, our_king, to_king & ~bb_all, list, allocator);
 
-        switch (types.popcount(self.checkers)) {
+        switch (types.popcount(self.state.checkers)) {
             // Double check, we already computed king moves
             2 => {
                 return;
             },
             // SingleCheck
             1 => {
-                var checker_sq: Square = @enumFromInt(types.lsb(self.checkers));
+                var checker_sq: Square = @enumFromInt(types.lsb(self.state.checkers));
                 switch (self.board[checker_sq.index()].pieceToPieceType()) {
                     // Can only take or move for pawn and knight
                     PieceType.pawn => {
@@ -370,7 +368,7 @@ pub const Position = struct {
                             Move.generateMoveFrom(MoveFlags.en_passant, from_en_passant & bb_us & self.bb_pieces[PieceType.pawn.index()], self.state.en_passant, list, allocator);
                         }
 
-                        var attackers: Bitboard = tables.getAttackers(self.*, color, checker_sq, bb_all) & ~self.pinned;
+                        var attackers: Bitboard = tables.getAttackers(self.*, color, checker_sq, bb_all) & ~self.state.pinned;
                         // Can be a promotion
                         if (checker_sq.rank() == Rank.r8.relativeRank(color)) {
                             const attacking_pawns: Bitboard = attackers & self.bb_pieces[PieceType.pawn.index()];
@@ -380,7 +378,7 @@ pub const Position = struct {
                         Move.generateMoveFrom(MoveFlags.capture, attackers, checker_sq, list, allocator);
                     },
                     PieceType.knight => {
-                        var attackers: Bitboard = tables.getAttackers(self.*, color, checker_sq, bb_all) & ~self.pinned;
+                        var attackers: Bitboard = tables.getAttackers(self.*, color, checker_sq, bb_all) & ~self.state.pinned;
                         // Can be a promotion
                         if (checker_sq.rank() == Rank.r8.relativeRank(color)) {
                             const attacking_pawns: Bitboard = attackers & self.bb_pieces[PieceType.pawn.index()];
@@ -391,7 +389,7 @@ pub const Position = struct {
                     },
                     // Can block
                     else => {
-                        capture_mask = self.checkers;
+                        capture_mask = self.state.checkers;
                         quiet_mask = tables.squares_between[our_king.index()][checker_sq.index()];
                     },
                 }
@@ -439,10 +437,10 @@ pub const Position = struct {
                     }
 
                     // En passant pinned
-                    Move.generateMoveFrom(MoveFlags.en_passant, from_en_passant & self.pinned & tables.squares_line[our_king.index()][self.state.en_passant.index()], self.state.en_passant, list, allocator);
+                    Move.generateMoveFrom(MoveFlags.en_passant, from_en_passant & self.state.pinned & tables.squares_line[our_king.index()][self.state.en_passant.index()], self.state.en_passant, list, allocator);
                 }
 
-                var bb_pinned = self.pinned & ~self.bb_pieces[PieceType.knight.index()];
+                var bb_pinned = self.state.pinned & ~self.bb_pieces[PieceType.knight.index()];
                 while (bb_pinned != 0) {
                     const from: Square = types.popLsb(&bb_pinned);
                     const pt: PieceType = self.board[from.index()].pieceToPieceType();
@@ -484,7 +482,7 @@ pub const Position = struct {
             if (pt == PieceType.none or pt == PieceType.king)
                 continue;
 
-            var from_bb: Bitboard = self.bb_pieces[pt.index()] & bb_us & ~self.pinned;
+            var from_bb: Bitboard = self.bb_pieces[pt.index()] & bb_us & ~self.state.pinned;
             while (from_bb != 0) {
                 const from: Square = types.popLsb(&from_bb);
                 var to: Bitboard = tables.getAttacks(pt, color, from, bb_all); // Careful: bb_us not excluded
@@ -502,7 +500,7 @@ pub const Position = struct {
             }
         }
 
-        var from_bb: Bitboard = self.bb_pieces[PieceType.pawn.index()] & bb_us & ~self.pinned;
+        var from_bb: Bitboard = self.bb_pieces[PieceType.pawn.index()] & bb_us & ~self.state.pinned;
         while (from_bb != 0) {
             const from: Square = types.popLsb(&from_bb);
             const pawn_push: Square = from.add(Direction.north.relativeDir(color));
