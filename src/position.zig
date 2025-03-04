@@ -97,6 +97,7 @@ pub const Position = struct {
         const removeFilter: Bitboard = ~sq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] &= removeFilter;
         self.bb_colors[p.pieceToColor().index()] &= removeFilter;
+        // update zobrist
     }
 
     /// Add to board and bitboards
@@ -105,6 +106,7 @@ pub const Position = struct {
         const addFilter: Bitboard = sq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] |= addFilter;
         self.bb_colors[p.pieceToColor().index()] |= addFilter;
+        // update zobrist
     }
 
     inline fn removeAdd(self: *Position, p: Piece, removeSq: Square, addSq: Square) void {
@@ -113,6 +115,7 @@ pub const Position = struct {
         const removeFilter: Bitboard = removeSq.sqToBB() | addSq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] ^= removeFilter;
         self.bb_colors[p.pieceToColor().index()] ^= removeFilter;
+        // update zobrist
     }
 
     pub fn movePiece(self: *Position, move: Move, state: *State) !void {
@@ -137,12 +140,29 @@ pub const Position = struct {
             return error.MoveNone;
         }
 
+        // Remove last en_passant
+        if (self.state.previous.en_passant != Square.none) {
+            // self.state.material_key ^= Zobrist::enPassant[Board::column(m_board->enPassant())];
+        }
+
         switch (from_piece.pieceToPieceType()) {
             // Disable castle if king/rook is moved
             PieceType.king => {
                 if (from_piece.pieceToColor().isWhite()) {
+                    if (self.state.previous.castle_info.index() & CastleInfo.K.index() > 0) {
+                        // self.state.material_key ^= ~Zobrist.caslting[0];
+                    }
+                    if (self.state.previous.castle_info.index() & CastleInfo.Q.index() > 0) {
+                        // self.state.material_key ^= ~Zobrist.caslting[1];
+                    }
                     self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~CastleInfo.KQ.index());
                 } else {
+                    if (self.state.previous.castle_info.index() & CastleInfo.k.index() > 0) {
+                        // self.state.material_key ^= ~Zobrist.caslting[2];
+                    }
+                    if (self.state.previous.castle_info.index() & CastleInfo.q.index() > 0) {
+                        // self.state.material_key ^= ~Zobrist.caslting[3];
+                    }
                     self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~CastleInfo.kq.index());
                 }
             },
@@ -151,10 +171,12 @@ pub const Position = struct {
                 if (move.getFrom().file() == File.fh) {
                     if (self.state.castle_info.index() & (if (is_white) CastleInfo.K else CastleInfo.k).index() > 0) {
                         self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~(if (is_white) CastleInfo.K.index() else CastleInfo.k.index()));
+                        // self.state.material_key ^= ~Zobrist.caslting[if (is_white) CastleInfo.K else CastleInfo.k) > 0];
                     }
                 } else if (move.getFrom().file() == File.fa) {
                     if (self.state.castle_info.index() & (if (is_white) CastleInfo.Q else CastleInfo.q).index() > 0) {
                         self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~(if (is_white) CastleInfo.Q.index() else CastleInfo.q.index()));
+                        // self.state.material_key ^= ~Zobrist.caslting[if (is_white) CastleInfo.Q else CastleInfo.q) > 0];
                     }
                 }
             },
@@ -171,6 +193,7 @@ pub const Position = struct {
 
                         // Remove
                         self.remove(self.state.last_captured_piece, en_passant_sq);
+                        // self.state.material_key ^= Zobrist.psq[self.state.last_captured_piece.pieceToPieceType()][en_passant_sq.index()];
 
                         self.board[en_passant_sq.index()] = Piece.none;
                     },
@@ -216,6 +239,7 @@ pub const Position = struct {
 
                 if (castleRemove != CastleInfo.none and self.state.castle_info.index() & castleRemove.index() > 0) {
                     self.state.castle_info = @enumFromInt(self.state.castle_info.index() ^ castleRemove.index());
+                    // self.state.material_key ^= ~Zobrist.caslting[castleRemove.indexLsb()];
                 }
 
                 self.state.last_captured_piece = to_piece;
@@ -233,6 +257,7 @@ pub const Position = struct {
 
         self.state.game_ply += 1;
         self.state.turn = self.state.turn.invert();
+        // self.state.material_key ^= Zobrist.side;
 
         // If castling we move the rook as well
         switch (move.getFlags()) {
@@ -692,6 +717,7 @@ pub const Position = struct {
             pos.state.turn = Color.white;
         } else {
             pos.state.turn = Color.black;
+            // pos.state.material_key ^= zobrist.TurnHash;
         }
 
         const castle = tokens.next().?;
@@ -718,6 +744,7 @@ pub const Position = struct {
             for (types.square_to_str, 0..) |sq_str, i| {
                 if (std.mem.eql(u8, ep, sq_str)) {
                     pos.state.en_passant = @enumFromInt(i);
+                    // pos.state.material_key ^= zobrist.EnPassantHash[types.file_plain(i)];
                     break;
                 }
             }
