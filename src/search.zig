@@ -4,14 +4,14 @@ const types = @import("types.zig");
 
 pub fn perft(allocator: std.mem.Allocator, pos: *position.Position, depth: u8, verbose: bool) !u64 {
     var nodes: u64 = 0;
-    var move_list = std.ArrayList(types.Move).init(allocator);
-    defer move_list.deinit();
+    var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
+    defer move_list.deinit(allocator);
 
     if (depth == 0) {
         return 1;
     }
 
-    pos.generateLegalMoves(pos.state.turn, &move_list);
+    pos.generateLegalMoves(pos.state.turn, &move_list, allocator);
 
     if (depth == 1)
         return move_list.items.len;

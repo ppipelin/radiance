@@ -6,7 +6,7 @@ const types = @import("types.zig");
 
 pub fn main() !void {
     tables.initAll(std.heap.c_allocator);
-    defer tables.deinitAll();
+    defer tables.deinitAll(std.heap.c_allocator);
 
     const stdout = std.io.getStdOut().writer();
 

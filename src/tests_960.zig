@@ -11,30 +11,30 @@ const allocator = std.testing.allocator;
 
 test "Castle" {
     tables.initAll(allocator);
-    defer tables.deinitAll();
+    defer tables.deinitAll(allocator);
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "2k5/8/8/8/8/8/8/R2K2R1 w KQ - 0 1");
 
-    var list = std.ArrayList(types.Move).init(allocator);
-    defer list.deinit();
+    var list: std.ArrayListUnmanaged(types.Move) = .empty;
+    defer list.deinit(allocator);
 
-    pos.generateLegalMoves(pos.state.turn, &list);
+    pos.generateLegalMoves(pos.state.turn, &list, allocator);
 
     try expectEqual(26, list.items.len);
 }
 
 test "CastleIntersect" {
     tables.initAll(allocator);
-    defer tables.deinitAll();
+    defer tables.deinitAll(allocator);
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "1qk5/8/8/8/8/8/8/R1K1R3 w KQ - 0 1");
 
-    var list = std.ArrayList(types.Move).init(allocator);
-    defer list.deinit();
+    var list: std.ArrayListUnmanaged(types.Move) = .empty;
+    defer list.deinit(allocator);
 
-    pos.generateLegalMoves(pos.state.turn, &list);
+    pos.generateLegalMoves(pos.state.turn, &list, allocator);
 
     try expectEqual(24, list.items.len);
 }

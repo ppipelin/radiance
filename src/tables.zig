@@ -9,8 +9,8 @@ const Square = types.Square;
 
 pub var moves_bishop_mask: [types.board_size2]Bitboard = std.mem.zeroes([types.board_size2]Bitboard);
 pub var moves_rook_mask: [types.board_size2]Bitboard = std.mem.zeroes([types.board_size2]Bitboard);
-pub var moves_bishop: [types.board_size2]std.AutoHashMap(Bitboard, Bitboard) = undefined;
-pub var moves_rook: [types.board_size2]std.AutoHashMap(Bitboard, Bitboard) = undefined;
+pub var moves_bishop: [types.board_size2]std.AutoHashMapUnmanaged(Bitboard, Bitboard) = undefined;
+pub var moves_rook: [types.board_size2]std.AutoHashMapUnmanaged(Bitboard, Bitboard) = undefined;
 
 pub var pseudo_legal_attacks: [PieceType.nb()][types.board_size2]Bitboard = std.mem.zeroes([PieceType.nb()][types.board_size2]Bitboard);
 pub var pawn_attacks: [Color.nb()][types.board_size2]Bitboard = std.mem.zeroes([Color.nb()][types.board_size2]Bitboard);
@@ -72,7 +72,7 @@ pub inline fn filterMovesRook(sq: Square) Bitboard {
     return b;
 }
 
-pub fn computeBlockers(mask_: Bitboard, v: *std.ArrayList(Bitboard)) void {
+pub fn computeBlockers(mask_: Bitboard, v: *std.ArrayListUnmanaged(Bitboard), allocator: std.mem.Allocator) void {
     const bit_indices_size: u4 = @truncate(@popCount(mask_)); // Max is (types.board_size)*2-3
     for (1..std.math.pow(u64, 2, bit_indices_size)) |blocker_configuration| {
         var mask: Bitboard = mask_;
@@ -84,7 +84,7 @@ pub fn computeBlockers(mask_: Bitboard, v: *std.ArrayList(Bitboard)) void {
             const current_bit: Bitboard = (@as(u64, blocker_configuration) >> cnt) & 1; // Is the shifted bit in blocker_configuration activated
             currentBlockerBB |= current_bit << bit_idx; // Shift it back to its position
         }
-        v.append(currentBlockerBB) catch unreachable;
+        v.append(allocator, currentBlockerBB) catch unreachable;
     }
 }
 
@@ -127,27 +127,27 @@ fn initSlidersAttacks(allocator: std.mem.Allocator) void {
     sq = Square.a1;
     while (sq != Square.none) : (sq = sq.inc().*) {
         // Bishop
-        moves_bishop[sq.index()] = std.AutoHashMap(Bitboard, Bitboard).init(allocator);
-        var moves_bishop_blockers = std.ArrayList(Bitboard).init(allocator);
-        defer moves_bishop_blockers.deinit();
+        moves_bishop[sq.index()] = .empty;
+        var moves_bishop_blockers: std.ArrayListUnmanaged(Bitboard) = .empty;
+        defer moves_bishop_blockers.deinit(allocator);
 
-        moves_bishop_blockers.append(0) catch unreachable;
-        computeBlockers(moves_bishop_mask[sq.index()], &moves_bishop_blockers);
+        moves_bishop_blockers.append(allocator, 0) catch unreachable;
+        computeBlockers(moves_bishop_mask[sq.index()], &moves_bishop_blockers, allocator);
 
         for (moves_bishop_blockers.items) |blockers| {
-            moves_bishop[sq.index()].put(blockers, getBishopAttacks(sq, blockers)) catch unreachable;
+            moves_bishop[sq.index()].put(allocator, blockers, getBishopAttacks(sq, blockers)) catch unreachable;
         }
 
         // Rook
-        moves_rook[sq.index()] = std.AutoHashMap(Bitboard, Bitboard).init(allocator);
-        var moves_rook_blockers = std.ArrayList(Bitboard).init(allocator);
-        defer moves_rook_blockers.deinit();
+        moves_rook[sq.index()] = .empty;
+        var moves_rook_blockers: std.ArrayListUnmanaged(Bitboard) = .empty;
+        defer moves_rook_blockers.deinit(allocator);
 
-        moves_rook_blockers.append(0) catch unreachable;
-        computeBlockers(moves_rook_mask[sq.index()], &moves_rook_blockers);
+        moves_rook_blockers.append(allocator, 0) catch unreachable;
+        computeBlockers(moves_rook_mask[sq.index()], &moves_rook_blockers, allocator);
 
         for (moves_rook_blockers.items) |blockers| {
-            moves_rook[sq.index()].put(blockers, getRookAttacks(sq, blockers)) catch unreachable;
+            moves_rook[sq.index()].put(allocator, blockers, getRookAttacks(sq, blockers)) catch unreachable;
         }
     }
 }
@@ -210,11 +210,11 @@ pub fn initAll(allocator: std.mem.Allocator) void {
     initNonBlockable();
 }
 
-pub fn deinitAll() void {
+pub fn deinitAll(allocator: std.mem.Allocator) void {
     var sq: u8 = Square.a1.index();
     while (sq <= Square.h8.index()) : (sq += 1) {
-        moves_bishop[sq].deinit();
-        moves_rook[sq].deinit();
+        moves_bishop[sq].deinit(allocator);
+        moves_rook[sq].deinit(allocator);
     }
 }
 

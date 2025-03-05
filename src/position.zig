@@ -309,7 +309,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn generateLegalMoves(self: *Position, color: Color, list: *std.ArrayList(Move)) void {
+    pub fn generateLegalMoves(self: *Position, color: Color, list: *std.ArrayListUnmanaged(Move), allocator: std.mem.Allocator) void {
         const bb_us: Bitboard = self.bb_colors[color.index()];
         const bb_them: Bitboard = self.bb_colors[color.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
@@ -359,8 +359,8 @@ pub const Position = struct {
 
         // Move king
         const to_king: Bitboard = tables.getAttacks(PieceType.king, color, our_king, bb_all) & ~attacked;
-        Move.generateMove(MoveFlags.capture, our_king, to_king & bb_them, list);
-        Move.generateMove(MoveFlags.quiet, our_king, to_king & ~bb_all, list);
+        Move.generateMove(MoveFlags.capture, our_king, to_king & bb_them, list, allocator);
+        Move.generateMove(MoveFlags.quiet, our_king, to_king & ~bb_all, list, allocator);
 
         switch (types.popcount(self.checkers)) {
             // Double check, we already computed king moves
@@ -376,27 +376,27 @@ pub const Position = struct {
                         // Can be a double_push check
                         if (self.state.en_passant != Square.none) {
                             const from_en_passant: Bitboard = tables.pawn_attacks[color.invert().index()][self.state.en_passant.index()];
-                            Move.generateMoveFrom(MoveFlags.en_passant, from_en_passant & bb_us & self.bb_pieces[PieceType.pawn.index()], self.state.en_passant, list);
+                            Move.generateMoveFrom(MoveFlags.en_passant, from_en_passant & bb_us & self.bb_pieces[PieceType.pawn.index()], self.state.en_passant, list, allocator);
                         }
 
                         var attackers: Bitboard = tables.getAttackers(self.*, color, checker_sq, bb_all) & ~self.pinned;
                         // Can be a promotion
                         if (checker_sq.rank() == Rank.r8.relativeRank(color)) {
                             const attacking_pawns: Bitboard = attackers & self.bb_pieces[PieceType.pawn.index()];
-                            Move.generateMoveFromPromotion(MoveFlags.capture, attacking_pawns, checker_sq, list);
+                            Move.generateMoveFromPromotion(MoveFlags.capture, attacking_pawns, checker_sq, list, allocator);
                             attackers &= ~attacking_pawns;
                         }
-                        Move.generateMoveFrom(MoveFlags.capture, attackers, checker_sq, list);
+                        Move.generateMoveFrom(MoveFlags.capture, attackers, checker_sq, list, allocator);
                     },
                     PieceType.knight => {
                         var attackers: Bitboard = tables.getAttackers(self.*, color, checker_sq, bb_all) & ~self.pinned;
                         // Can be a promotion
                         if (checker_sq.rank() == Rank.r8.relativeRank(color)) {
                             const attacking_pawns: Bitboard = attackers & self.bb_pieces[PieceType.pawn.index()];
-                            Move.generateMoveFromPromotion(MoveFlags.capture, attacking_pawns, checker_sq, list);
+                            Move.generateMoveFromPromotion(MoveFlags.capture, attacking_pawns, checker_sq, list, allocator);
                             attackers &= ~attacking_pawns;
                         }
-                        Move.generateMoveFrom(MoveFlags.capture, attackers, checker_sq, list);
+                        Move.generateMoveFrom(MoveFlags.capture, attackers, checker_sq, list, allocator);
                     },
                     // Can block
                     else => {
@@ -419,7 +419,7 @@ pub const Position = struct {
                     const path_king_oo: Bitboard = tables.squares_between[our_king.index()][to_king_oo.index()] | to_king_oo.sqToBB();
                     const path_rook_oo: Bitboard = tables.squares_between[our_king.index()][self.rook_initial[1 + 2 * @as(u8, color.invert().index())].index()];
                     if ((path_king_oo | path_rook_oo) & (bb_all & ~self.rook_initial[1 + 2 * @as(u8, color.invert().index())].sqToBB() & ~our_king.sqToBB()) == 0 and path_king_oo & attacked == 0) {
-                        list.append(Move.init(MoveFlags.oo, our_king, to_king_oo)) catch unreachable;
+                        list.append(allocator, Move.init(MoveFlags.oo, our_king, to_king_oo)) catch unreachable;
                     }
                 }
                 // OOO
@@ -428,7 +428,7 @@ pub const Position = struct {
                     const path_king_ooo: Bitboard = tables.squares_between[our_king.index()][to_king_ooo.index()] | to_king_ooo.sqToBB();
                     const path_rook_ooo: Bitboard = tables.squares_between[our_king.index()][self.rook_initial[0 + 2 * @as(u8, color.invert().index())].index()];
                     if ((path_king_ooo | path_rook_ooo) & (bb_all & ~self.rook_initial[0 + 2 * @as(u8, color.invert().index())].sqToBB() & ~our_king.sqToBB()) == 0 and path_king_ooo & attacked == 0) {
-                        list.append(Move.init(MoveFlags.ooo, our_king, to_king_ooo)) catch unreachable;
+                        list.append(allocator, Move.init(MoveFlags.ooo, our_king, to_king_ooo)) catch unreachable;
                     }
                 }
 
@@ -444,12 +444,12 @@ pub const Position = struct {
                         // Bitboard after moving the pawn
                         const new_bb_all: Bitboard = bb_all ^ from.sqToBB() ^ self.state.en_passant.sqToBB() ^ self.state.en_passant.add(Direction.south.relativeDir(color)).sqToBB();
                         if (tables.getAttacks(PieceType.bishop, color, our_king, new_bb_all) & bb_them & (self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) > 0 or tables.getAttacks(PieceType.rook, color, our_king, new_bb_all) & bb_them & (self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()]) > 0) {} else {
-                            list.append(Move.init(MoveFlags.en_passant, from, self.state.en_passant)) catch unreachable;
+                            list.append(allocator, Move.init(MoveFlags.en_passant, from, self.state.en_passant)) catch unreachable;
                         }
                     }
 
                     // En passant pinned
-                    Move.generateMoveFrom(MoveFlags.en_passant, from_en_passant & self.pinned & tables.squares_line[our_king.index()][self.state.en_passant.index()], self.state.en_passant, list);
+                    Move.generateMoveFrom(MoveFlags.en_passant, from_en_passant & self.pinned & tables.squares_line[our_king.index()][self.state.en_passant.index()], self.state.en_passant, list, allocator);
                 }
 
                 var bb_pinned = self.pinned & ~self.bb_pieces[PieceType.knight.index()];
@@ -466,21 +466,21 @@ pub const Position = struct {
                     // Can be a promotion
                     if (pt == PieceType.pawn) {
                         const remove_promoted_pawn: Bitboard = to & types.mask_rank[Rank.r8.relativeRank(color).index()];
-                        Move.generateMovePromotion(MoveFlags.capture, from, remove_promoted_pawn, list);
+                        Move.generateMovePromotion(MoveFlags.capture, from, remove_promoted_pawn, list, allocator);
                         to &= ~remove_promoted_pawn;
                     }
-                    Move.generateMove(MoveFlags.capture, from, to & capture_mask, list);
+                    Move.generateMove(MoveFlags.capture, from, to & capture_mask, list, allocator);
 
                     if (pt != PieceType.pawn) {
-                        Move.generateMove(MoveFlags.quiet, from, to & quiet_mask, list);
+                        Move.generateMove(MoveFlags.quiet, from, to & quiet_mask, list, allocator);
                     } else {
                         const pawn_push: Square = from.add(Direction.north.relativeDir(color));
                         // Push, cannot promote if pinned
                         if ((quiet_mask & line & pawn_push.sqToBB()) > 0) {
-                            list.append(Move.init(MoveFlags.quiet, from, from.add(Direction.north.relativeDir(color)))) catch unreachable;
+                            list.append(allocator, Move.init(MoveFlags.quiet, from, from.add(Direction.north.relativeDir(color)))) catch unreachable;
                             // Double push
                             if (from.rank() == Rank.r2.relativeRank(color) and quiet_mask & from.add(Direction.north_north.relativeDir(color)).sqToBB() > 0) {
-                                list.append(Move.init(MoveFlags.double_push, from, from.add(Direction.north_north.relativeDir(color)))) catch unreachable;
+                                list.append(allocator, Move.init(MoveFlags.double_push, from, from.add(Direction.north_north.relativeDir(color)))) catch unreachable;
                             }
                         }
                     }
@@ -502,13 +502,13 @@ pub const Position = struct {
                 // Can be a promotion
                 if (pt == PieceType.pawn) {
                     const remove_promoted_pawn: Bitboard = to & types.mask_rank[Rank.r8.relativeRank(color).index()] & capture_mask;
-                    Move.generateMovePromotion(MoveFlags.capture, from, remove_promoted_pawn, list);
+                    Move.generateMovePromotion(MoveFlags.capture, from, remove_promoted_pawn, list, allocator);
                     to &= ~remove_promoted_pawn;
                 }
 
-                Move.generateMove(MoveFlags.capture, from, to & capture_mask, list);
+                Move.generateMove(MoveFlags.capture, from, to & capture_mask, list, allocator);
                 if (pt != PieceType.pawn)
-                    Move.generateMove(MoveFlags.quiet, from, to & quiet_mask, list);
+                    Move.generateMove(MoveFlags.quiet, from, to & quiet_mask, list, allocator);
             }
         }
 
@@ -520,13 +520,13 @@ pub const Position = struct {
             if (self.board[pawn_push.index()] == Piece.none) {
                 // Can be a promotion
                 if (pawn_push.rank() == Rank.r8.relativeRank(color)) {
-                    Move.generateMovePromotion(MoveFlags.quiet, from, quiet_mask & pawn_push.sqToBB(), list);
+                    Move.generateMovePromotion(MoveFlags.quiet, from, quiet_mask & pawn_push.sqToBB(), list, allocator);
                 } else {
                     if (quiet_mask & pawn_push.sqToBB() > 0)
-                        list.append(Move.init(MoveFlags.quiet, from, from.add(Direction.north.relativeDir(color)))) catch unreachable;
+                        list.append(allocator, Move.init(MoveFlags.quiet, from, from.add(Direction.north.relativeDir(color)))) catch unreachable;
                     // Double push
                     if (from.rank() == Rank.r2.relativeRank(color) and quiet_mask & from.add(Direction.north_north.relativeDir(color)).sqToBB() > 0) {
-                        list.append(Move.init(MoveFlags.double_push, from, from.add(Direction.north_north.relativeDir(color)))) catch unreachable;
+                        list.append(allocator, Move.init(MoveFlags.double_push, from, from.add(Direction.north_north.relativeDir(color)))) catch unreachable;
                     }
                 }
             }
