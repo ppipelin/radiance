@@ -386,15 +386,7 @@ pub const Move = packed struct {
 
     pub fn printUCIDebug(self: Move) void {
         const writer = std.io.getStdErr().writer();
-        writer.print("{s}{s}", .{
-            self.getFrom().str(),
-            self.getTo().str(),
-        }) catch unreachable;
-        if (self.isPromotion()) {
-            writer.print("{c}", .{
-                prom_move_type_string[self.flags][0],
-            }) catch unreachable;
-        }
+        self.printUCI(writer);
     }
 };
 

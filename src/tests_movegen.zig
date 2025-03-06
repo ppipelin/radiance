@@ -34,7 +34,7 @@ test "PerftKiwipete" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, position.kiwipete);
+    var pos: position.Position = position.Position.setFen(&s, position.kiwi_fen);
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();

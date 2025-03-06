@@ -14,7 +14,8 @@ const Rank = types.Rank;
 const Square = types.Square;
 
 pub const start_fen: []const u8 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-pub const kiwipete: []const u8 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+pub const kiwi_fen: []const u8 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+pub const lasker_fen: []const u8 = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - -";
 
 const CastleInfo = enum(u4) {
     none,
@@ -539,29 +540,34 @@ pub const Position = struct {
         }
     }
 
-    pub fn debugPrint(self: Position) void {
+    pub fn print(self: Position, writer: anytype) void {
         const line = " +---+---+---+---+---+---+---+---+\n";
         const letters = "   A   B   C   D   E   F   G   H\n";
         var i: i32 = 56;
         while (i >= 0) : (i -= 8) {
-            std.debug.print("{s} ", .{line});
+            writer.print("{s} ", .{line}) catch unreachable;
             var j: i32 = 0;
             while (j < 8) : (j += 1) {
-                std.debug.print("| {c} ", .{@intFromEnum(self.board[@intCast(i + j)])});
+                writer.print("| {c} ", .{@intFromEnum(self.board[@intCast(i + j)])}) catch unreachable;
             }
-            std.debug.print("| {}\n", .{@divTrunc(i, 8) + 1});
+            writer.print("| {}\n", .{@divTrunc(i, 8) + 1}) catch unreachable;
         }
-        std.debug.print("{s}", .{line});
-        std.debug.print("{s}\n", .{letters});
+        writer.print("{s}", .{line}) catch unreachable;
+        writer.print("{s}\n", .{letters}) catch unreachable;
 
-        std.debug.print("{s} to move\n", .{if (self.state.turn.isWhite()) "White" else "Black"});
+        writer.print("{s} to move\n", .{if (self.state.turn.isWhite()) "White" else "Black"}) catch unreachable;
 
         var buffer: [90]u8 = undefined;
         const fen = self.getFen(&buffer);
 
-        std.debug.print("fen: {s}\n", .{fen});
+        writer.print("fen: {s}\n", .{fen}) catch unreachable;
 
-        std.debug.print("zobrist: {}\n", .{self.zobrist});
+        writer.print("zobrist: {}\n", .{self.zobrist}) catch unreachable;
+    }
+
+    pub fn printDebug(self: Position) void {
+        const writer = std.io.getStdErr().writer();
+        self.print(writer);
     }
 
     pub fn getFen(self: *const Position, fen: []u8) []u8 {
@@ -654,11 +660,6 @@ pub const Position = struct {
         std.mem.copyForwards(u8, fen[cnt..(cnt + tmp_str.len)], tmp_str);
         @memcpy(fen[cnt..(cnt + tmp_str.len)], tmp_str);
         cnt += tmp_str.len;
-
-        // for (tmp_str) |c| {
-        //     fen[cnt] = c;
-        //     cnt += 1;
-        // }
 
         return fen[0..cnt];
     }
