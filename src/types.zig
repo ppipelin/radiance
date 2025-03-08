@@ -237,13 +237,13 @@ pub const Piece = enum(u8) {
     }
 
     /// Find char c in arr
-    pub inline fn firstIndex(c: u8) ?Piece {
+    pub inline fn firstIndex(c: u8) !Piece {
         for (std.enums.values(Piece)) |i| {
             if (i.index() == c) {
                 return i;
             }
         }
-        return null;
+        return error.UnknownPiece;
     }
 };
 

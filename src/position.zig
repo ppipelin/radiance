@@ -645,9 +645,8 @@ pub const Position = struct {
         cnt += 1;
         var buffer: [4]u8 = undefined;
         var buf = buffer[0..];
-        var tmp_str = std.fmt.bufPrintIntToSlice(buf, self.state.rule_fifty, 10, .lower, std.fmt.FormatOptions{});
+        var tmp_str: []u8 = std.fmt.bufPrintIntToSlice(buf, self.state.rule_fifty, 10, .lower, std.fmt.FormatOptions{});
 
-        // std.mem.copyBackwards(u8, fen[cnt..(cnt + tmp_str.len)], tmp_str);
         @memcpy(fen[cnt..(cnt + tmp_str.len)], tmp_str);
         cnt += tmp_str.len;
 
@@ -665,12 +664,12 @@ pub const Position = struct {
     }
 
     // Maybe sq should be a square and use sq.add()
-    pub fn setFen(state: *State, fen: []const u8) Position {
+    pub fn setFen(state: *State, fen: []const u8) !Position {
         state.* = State{};
         var pos: Position = Position.init(state);
         var sq: i32 = Square.a8.index();
         var tokens = std.mem.tokenizeScalar(u8, fen, ' ');
-        const bd = tokens.next().?;
+        const bd: []const u8 = tokens.next().?;
         var rook_cnt: u8 = 0;
         for (bd) |ch| {
             if (std.ascii.isDigit(ch)) {
@@ -678,7 +677,7 @@ pub const Position = struct {
             } else if (ch == '/') {
                 sq += Direction.south.index() * 2;
             } else {
-                const p: Piece = Piece.firstIndex(ch).?;
+                const p: Piece = try Piece.firstIndex(ch);
                 pos.add(p, @enumFromInt(sq));
                 if (ch == 'R' and rook_cnt < 2) {
                     pos.rook_initial[rook_cnt] = @enumFromInt(sq);
@@ -688,15 +687,19 @@ pub const Position = struct {
             }
         }
 
-        const turn = tokens.next().?;
-        if (std.mem.eql(u8, turn, "w")) {
+        const turn: ?[]const u8 = tokens.next();
+        if (turn != null and std.mem.eql(u8, turn.?, "w")) {
             pos.state.turn = Color.white;
-        } else {
+        } else if (turn != null and std.mem.eql(u8, turn.?, "b")) {
             pos.state.turn = Color.black;
+        } else {
+            return error.UnknownTurn;
         }
 
-        const castle = tokens.next().?;
-        for (castle) |ch| {
+        const castle: ?[]const u8 = tokens.next();
+        if (castle == null)
+            return pos;
+        for (castle.?) |ch| {
             switch (ch) {
                 'K' => {
                     pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.K));
@@ -710,14 +713,19 @@ pub const Position = struct {
                 'q' => {
                     pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.q));
                 },
-                else => {},
+                '-' => {
+                    pos.state.castle_info = CastleInfo.none;
+                },
+                else => {
+                    return error.UnknownCaslte;
+                },
             }
         }
 
-        const ep = tokens.next().?;
-        if (ep.len == 2) {
+        const ep: ?[]const u8 = tokens.next();
+        if (ep != null and ep.?.len == 2) {
             for (types.square_to_str, 0..) |sq_str, i| {
-                if (std.mem.eql(u8, ep, sq_str)) {
+                if (std.mem.eql(u8, ep.?, sq_str)) {
                     pos.state.en_passant = @enumFromInt(i);
                     break;
                 }

@@ -15,7 +15,7 @@ test "Perft" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, position.start_fen);
+    var pos: position.Position = try position.Position.setFen(&s, position.start_fen);
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();
@@ -34,7 +34,7 @@ test "PerftKiwipete" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, position.kiwi_fen);
+    var pos: position.Position = try position.Position.setFen(&s, position.kiwi_fen);
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();
@@ -51,7 +51,7 @@ test "PerftPos3" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
+    var pos: position.Position = try position.Position.setFen(&s, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();
@@ -68,7 +68,7 @@ test "PerftPos4" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+    var pos: position.Position = try position.Position.setFen(&s, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();
@@ -85,7 +85,7 @@ test "PerftPos5" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
+    var pos: position.Position = try position.Position.setFen(&s, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();
@@ -102,7 +102,7 @@ test "MovegenEnPassant" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, "4k3/8/8/3pPp2/8/8/8/4K3 w - d6 0 3");
+    var pos: position.Position = try position.Position.setFen(&s, "4k3/8/8/3pPp2/8/8/8/4K3 w - d6 0 3");
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();
@@ -117,7 +117,7 @@ test "MovegenBishop" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, "3k4/8/8/B5BB/8/1B4B1/5B2/2BKB3 w - - 0 1");
+    var pos: position.Position = try position.Position.setFen(&s, "3k4/8/8/B5BB/8/1B4B1/5B2/2BKB3 w - - 0 1");
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();
@@ -132,7 +132,7 @@ test "MovegenRook" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, "3k4/8/8/R5RR/8/1R4R1/5R2/2RKR3 w - - 0 1");
+    var pos: position.Position = try position.Position.setFen(&s, "3k4/8/8/R5RR/8/1R4R1/5R2/2RKR3 w - - 0 1");
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();
@@ -147,7 +147,7 @@ test "MovegenSliders" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, "3k4/4R3/3B4/1Q6/8/5R2/2Q1B3/1Q1K1R2 w - - 0 1");
+    var pos: position.Position = try position.Position.setFen(&s, "3k4/4R3/3B4/1Q6/8/5R2/2Q1B3/1Q1K1R2 w - - 0 1");
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();
@@ -162,7 +162,7 @@ test "MovegenKing" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, "3qkr2/8/8/8/8/8/8/4K3 w - - 0 1");
+    var pos: position.Position = try position.Position.setFen(&s, "3qkr2/8/8/8/8/8/8/4K3 w - - 0 1");
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();

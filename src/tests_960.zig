@@ -14,7 +14,7 @@ test "Castle" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, "2k5/8/8/8/8/8/8/R2K2R1 w KQ - 0 1");
+    var pos: position.Position = try position.Position.setFen(&s, "2k5/8/8/8/8/8/8/R2K2R1 w KQ - 0 1");
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();
@@ -29,7 +29,7 @@ test "CastleIntersect" {
     defer tables.deinitAll();
 
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, "1qk5/8/8/8/8/8/8/R1K1R3 w KQ - 0 1");
+    var pos: position.Position = try position.Position.setFen(&s, "1qk5/8/8/8/8/8/8/R1K1R3 w KQ - 0 1");
 
     var list = std.ArrayList(types.Move).init(allocator);
     defer list.deinit();

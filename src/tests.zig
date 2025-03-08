@@ -30,7 +30,7 @@ test "Position" {
 test "Fen" {
     var s: position.State = position.State{};
     const fen: []const u8 = position.start_fen;
-    var pos: position.Position = position.Position.setFen(&s, fen);
+    var pos: position.Position = try position.Position.setFen(&s, fen);
 
     var buffer: [90]u8 = undefined;
     const computed_fen = pos.getFen(&buffer);
@@ -45,7 +45,7 @@ test "Move" {
 
 test "MoveUnmovePiece" {
     var s: position.State = position.State{};
-    var pos: position.Position = position.Position.setFen(&s, position.start_fen);
+    var pos: position.Position = try position.Position.setFen(&s, position.start_fen);
 
     var s2: position.State = position.State{};
     try pos.movePiece(types.Move.init(types.MoveFlags.quiet, types.Square.a2, types.Square.a3), &s2);

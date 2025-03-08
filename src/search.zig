@@ -26,7 +26,7 @@ pub fn perft(allocator: std.mem.Allocator, pos: *position.Position, depth: u8, v
             nodes += nodes_number;
             if (verbose) {
                 move.printUCI(stdout);
-                stdout.print(", {} : {}\n", .{ move.getFlags(), nodes_number }) catch unreachable;
+                try stdout.print(", {} : {}\n", .{ move.getFlags(), nodes_number });
             }
         } else |err| return err;
 
