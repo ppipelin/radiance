@@ -232,7 +232,8 @@ pub const Position = struct {
         // Add
         self.removeAdd(from_piece, from, to);
 
-        self.state.game_ply += 1;
+        if (!self.state.turn.isWhite())
+            self.state.game_ply += 1;
         self.state.turn = self.state.turn.invert();
 
         // If castling we move the rook as well
@@ -240,18 +241,14 @@ pub const Position = struct {
             MoveFlags.oo => {
                 var tmp: State = State{};
                 // CHESS 960 BUG
-                if (self.movePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() + 3), @enumFromInt(from.index() + 3 - 2)), &tmp)) {} else |err| {
-                    return err;
-                }
+                try self.movePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() + 3), @enumFromInt(from.index() + 3 - 2)), &tmp);
                 // We have moved, we need to set the turn back
                 self.state = state;
             },
             MoveFlags.ooo => {
                 var tmp: State = State{};
                 // CHESS 960 BUG
-                if (self.movePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() - 4), @enumFromInt(from.index() - 4 + 3)), &tmp)) {} else |err| {
-                    return err;
-                }
+                try self.movePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() - 4), @enumFromInt(from.index() - 4 + 3)), &tmp);
                 // We have moved, we need to set the turn back
                 self.state = state;
             },
@@ -306,13 +303,9 @@ pub const Position = struct {
 
         // If castling we move the rook as well
         if (move.getFlags() == MoveFlags.oo) {
-            if (self.unMovePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() + 3), @enumFromInt(from.index() + 3 - 2)), true)) {} else |err| {
-                return err;
-            }
+            try self.unMovePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() + 3), @enumFromInt(from.index() + 3 - 2)), true);
         } else if (move.getFlags() == MoveFlags.ooo) {
-            if (self.unMovePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() - 4), @enumFromInt(from.index() - 4 + 3)), true)) {} else |err| {
-                return err;
-            }
+            try self.unMovePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() - 4), @enumFromInt(from.index() - 4 + 3)), true);
         }
     }
 
