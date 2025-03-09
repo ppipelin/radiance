@@ -496,6 +496,27 @@ pub const value_mate: Value = 32000;
 pub const value_infinite: Value = value_mate + 1;
 pub const value_none: Value = value_mate + 2;
 
+////// Interface //////
+
+pub const TimePoint = i64; // A value in milliseconds
+
+pub inline fn now() TimePoint {
+    return std.time.milliTimestamp();
+}
+
+pub const Limits = struct {
+    movestogo: u8 = 0,
+    depth: u8 = 0,
+    mate: u8 = 0,
+    perft: u8 = 0,
+    infinite: bool = false,
+    nodes: u32 = 0,
+    time: [Color.nb()]TimePoint = [_]TimePoint{0} ** Color.nb(),
+    inc: [Color.nb()]TimePoint = [_]TimePoint{0} ** Color.nb(),
+    start: TimePoint = 0,
+    movetime: TimePoint = 0,
+};
+
 ////// Bitboard //////
 
 pub const Bitboard = u64;

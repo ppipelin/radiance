@@ -1,13 +1,10 @@
 const position = @import("position.zig");
+const search = @import("search.zig");
 const std = @import("std");
 const types = @import("types.zig");
 
 var g_stop = false;
 
-// A list to keep track of the position states along the setup moves (from the
-// start position to the position just before the search starts).
-// Needed by 'draw by repetition' detection. Use a std::deque because pointers to
-// elements are not invalidated upon list resizing.
 const StateList = std.ArrayListUnmanaged(position.State);
 
 const allocator = std.heap.c_allocator;
@@ -23,17 +20,13 @@ pub fn loop(stdin: anytype, stdout: anytype) !void {
     defer alloc.deinit();
     while (true) {
         const line = try stdin.readUntilDelimiterOrEofAlloc(alloc.allocator(), '\n', 4096);
-
         if (line == null) {
             break;
         }
-
         const tline: []const u8 = std.mem.trim(u8, line.?, " \r");
 
         var tokens = std.mem.tokenizeScalar(u8, tline, ' ');
-        // TODO Remove spaces at the begining
         const token: ?[]const u8 = tokens.next();
-
         if (token == null) {
             break;
         }
@@ -43,6 +36,7 @@ pub fn loop(stdin: anytype, stdout: anytype) !void {
 
         if (std.mem.eql(u8, "quit", primary_token) or std.mem.eql(u8, "exit", primary_token)) {
             existing_command = true;
+            g_stop = true;
             break;
         }
 
@@ -84,6 +78,18 @@ pub fn loop(stdin: anytype, stdout: anytype) !void {
             const tmp_states: StateList = try states.clone(allocator);
             if (cmd_position(&pos, &tokens, &states)) {} else |err| {
                 try stdout.print("Command position failed with error {}\n", .{err});
+                pos = tmp_position;
+                states = tmp_states;
+                pos.state = &states.items[states.items.len - 1];
+            }
+        }
+
+        if (std.mem.eql(u8, "go", primary_token)) {
+            existing_command = true;
+            const tmp_position: position.Position = pos;
+            const tmp_states: StateList = try states.clone(allocator);
+            if (cmd_go(stdout, &pos, &tokens, &states)) {} else |err| {
+                try stdout.print("Command go failed with error {}\n", .{err});
                 pos = tmp_position;
                 states = tmp_states;
                 pos.state = &states.items[states.items.len - 1];
@@ -173,5 +179,59 @@ fn cmd_position(pos: *position.Position, tokens: anytype, states: *StateList) !v
             states.append(allocator, position.State{}) catch unreachable;
             try pos.movePiece(try types.Move.initFromStr(pos.*, token.?), &states.items[states.items.len - 1]);
         }
+    }
+}
+
+fn cmd_go(stdout: anytype, pos: *position.Position, tokens: anytype, states: *StateList) !void {
+    _ = states;
+    var limits: types.Limits = types.Limits{};
+    var token: ?[]const u8 = tokens.next();
+    g_stop = false;
+
+    limits.start = types.now();
+
+    while (token != null) : (token = tokens.next()) {
+        // Needs to be the last command on the line
+        if (std.mem.eql(u8, "searchmoves", token.?)) {
+            // TODO
+            break;
+        } else if (std.mem.eql(u8, "wtime", token.?)) {
+            limits.time[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, tokens.next().?, 10);
+        } else if (std.mem.eql(u8, "btime", token.?)) {
+            limits.time[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, tokens.next().?, 10);
+        } else if (std.mem.eql(u8, "winc", token.?)) {
+            limits.inc[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, tokens.next().?, 10);
+        } else if (std.mem.eql(u8, "binc", token.?)) {
+            limits.time[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, tokens.next().?, 10);
+        } // else if (std.mem.eql(u8, "movestogo", token.?)) {
+        //     limits.movestogo = try std.fmt.parseInt(u8, tokens.next().?, 10);
+        // }
+        else if (std.mem.eql(u8, "depth", token.?)) {
+            limits.depth = try std.fmt.parseInt(u8, tokens.next().?, 10);
+        } // else if (std.mem.eql(u8, "nodes", token.?)) {
+        //     limits.nodes = try std.fmt.parseInt(u32, tokens.next().?, 10);
+        // }
+        else if (std.mem.eql(u8, "movetime", token.?)) {
+            limits.movetime = try std.fmt.parseInt(types.TimePoint, tokens.next().?, 10);
+        } // else if (std.mem.eql(u8, "mate", token.?)) {
+        //     limits.mate = try std.fmt.parseInt(types.TimePoint, tokens.next().?, 10);
+        // }
+        else if (std.mem.eql(u8, "perft", token.?)) {
+            limits.perft = try std.fmt.parseInt(u8, tokens.next().?, 10);
+        } else if (std.mem.eql(u8, "infinite", token.?)) {
+            limits.infinite = true;
+        } // else if (std.mem.eql(u8, "ponder", token.?)) {
+        // }
+    }
+
+    var t = try std.time.Timer.start();
+    if (limits.perft > 0) {
+        const nodes = try search.perft(allocator, stdout, pos, limits.perft, true);
+        const nodes_f: f64 = @floatFromInt(nodes);
+        const time_f: f64 = @floatFromInt(t.read());
+
+        try stdout.print("info nodes {} time {} ({d:.1} Mnps)\n", .{ nodes, std.fmt.fmtDuration(t.read()), (nodes_f / (time_f / 1000.0)) });
+    } else {
+        try stdout.print("limits {}", .{limits});
     }
 }
