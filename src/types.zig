@@ -339,61 +339,61 @@ pub const Move = packed struct {
         return self.from == other.from and self.to == other.to;
     }
 
-    pub inline fn generateMove(comptime flag: MoveFlags, from: Square, to_: Bitboard, list: *std.ArrayList(Move)) void {
+    pub inline fn generateMove(comptime flag: MoveFlags, from: Square, to_: Bitboard, list: *std.ArrayListUnmanaged(Move), allocator: std.mem.Allocator) void {
         var to: Bitboard = to_;
         // Only Square.none is out of u6
         while (to != 0) {
-            list.append(Move.init(flag, from, popLsb(&to))) catch unreachable;
+            list.append(allocator, Move.init(flag, from, popLsb(&to))) catch unreachable;
         }
     }
 
-    pub inline fn generateMovePromotion(comptime flag: MoveFlags, from: Square, to_: Bitboard, list: *std.ArrayList(Move)) void {
+    pub inline fn generateMovePromotion(comptime flag: MoveFlags, from: Square, to_: Bitboard, list: *std.ArrayListUnmanaged(Move), allocator: std.mem.Allocator) void {
         var to = to_;
         // Only Square.none is out of u6
         while (to != 0) {
             const sq: Square = popLsb(&to);
             if (flag == MoveFlags.capture) {
-                list.append(Move.init(MoveFlags.prc_knight, from, sq)) catch unreachable;
-                list.append(Move.init(MoveFlags.prc_bishop, from, sq)) catch unreachable;
-                list.append(Move.init(MoveFlags.prc_rook, from, sq)) catch unreachable;
-                list.append(Move.init(MoveFlags.prc_queen, from, sq)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.prc_knight, from, sq)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.prc_bishop, from, sq)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.prc_rook, from, sq)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.prc_queen, from, sq)) catch unreachable;
             } else {
-                list.append(Move.init(MoveFlags.pr_knight, from, sq)) catch unreachable;
-                list.append(Move.init(MoveFlags.pr_bishop, from, sq)) catch unreachable;
-                list.append(Move.init(MoveFlags.pr_rook, from, sq)) catch unreachable;
-                list.append(Move.init(MoveFlags.pr_queen, from, sq)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.pr_knight, from, sq)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.pr_bishop, from, sq)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.pr_rook, from, sq)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.pr_queen, from, sq)) catch unreachable;
             }
         }
     }
 
-    pub inline fn generateMoveFrom(comptime flag: MoveFlags, from_: Bitboard, to: Square, list: *std.ArrayList(Move)) void {
+    pub inline fn generateMoveFrom(comptime flag: MoveFlags, from_: Bitboard, to: Square, list: *std.ArrayListUnmanaged(Move), allocator: std.mem.Allocator) void {
         var from: Bitboard = from_;
         // Only Square.none is out of u6
         while (from != 0) {
-            list.append(Move.init(flag, popLsb(&from), to)) catch unreachable;
+            list.append(allocator, Move.init(flag, popLsb(&from), to)) catch unreachable;
         }
     }
 
-    pub inline fn generateMoveFromPromotion(comptime flag: MoveFlags, from_: Bitboard, to: Square, list: *std.ArrayList(Move)) void {
+    pub inline fn generateMoveFromPromotion(comptime flag: MoveFlags, from_: Bitboard, to: Square, list: *std.ArrayListUnmanaged(Move), allocator: std.mem.Allocator) void {
         var from: Bitboard = from_;
         // Only Square.none is out of u6
         while (from != 0) {
             const sq: Square = popLsb(&from);
             if (flag == MoveFlags.capture) {
-                list.append(Move.init(MoveFlags.prc_knight, sq, to)) catch unreachable;
-                list.append(Move.init(MoveFlags.prc_bishop, sq, to)) catch unreachable;
-                list.append(Move.init(MoveFlags.prc_rook, sq, to)) catch unreachable;
-                list.append(Move.init(MoveFlags.prc_queen, sq, to)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.prc_knight, sq, to)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.prc_bishop, sq, to)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.prc_rook, sq, to)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.prc_queen, sq, to)) catch unreachable;
             } else {
-                list.append(Move.init(MoveFlags.pr_knight, sq, to)) catch unreachable;
-                list.append(Move.init(MoveFlags.pr_bishop, sq, to)) catch unreachable;
-                list.append(Move.init(MoveFlags.pr_rook, sq, to)) catch unreachable;
-                list.append(Move.init(MoveFlags.pr_queen, sq, to)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.pr_knight, sq, to)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.pr_bishop, sq, to)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.pr_rook, sq, to)) catch unreachable;
+                list.append(allocator, Move.init(MoveFlags.pr_queen, sq, to)) catch unreachable;
             }
         }
     }
 
-    pub inline fn displayMoves(writer: anytype, list: std.ArrayList(Move)) void {
+    pub inline fn displayMoves(writer: anytype, list: std.ArrayListUnmanaged(Move)) void {
         writer.print("Number of moves: {d}\n", .{list.items.len}) catch unreachable;
         for (list.items) |item| {
             try item.printUCI(writer);
