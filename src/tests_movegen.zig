@@ -16,14 +16,14 @@ test "Perft" {
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, position.start_fen);
-
-    try expectEqual(20, search.perft(std.testing.allocator, &pos, 1, false) catch unreachable);
-    try expectEqual(400, search.perft(std.testing.allocator, &pos, 2, false) catch unreachable);
-    try expectEqual(8_902, search.perft(std.testing.allocator, &pos, 3, false) catch unreachable);
-    try expectEqual(197_281, search.perft(std.testing.allocator, &pos, 4, false) catch unreachable);
-    try expectEqual(4_865_609, search.perft(std.testing.allocator, &pos, 5, false) catch unreachable);
-    // try expectEqual(119_060_324, search.perft(std.testing.allocator, &pos, 6, false) catch unreachable);
-    // try expectEqual(3_195_901_860, search.perft(std.testing.allocator, &pos, 7, false) catch unreachable);
+    const stdout = std.io.getStdErr().writer();
+    try expectEqual(20, search.perft(std.testing.allocator, stdout, &pos, 1, false) catch unreachable);
+    try expectEqual(400, search.perft(std.testing.allocator, stdout, &pos, 2, false) catch unreachable);
+    try expectEqual(8_902, search.perft(std.testing.allocator, stdout, &pos, 3, false) catch unreachable);
+    try expectEqual(197_281, search.perft(std.testing.allocator, stdout, &pos, 4, false) catch unreachable);
+    try expectEqual(4_865_609, search.perft(std.testing.allocator, stdout, &pos, 5, false) catch unreachable);
+    // try expectEqual(119_060_324, search.perft(std.testing.allocator, stdout, &pos, 6, false) catch unreachable);
+    // try expectEqual(3_195_901_860, search.perft(std.testing.allocator, stdout, &pos, 7, false) catch unreachable);
 }
 
 test "PerftKiwipete" {
@@ -33,11 +33,12 @@ test "PerftKiwipete" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, position.kiwi_fen);
 
-    try expectEqual(48, search.perft(std.testing.allocator, &pos, 1, false) catch unreachable);
-    try expectEqual(2039, search.perft(std.testing.allocator, &pos, 2, false) catch unreachable);
-    try expectEqual(97862, search.perft(std.testing.allocator, &pos, 3, false) catch unreachable);
-    try expectEqual(4_085_603, search.perft(std.testing.allocator, &pos, 4, false) catch unreachable);
-    // try expectEqual(193_690_690, search.perft(std.testing.allocator, &pos, 5, false) catch unreachable);
+    const stdout = std.io.getStdErr().writer();
+    try expectEqual(48, search.perft(std.testing.allocator, stdout, &pos, 1, false) catch unreachable);
+    try expectEqual(2039, search.perft(std.testing.allocator, stdout, &pos, 2, false) catch unreachable);
+    try expectEqual(97862, search.perft(std.testing.allocator, stdout, &pos, 3, false) catch unreachable);
+    try expectEqual(4_085_603, search.perft(std.testing.allocator, stdout, &pos, 4, false) catch unreachable);
+    // try expectEqual(193_690_690, search.perft(std.testing.allocator, stdout, &pos, 5, false) catch unreachable);
 }
 
 test "PerftPos3" {
@@ -47,11 +48,12 @@ test "PerftPos3" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
 
-    try expectEqual(14, search.perft(std.testing.allocator, &pos, 1, false) catch unreachable);
-    try expectEqual(191, search.perft(std.testing.allocator, &pos, 2, false) catch unreachable);
-    try expectEqual(2_812, search.perft(std.testing.allocator, &pos, 3, false) catch unreachable);
-    try expectEqual(43_238, search.perft(std.testing.allocator, &pos, 4, false) catch unreachable);
-    try expectEqual(674_624, search.perft(std.testing.allocator, &pos, 5, false) catch unreachable);
+    const stdout = std.io.getStdErr().writer();
+    try expectEqual(14, search.perft(std.testing.allocator, stdout, &pos, 1, false) catch unreachable);
+    try expectEqual(191, search.perft(std.testing.allocator, stdout, &pos, 2, false) catch unreachable);
+    try expectEqual(2_812, search.perft(std.testing.allocator, stdout, &pos, 3, false) catch unreachable);
+    try expectEqual(43_238, search.perft(std.testing.allocator, stdout, &pos, 4, false) catch unreachable);
+    try expectEqual(674_624, search.perft(std.testing.allocator, stdout, &pos, 5, false) catch unreachable);
 }
 
 test "PerftPos4" {
@@ -61,11 +63,12 @@ test "PerftPos4" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
 
-    try expectEqual(6, search.perft(std.testing.allocator, &pos, 1, false) catch unreachable);
-    try expectEqual(264, search.perft(std.testing.allocator, &pos, 2, false) catch unreachable);
-    try expectEqual(9_467, search.perft(std.testing.allocator, &pos, 3, false) catch unreachable);
-    try expectEqual(422_333, search.perft(std.testing.allocator, &pos, 4, false) catch unreachable);
-    // try expectEqual(15_833_292, search.perft(std.testing.allocator, &pos, 5, false) catch unreachable);
+    const stdout = std.io.getStdErr().writer();
+    try expectEqual(6, search.perft(std.testing.allocator, stdout, &pos, 1, false) catch unreachable);
+    try expectEqual(264, search.perft(std.testing.allocator, stdout, &pos, 2, false) catch unreachable);
+    try expectEqual(9_467, search.perft(std.testing.allocator, stdout, &pos, 3, false) catch unreachable);
+    try expectEqual(422_333, search.perft(std.testing.allocator, stdout, &pos, 4, false) catch unreachable);
+    // try expectEqual(15_833_292, search.perft(std.testing.allocator, stdout, &pos, 5, false) catch unreachable);
 }
 
 test "PerftPos5" {
@@ -75,11 +78,12 @@ test "PerftPos5" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
 
-    try expectEqual(44, search.perft(std.testing.allocator, &pos, 1, false) catch unreachable);
-    try expectEqual(1_486, search.perft(std.testing.allocator, &pos, 2, false) catch unreachable);
-    try expectEqual(62_379, search.perft(std.testing.allocator, &pos, 3, false) catch unreachable);
-    try expectEqual(2_103_487, search.perft(std.testing.allocator, &pos, 4, false) catch unreachable);
-    // try expectEqual(89_941_194, search.perft(std.testing.allocator, &pos, 5, false) catch unreachable);
+    const stdout = std.io.getStdErr().writer();
+    try expectEqual(44, search.perft(std.testing.allocator, stdout, &pos, 1, false) catch unreachable);
+    try expectEqual(1_486, search.perft(std.testing.allocator, stdout, &pos, 2, false) catch unreachable);
+    try expectEqual(62_379, search.perft(std.testing.allocator, stdout, &pos, 3, false) catch unreachable);
+    try expectEqual(2_103_487, search.perft(std.testing.allocator, stdout, &pos, 4, false) catch unreachable);
+    // try expectEqual(89_941_194, search.perft(std.testing.allocator, stdout, &pos, 5, false) catch unreachable);
 }
 
 test "MovegenEnPassant" {
