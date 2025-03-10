@@ -20,7 +20,7 @@ pub fn perft(allocator: std.mem.Allocator, pos: *position.Position, depth: u8, v
     for (move_list.items) |move| {
         var s: position.State = position.State{};
 
-        if (pos.movePiece(move, &s)) {} else |err| return err;
+        try pos.movePiece(move, &s);
 
         if (perft(allocator, pos, depth - 1, false)) |nodes_number| {
             nodes += nodes_number;

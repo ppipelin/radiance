@@ -52,7 +52,7 @@ pub const State = packed struct {
     turn: Color = Color.white,
     castle_info: CastleInfo = CastleInfo.none,
     repetition: i7 = 0, // Zero if no repetition, x positive if happened once x half moves ago, negative indicates repetition
-    rule_fifty: u6 = 0,
+    rule_fifty: u8 = 0,
     game_ply: u32 = 1,
     en_passant: Square = Square.none,
     last_captured_piece: Piece = Piece.none,
@@ -716,7 +716,9 @@ pub const Position = struct {
         }
 
         const ep: ?[]const u8 = tokens.next();
-        if (ep != null and ep.?.len == 2) {
+        if (ep == null)
+            return pos;
+        if (ep.?.len == 2) {
             for (types.square_to_str, 0..) |sq_str, i| {
                 if (std.mem.eql(u8, ep.?, sq_str)) {
                     pos.state.en_passant = @enumFromInt(i);
@@ -724,6 +726,17 @@ pub const Position = struct {
                 }
             }
         }
+
+        const fifty: ?[]const u8 = tokens.next();
+        if (fifty == null)
+            return pos;
+        pos.state.rule_fifty = try std.fmt.parseInt(u8, fifty.?, 10);
+
+        const full: ?[]const u8 = tokens.next();
+        if (full == null)
+            return pos;
+        pos.state.game_ply = try std.fmt.parseInt(u32, full.?, 10);
+
         return pos;
     }
 };

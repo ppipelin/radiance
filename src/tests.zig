@@ -38,6 +38,28 @@ test "Fen" {
     try expectEqualSlices(u8, fen, computed_fen);
 }
 
+test "FenIncomplete" {
+    var s: position.State = position.State{};
+    const fen: []const u8 = position.start_fen[0..45];
+    var pos: position.Position = try position.Position.setFen(&s, fen);
+
+    var buffer: [90]u8 = undefined;
+    const computed_fen = pos.getFen(&buffer);
+
+    try std.testing.expectStringStartsWith(computed_fen, fen);
+}
+
+test "FenMoved" {
+    var s: position.State = position.State{};
+    const fen: []const u8 = "rnbqkb1r/pppppppp/5n2/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 100 100";
+    var pos: position.Position = try position.Position.setFen(&s, fen);
+
+    var buffer: [90]u8 = undefined;
+    const computed_fen = pos.getFen(&buffer);
+
+    try expectEqualSlices(u8, fen, computed_fen);
+}
+
 test "Move" {
     try expectEqual(2, @sizeOf(types.Move));
     try expectEqual(16, @bitSizeOf(types.Move));
