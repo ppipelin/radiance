@@ -52,8 +52,9 @@ pub const State = packed struct {
     turn: Color = Color.white,
     castle_info: CastleInfo = CastleInfo.none,
     repetition: i7 = 0, // Zero if no repetition, x positive if happened once x half moves ago, negative indicates repetition
-    rule_fifty: u8 = 0,
-    game_ply: u32 = 1,
+    half_move: u8 = 0,
+    full_move: u32 = 1,
+    ply: u32 = 1,
     en_passant: Square = Square.none,
     last_captured_piece: Piece = Piece.none,
     material_key: u64 = 0,
@@ -120,9 +121,10 @@ pub const Position = struct {
         // Reset data and set as previous
         state.turn = self.state.turn;
         state.castle_info = self.state.castle_info;
-        // Increment ply counters. In particular, rule_fifty will be reset to zero later on in case of a capture or a pawn move.
-        state.rule_fifty = self.state.rule_fifty + 1;
-        state.game_ply = self.state.game_ply;
+        // Increment ply counters. In particular, half_move will be reset to zero later on in case of a capture or a pawn move.
+        state.half_move = self.state.half_move + 1;
+        state.full_move = self.state.full_move;
+        state.ply = self.state.ply;
         state.en_passant = Square.none;
         state.last_captured_piece = Piece.none;
         state.material_key = self.state.material_key;
@@ -184,7 +186,7 @@ pub const Position = struct {
                     // self.state.material_key
                 }
                 // Reset rule 50 counter
-                self.state.rule_fifty = 0;
+                self.state.half_move = 0;
             },
             else => {},
         }
@@ -197,7 +199,7 @@ pub const Position = struct {
             self.remove(to_piece_en_passant, move.getTo().add(Direction.south.relativeDir(self.state.turn)));
 
             // Reset rule 50 counter
-            self.state.rule_fifty = 0;
+            self.state.half_move = 0;
         } else if (move.isCapture()) {
             if (to_piece == Piece.none) {
                 return error.CaptureNone;
@@ -225,7 +227,7 @@ pub const Position = struct {
                 self.remove(to_piece, move.getTo());
 
                 // Reset rule 50 counter
-                self.state.rule_fifty = 0;
+                self.state.half_move = 0;
             }
         }
 
@@ -233,7 +235,8 @@ pub const Position = struct {
         self.removeAdd(from_piece, from, to);
 
         if (!self.state.turn.isWhite())
-            self.state.game_ply += 1;
+            self.state.full_move += 1;
+        self.state.ply += 1;
         self.state.turn = self.state.turn.invert();
 
         // If castling we move the rook as well
@@ -256,10 +259,10 @@ pub const Position = struct {
         }
 
         self.state.repetition = 0;
-        if (self.state.rule_fifty >= 0) {
-            var s2: *State = self.state.previous.previous; // BUG when loading from fen with rule_fifty
+        if (self.state.half_move >= 0 and self.state.ply >= 3) {
+            var s2: *State = self.state.previous.previous;
             var i: i7 = 4;
-            while (i <= self.state.rule_fifty) : (i += 2) {
+            while (i <= self.state.half_move and s2.ply >= 3) : (i += 2) {
                 s2 = s2.previous.previous;
                 if (s2.material_key == self.state.material_key) {
                     self.state.repetition = if (s2.repetition != 0) -i else i;
@@ -638,7 +641,7 @@ pub const Position = struct {
         cnt += 1;
         var buffer: [4]u8 = undefined;
         var buf = buffer[0..];
-        var tmp_str: []u8 = std.fmt.bufPrintIntToSlice(buf, self.state.rule_fifty, 10, .lower, std.fmt.FormatOptions{});
+        var tmp_str: []u8 = std.fmt.bufPrintIntToSlice(buf, self.state.half_move, 10, .lower, std.fmt.FormatOptions{});
 
         @memcpy(fen[cnt..(cnt + tmp_str.len)], tmp_str);
         cnt += tmp_str.len;
@@ -647,7 +650,7 @@ pub const Position = struct {
         cnt += 1;
         buffer = undefined;
         buf = buffer[0..];
-        tmp_str = std.fmt.bufPrintIntToSlice(buf, self.state.game_ply, 10, .lower, std.fmt.FormatOptions{});
+        tmp_str = std.fmt.bufPrintIntToSlice(buf, self.state.full_move, 10, .lower, std.fmt.FormatOptions{});
 
         std.mem.copyForwards(u8, fen[cnt..(cnt + tmp_str.len)], tmp_str);
         @memcpy(fen[cnt..(cnt + tmp_str.len)], tmp_str);
@@ -730,12 +733,12 @@ pub const Position = struct {
         const fifty: ?[]const u8 = tokens.next();
         if (fifty == null)
             return pos;
-        pos.state.rule_fifty = try std.fmt.parseInt(u8, fifty.?, 10);
+        pos.state.half_move = try std.fmt.parseInt(u8, fifty.?, 10);
 
         const full: ?[]const u8 = tokens.next();
         if (full == null)
             return pos;
-        pos.state.game_ply = try std.fmt.parseInt(u32, full.?, 10);
+        pos.state.full_move = try std.fmt.parseInt(u32, full.?, 10);
 
         return pos;
     }

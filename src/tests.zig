@@ -15,7 +15,7 @@ test "Position" {
     var pos: position.Position = position.Position.init(&s);
     try expectEqual(0, pos.state.material_key);
     try expectEqual(types.Color.white, pos.state.turn);
-    try expectEqual(1, pos.state.game_ply);
+    try expectEqual(1, pos.state.full_move);
     try expectEqual(types.Piece.none, pos.board[0]);
 
     pos.add(types.Piece.w_knight, types.Square.f3);
