@@ -400,16 +400,17 @@ pub const Move = packed struct {
         }
     }
 
-    pub fn printUCI(self: Move, writer: anytype) !void {
+    // Somehow inlining prevents a segfault
+    pub inline fn printUCI(self: Move, writer: anytype) !void {
         try writer.print("{s}{s}", .{ self.getFrom().str(), self.getTo().str() });
         if (self.isPromotion()) {
             try writer.print("{c}", .{prom_move_type_string[self.flags][0]});
         }
     }
 
-    pub fn printUCIDebug(self: Move) void {
+    pub inline fn printUCIDebug(self: Move) void {
         const writer = std.io.getStdErr().writer();
-        self.printUCI(writer);
+        self.printUCI(writer) catch unreachable;
     }
 };
 
