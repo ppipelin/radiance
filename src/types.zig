@@ -275,6 +275,12 @@ pub const Move = packed struct {
     from: u6,
     to: u6,
 
+    /// A none Move
+    pub const none: Move = .{
+        .from = 0,
+        .to = 0,
+    };
+
     pub inline fn init(flags: MoveFlags, from: Square, to: Square) Move {
         return Move{ .flags = flags.index(), .from = @truncate(from.index()), .to = @truncate(to.index()) };
     }
