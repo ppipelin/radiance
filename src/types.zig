@@ -431,6 +431,7 @@ pub const max_moves = 218;
 
 pub const value_zero: Value = 0;
 pub const value_draw: Value = 0;
+pub const value_stalemate: Value = 0;
 
 pub const value_mate: Value = 32000;
 pub const value_infinite: Value = value_mate + 1;
