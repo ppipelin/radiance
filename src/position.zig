@@ -76,6 +76,14 @@ pub const Position = struct {
     // Zobrist hash
     zobrist: u64 = 0,
 
+    // Score
+    score_mg: types.Value = 0,
+    score_eg: types.Value = 0,
+    score_king_w: types.Value = 0,
+    score_king_b: types.Value = 0,
+    score_material_w: types.Value = 0,
+    score_material_b: types.Value = 0,
+
     state: *State = undefined,
 
     pub fn init(state: *State) Position {
@@ -96,6 +104,16 @@ pub const Position = struct {
         const removeFilter: Bitboard = ~sq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] &= removeFilter;
         self.bb_colors[p.pieceToColor().index()] &= removeFilter;
+
+        if (p.pieceToColor().isWhite()) {
+            self.score_mg -= tables.psq[p.pieceToPieceType().index()][0][sq.index() ^ 56];
+            self.score_eg -= tables.psq[p.pieceToPieceType().index()][1][sq.index() ^ 56];
+            self.score_material_w -= tables.material[p.pieceToPieceType().index()];
+        } else {
+            self.score_mg -= -tables.psq[p.pieceToPieceType().index()][0][sq.index()];
+            self.score_eg -= -tables.psq[p.pieceToPieceType().index()][1][sq.index()];
+            self.score_material_b -= tables.material[p.pieceToPieceType().index()];
+        }
     }
 
     /// Add to board and bitboards
@@ -104,6 +122,22 @@ pub const Position = struct {
         const addFilter: Bitboard = sq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] |= addFilter;
         self.bb_colors[p.pieceToColor().index()] |= addFilter;
+
+        if (p.pieceToColor().isWhite()) {
+            self.score_mg += tables.psq[p.pieceToPieceType().index()][0][sq.index() ^ 56];
+            self.score_eg += tables.psq[p.pieceToPieceType().index()][1][sq.index() ^ 56];
+            self.score_material_w += tables.material[p.pieceToPieceType().index()];
+            if (p.pieceToPieceType() == PieceType.king) {
+                self.score_king_w = tables.psq[p.pieceToPieceType().index()][1][sq.index() ^ 56];
+            }
+        } else {
+            self.score_mg += -tables.psq[p.pieceToPieceType().index()][0][sq.index()];
+            self.score_eg += -tables.psq[p.pieceToPieceType().index()][1][sq.index()];
+            self.score_material_b += tables.material[p.pieceToPieceType().index()];
+            if (p.pieceToPieceType() == PieceType.king) {
+                self.score_king_b = tables.psq[p.pieceToPieceType().index()][1][sq.index()];
+            }
+        }
     }
 
     inline fn removeAdd(self: *Position, p: Piece, removeSq: Square, addSq: Square) void {
@@ -112,6 +146,19 @@ pub const Position = struct {
         const removeFilter: Bitboard = removeSq.sqToBB() | addSq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] ^= removeFilter;
         self.bb_colors[p.pieceToColor().index()] ^= removeFilter;
+
+        // self.score_material unchanged
+        if (p.pieceToColor().isWhite()) {
+            self.score_mg -= tables.psq[p.pieceToPieceType().index()][0][removeSq.index() ^ 56];
+            self.score_eg -= tables.psq[p.pieceToPieceType().index()][1][removeSq.index() ^ 56];
+            self.score_mg += tables.psq[p.pieceToPieceType().index()][0][addSq.index() ^ 56];
+            self.score_eg += tables.psq[p.pieceToPieceType().index()][1][addSq.index() ^ 56];
+        } else {
+            self.score_mg -= -tables.psq[p.pieceToPieceType().index()][0][removeSq.index()];
+            self.score_eg -= -tables.psq[p.pieceToPieceType().index()][1][removeSq.index()];
+            self.score_mg += -tables.psq[p.pieceToPieceType().index()][0][addSq.index()];
+            self.score_eg += -tables.psq[p.pieceToPieceType().index()][1][addSq.index()];
+        }
     }
 
     pub fn movePiece(self: *Position, move: Move, state: *State) !void {

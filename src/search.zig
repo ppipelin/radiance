@@ -335,9 +335,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     if (move_list.items.len == 0) {
-        // TODO, compute during generate legal move an in_check boolean inside of pos
-        // if (b.inCheck(b.isWhiteTurn()))
-        // return -VALUE_MATE + ss->ply;
+        if (pos.state.checkers != 0)
+            return -types.value_mate + @as(types.Value, ss[0].ply);
         return types.value_stalemate;
     }
 
