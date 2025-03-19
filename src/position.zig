@@ -411,7 +411,6 @@ pub const Position = struct {
                 quiet_mask = ~bb_all;
 
                 // Castling
-                // TODO ADD CASTLING TEST FOR 960
                 // Simplified code flow since we know our_king
                 // OO
                 if (self.state.castle_info.index() & CastleInfo.K.relativeCastle(color).index() > 0) {
