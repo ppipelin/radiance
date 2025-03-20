@@ -401,7 +401,7 @@ pub const Move = packed struct {
     }
 
     // Somehow inlining prevents a segfault
-    pub inline fn printUCI(self: Move, writer: anytype) !void {
+    pub fn printUCI(self: Move, writer: anytype) !void {
         try writer.print("{s}{s}", .{ self.getFrom().str(), self.getTo().str() });
         if (self.isPromotion()) {
             try writer.print("{c}", .{prom_move_type_string[self.flags][0]});
