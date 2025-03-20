@@ -236,7 +236,7 @@ pub const Piece = enum(u8) {
     }
 
     pub inline fn index(self: Piece) u8 {
-        switch (self) {
+        return switch (self) {
             .none => 0,
             .b_pawn => 1,
             .b_knight => 2,
@@ -250,7 +250,7 @@ pub const Piece = enum(u8) {
             .w_rook => 10,
             .w_queen => 11,
             .w_king => 12,
-        }
+        };
     }
 
     pub inline fn value(self: Piece) u8 {

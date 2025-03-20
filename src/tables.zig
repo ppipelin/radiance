@@ -1,11 +1,60 @@
 const position = @import("position.zig");
 const std = @import("std");
 const types = @import("types.zig");
+const utils = @import("utils.zig");
 
 const Bitboard = types.Bitboard;
 const Color = types.Color;
+const File = types.File;
+const Piece = types.Piece;
 const PieceType = types.PieceType;
 const Square = types.Square;
+
+////// Initialize movegen, evaluation and position hashing //////
+
+pub fn initAll(allocator: std.mem.Allocator) void {
+    initSlidersAttacks(allocator);
+    initLine();
+    initSquaresBetween();
+    initNonBlockable();
+    initPassedPawn();
+    initZobrist();
+}
+
+////// Zobrist hashing //////
+
+const Key = u64;
+// KQRBNPkqrbnp
+pub var hash_psq: [types.Piece.nb()][types.board_size2]Key = std.mem.zeroes([types.Piece.nb()][types.board_size2]Key);
+// KQkq
+pub var hash_en_passant: [types.board_size]Key = std.mem.zeroes([types.board_size]Key);
+pub var hash_castling: [4]Key = std.mem.zeroes([4]Key);
+pub var hash_turn: Key = 0;
+
+fn initZobrist() void {
+    var prng = utils.PRNG.new(0x246C_CB2D_3B40_2853_9918_0A6D_BC3A_F444);
+    for (std.enums.values(Piece)) |p| {
+        if (p == Piece.none) {
+            continue;
+        }
+        var sq: Square = Square.a1;
+        while (sq != Square.none) : (sq = sq.inc().*) {
+            hash_psq[p.index()][sq.index()] = prng.rand64();
+        }
+    }
+
+    hash_turn = prng.rand64();
+
+    for (std.enums.values(File)) |f| {
+        hash_en_passant[f.index()] = prng.rand64();
+    }
+
+    for (0..4) |i| {
+        hash_castling[i] = prng.rand64();
+    }
+}
+
+////// Movegen //////
 
 pub var moves_bishop_mask: [types.board_size2]Bitboard = std.mem.zeroes([types.board_size2]Bitboard);
 pub var moves_rook_mask: [types.board_size2]Bitboard = std.mem.zeroes([types.board_size2]Bitboard);
@@ -223,14 +272,6 @@ fn initPassedPawn() void {
         passed_pawn[types.Color.white.index()][sq.index()] = filterPassedPawn(sq, types.Color.white);
         passed_pawn[types.Color.black.index()][sq.index()] = filterPassedPawn(sq, types.Color.black);
     }
-}
-
-pub fn initAll(allocator: std.mem.Allocator) void {
-    initSlidersAttacks(allocator);
-    initLine();
-    initSquaresBetween();
-    initNonBlockable();
-    initPassedPawn();
 }
 
 pub fn deinitAll(allocator: std.mem.Allocator) void {
