@@ -189,16 +189,7 @@ pub const Position = struct {
             else => {},
         }
 
-        if (move.isEnPassant()) {
-            const to_piece_en_passant: Piece = if (self.state.turn.isWhite()) Piece.b_pawn else Piece.w_pawn;
-            self.state.last_captured_piece = to_piece_en_passant;
-
-            // Remove captured
-            self.remove(to_piece_en_passant, move.getTo().add(Direction.south.relativeDir(self.state.turn)));
-
-            // Reset rule 50 counter
-            self.state.half_move = 0;
-        } else if (move.isCapture()) {
+        if (move.isCapture() and !move.isEnPassant()) {
             if (to_piece == Piece.none) {
                 return error.CaptureNone;
             } else {
