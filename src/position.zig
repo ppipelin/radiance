@@ -570,7 +570,7 @@ pub const Position = struct {
                         cnt += 1;
                         blank_counter = 0;
                     }
-                    fen[cnt] = p.index();
+                    fen[cnt] = p.value();
                     cnt += 1;
                 }
             }

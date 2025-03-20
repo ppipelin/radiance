@@ -215,7 +215,29 @@ pub const Piece = enum(u8) {
     w_queen = 'Q',
     w_king = 'K',
 
+    pub inline fn nb() comptime_int {
+        return 13;
+    }
+
     pub inline fn index(self: Piece) u8 {
+        switch (self) {
+            .none => 0,
+            .b_pawn => 1,
+            .b_knight => 2,
+            .b_bishop => 3,
+            .b_rook => 4,
+            .b_queen => 5,
+            .b_king => 6,
+            .w_pawn => 7,
+            .w_knight => 8,
+            .w_bishop => 9,
+            .w_rook => 10,
+            .w_queen => 11,
+            .w_king => 12,
+        }
+    }
+
+    pub inline fn value(self: Piece) u8 {
         return @intFromEnum(self);
     }
 
@@ -233,13 +255,13 @@ pub const Piece = enum(u8) {
 
     pub inline fn pieceToColor(self: Piece) Color {
         std.debug.assert(self != Piece.none);
-        return @enumFromInt(@intFromBool(self.index() < 'a'));
+        return @enumFromInt(@intFromBool(self.value() < 'a'));
     }
 
     /// Find char c in arr
     pub inline fn firstIndex(c: u8) !Piece {
         for (std.enums.values(Piece)) |i| {
-            if (i.index() == c) {
+            if (i.value() == c) {
                 return i;
             }
         }
