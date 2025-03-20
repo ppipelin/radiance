@@ -131,13 +131,27 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     score += 5 * (@as(types.Value, @popCount(moveset_white_diag)) + @as(types.Value, @popCount(moveset_white_orth)));
     score -= 5 * (@as(types.Value, @popCount(moveset_black_diag)) + @as(types.Value, @popCount(moveset_black_orth)));
 
-    const bb_white_pawn: types.Bitboard = bb_white & pos.bb_pieces[types.PieceType.pawn.index()];
-    const bb_black_pawn: types.Bitboard = bb_black & pos.bb_pieces[types.PieceType.pawn.index()];
+    var bb_white_pawn: types.Bitboard = bb_white & pos.bb_pieces[types.PieceType.pawn.index()];
+    var bb_black_pawn: types.Bitboard = bb_black & pos.bb_pieces[types.PieceType.pawn.index()];
 
     score -=
         50 * (computeIsolatedPawns(bb_white_pawn) - computeIsolatedPawns(bb_black_pawn)) +
         20 * (computeDoubledPawns(bb_white_pawn) - computeDoubledPawns(bb_black_pawn)) +
         10 * (computeBlockedPawns(bb_white_pawn, types.Color.white, bb_all) - computeBlockedPawns(bb_black_pawn, types.Color.black, bb_all));
+
+    while (bb_white_pawn != 0) {
+        const sq: types.Square = types.popLsb(&bb_white_pawn);
+        if (tables.passed_pawn[types.Color.white.index()][sq.index()] & bb_black > 0) {
+            score += tables.passed_pawn_table[sq.rank().relativeRank(types.Color.white).index()];
+        }
+    }
+
+    while (bb_black_pawn != 0) {
+        const sq: types.Square = types.popLsb(&bb_black_pawn);
+        if (tables.passed_pawn[types.Color.black.index()][sq.index()] & bb_white > 0) {
+            score -= tables.passed_pawn_table[sq.rank().relativeRank(types.Color.black).index()];
+        }
+    }
 
     return if (pos.state.turn.isWhite()) score else -score;
 }
