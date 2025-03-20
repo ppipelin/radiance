@@ -257,7 +257,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         (ss + 1)[0].pv = &pv;
         (ss + 1)[0].pv.?[0] = types.Move.none;
 
-        if (pos.state.repetition < 0) {
+        if (false and pos.state.repetition < 0) {
             score = types.value_draw;
         } else {
             if (score == -types.value_none) {
