@@ -18,6 +18,8 @@ pub var pawn_attacks: [Color.nb()][types.board_size2]Bitboard = std.mem.zeroes([
 pub var squares_between: [types.board_size2][types.board_size2]Bitboard = std.mem.zeroes([types.board_size2][types.board_size2]Bitboard);
 pub var squares_line: [types.board_size2][types.board_size2]Bitboard = std.mem.zeroes([types.board_size2][types.board_size2]Bitboard);
 
+pub var passed_pawn: [types.Color.nb()][types.board_size2]Bitboard = std.mem.zeroes([types.Color.nb()][types.board_size2]Bitboard);
+
 pub inline fn filterMovesBishop(sq: Square) Bitboard {
     var b: Bitboard = 0;
     const sq_bb: Bitboard = sq.sqToBB();
@@ -203,11 +205,32 @@ fn initNonBlockable() void {
     std.mem.copyForwards(Bitboard, pseudo_legal_attacks[PieceType.king.index()][0..types.board_size2], king_attacks[0..types.board_size2]);
 }
 
+inline fn filterAdjacent(tile: types.Square) types.Bitboard {
+    return (types.mask_file[@max(0, tile.file().index() -| 1)] | types.mask_file[@min(types.board_size - 1, @as(u4, tile.file().index()) + 1)]) & ~types.mask_file[tile.file().index()];
+}
+
+fn filterPassedPawn(tile: types.Square, col: types.Color) types.Bitboard {
+    const filter_adjacent: types.Bitboard = types.mask_file[tile.file().index()] | filterAdjacent(tile);
+    const row_idx: u6 = @intCast(tile.rank().index());
+    const bb_max: types.Bitboard = 0xFFFFFFFFFFFFFFFF;
+    const filter_top_bot: types.Bitboard = if (col.isWhite()) bb_max << types.board_size * (row_idx + 1) else bb_max >> types.board_size * (types.board_size - row_idx);
+    return filter_adjacent & filter_top_bot;
+}
+
+fn initPassedPawn() void {
+    var sq: Square = Square.a2;
+    while (sq != Square.a8) : (sq = sq.inc().*) {
+        passed_pawn[types.Color.white.index()][sq.index()] = filterPassedPawn(sq, types.Color.white);
+        passed_pawn[types.Color.black.index()][sq.index()] = filterPassedPawn(sq, types.Color.black);
+    }
+}
+
 pub fn initAll(allocator: std.mem.Allocator) void {
     initSlidersAttacks(allocator);
     initLine();
     initSquaresBetween();
     initNonBlockable();
+    initPassedPawn();
 }
 
 pub fn deinitAll(allocator: std.mem.Allocator) void {
@@ -285,7 +308,7 @@ pub const black_pawn_attacks = [64]Bitboard{
 // Start position total 14152, max 20952
 pub const material = [types.PieceType.nb()]types.Value { 0, 100, 305, 333, 563, 950, 10_000 };
 
-pub const passedPawnTable = [8]types.Value { 0, 15, 15, 25, 40, 60, 70 };
+pub const passed_pawn_table = [types.board_size - 1]types.Value { 0, 15, 15, 25, 40, 60, 70 };
 
 // Tables are displayed for white which corresponds to black order of tiles
 // https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
