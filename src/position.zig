@@ -185,24 +185,40 @@ pub const Position = struct {
             return error.MoveNone;
         }
 
+        // Remove last en_passant
+        if (self.state.previous != null and self.state.previous.?.en_passant != Square.none) {
+            self.state.material_key ^= tables.hash_en_passant[self.state.previous.?.en_passant.file().index()];
+        }
+
         switch (from_piece.pieceToPieceType()) {
             // Disable castle if king/rook is moved
             PieceType.king => {
                 if (from_piece.pieceToColor().isWhite()) {
                     self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~CastleInfo.KQ.index());
+                    if (self.state.previous != null and self.state.previous.?.castle_info.index() & CastleInfo.K.index() > 0)
+                        self.state.material_key ^= tables.hash_castling[CastleInfo.K.indexLsb()];
+                    if (self.state.previous != null and self.state.previous.?.castle_info.index() & CastleInfo.Q.index() > 0)
+                        self.state.material_key ^= tables.hash_castling[CastleInfo.Q.indexLsb()];
                 } else {
                     self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~CastleInfo.kq.index());
+                    if (self.state.previous != null and self.state.previous.?.castle_info.index() & CastleInfo.k.index() > 0)
+                        self.state.material_key ^= tables.hash_castling[CastleInfo.k.indexLsb()];
+                    if (self.state.previous != null and self.state.previous.?.castle_info.index() & CastleInfo.q.index() > 0)
+                        self.state.material_key ^= tables.hash_castling[CastleInfo.q.indexLsb()];
                 }
             },
             PieceType.rook => {
-                const is_white = from_piece.pieceToColor().isWhite();
+                const col: Color = from_piece.pieceToColor();
+                const is_white = col.isWhite();
                 if (move.getFrom().file() == File.fh) {
                     if (self.state.castle_info.index() & (if (is_white) CastleInfo.K else CastleInfo.k).index() > 0) {
                         self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~(if (is_white) CastleInfo.K.index() else CastleInfo.k.index()));
+                        self.state.material_key ^= tables.hash_castling[CastleInfo.K.relativeCastle(col).indexLsb()];
                     }
                 } else if (move.getFrom().file() == File.fa) {
                     if (self.state.castle_info.index() & (if (is_white) CastleInfo.Q else CastleInfo.q).index() > 0) {
                         self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~(if (is_white) CastleInfo.Q.index() else CastleInfo.q.index()));
+                        self.state.material_key ^= tables.hash_castling[CastleInfo.Q.relativeCastle(col).indexLsb()];
                     }
                 }
             },
@@ -212,6 +228,7 @@ pub const Position = struct {
                 switch (move.getFlags()) {
                     MoveFlags.double_push => {
                         self.state.en_passant = to.add(if (self.state.turn.isWhite()) Direction.south else Direction.north);
+                        self.state.material_key ^= tables.hash_en_passant[self.state.en_passant.file().index()];
                     },
                     MoveFlags.en_passant => {
                         const en_passant_sq: Square = to.add(if (self.state.turn.isWhite()) Direction.south else Direction.north);
@@ -219,6 +236,7 @@ pub const Position = struct {
 
                         // Remove
                         self.remove(self.state.last_captured_piece, en_passant_sq);
+                        self.state.material_key ^= tables.hash_psq[self.state.last_captured_piece.index()][en_passant_sq.file().index()];
 
                         self.board[en_passant_sq.index()] = Piece.none;
                     },
@@ -227,8 +245,9 @@ pub const Position = struct {
                 if (move.isPromotion()) {
                     from_piece = MoveFlags.promoteType(move.getFlags()).pieceTypeToPiece(self.state.turn);
                     self.remove(PieceType.pawn.pieceTypeToPiece(self.state.turn), from);
+                    self.state.material_key ^= tables.hash_psq[PieceType.pawn.pieceTypeToPiece(self.state.turn).index()][from.index()];
                     self.add(from_piece, from);
-                    // self.state.material_key
+                    self.state.material_key ^= tables.hash_psq[from_piece.index()][from.index()];
                 }
                 // Reset rule 50 counter
                 self.state.half_move = 0;
@@ -257,12 +276,14 @@ pub const Position = struct {
 
                 if (castleRemove != CastleInfo.none and self.state.castle_info.index() & castleRemove.index() > 0) {
                     self.state.castle_info = @enumFromInt(self.state.castle_info.index() ^ castleRemove.index());
+                    self.state.material_key ^= tables.hash_castling[castleRemove.indexLsb()];
                 }
 
                 self.state.last_captured_piece = to_piece;
 
                 // Remove captured
                 self.remove(to_piece, move.getTo());
+                self.state.material_key ^= tables.hash_psq[to_piece.index()][to.index()];
 
                 // Reset rule 50 counter
                 self.state.half_move = 0;
@@ -271,10 +292,13 @@ pub const Position = struct {
 
         // Add
         self.removeAdd(from_piece, from, to);
+        self.state.material_key ^= tables.hash_psq[from_piece.index()][from.index()];
+        self.state.material_key ^= tables.hash_psq[from_piece.index()][to.index()];
 
         if (!self.state.turn.isWhite())
             self.state.full_move += 1;
         self.state.turn = self.state.turn.invert();
+        self.state.material_key ^= tables.hash_turn;
 
         // If castling we move the rook as well
         switch (move.getFlags()) {
@@ -284,6 +308,7 @@ pub const Position = struct {
                 try self.movePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() + 3), @enumFromInt(from.index() + 3 - 2)), &tmp);
                 // We have moved, we need to set the turn back
                 self.state = state;
+                self.state.material_key ^= tables.hash_turn;
             },
             MoveFlags.ooo => {
                 var tmp: State = State{};
@@ -291,6 +316,7 @@ pub const Position = struct {
                 try self.movePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() - 4), @enumFromInt(from.index() - 4 + 3)), &tmp);
                 // We have moved, we need to set the turn back
                 self.state = state;
+                self.state.material_key ^= tables.hash_turn;
             },
             else => {},
         }
@@ -907,6 +933,7 @@ pub const Position = struct {
             } else {
                 const p: Piece = try Piece.firstIndex(ch);
                 pos.add(p, @enumFromInt(sq));
+                pos.state.material_key ^= tables.hash_psq[p.index()][@intCast(sq)];
                 if (ch == 'R' and rook_cnt < 2) {
                     pos.rook_initial[rook_cnt] = @enumFromInt(sq);
                     rook_cnt += 1;
@@ -918,6 +945,7 @@ pub const Position = struct {
         const turn: ?[]const u8 = tokens.next();
         if (turn != null and std.mem.eql(u8, turn.?, "w")) {
             pos.state.turn = Color.white;
+            pos.state.material_key ^= tables.hash_turn;
         } else if (turn != null and std.mem.eql(u8, turn.?, "b")) {
             pos.state.turn = Color.black;
         } else {
@@ -931,15 +959,19 @@ pub const Position = struct {
             switch (ch) {
                 'K' => {
                     pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.K));
+                    pos.state.material_key ^= tables.hash_castling[CastleInfo.K.indexLsb()];
                 },
                 'Q' => {
                     pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.Q));
+                    pos.state.material_key ^= tables.hash_castling[CastleInfo.Q.indexLsb()];
                 },
                 'k' => {
                     pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.k));
+                    pos.state.material_key ^= tables.hash_castling[CastleInfo.k.indexLsb()];
                 },
                 'q' => {
                     pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.q));
+                    pos.state.material_key ^= tables.hash_castling[CastleInfo.q.indexLsb()];
                 },
                 '-' => {
                     pos.state.castle_info = CastleInfo.none;
@@ -956,7 +988,9 @@ pub const Position = struct {
         if (ep.?.len == 2) {
             for (types.square_to_str, 0..) |sq_str, i| {
                 if (std.mem.eql(u8, ep.?, sq_str)) {
-                    pos.state.en_passant = @enumFromInt(i);
+                    const sq_ep: Square = @enumFromInt(i);
+                    pos.state.en_passant = sq_ep;
+                    pos.state.material_key ^= tables.hash_en_passant[sq_ep.file().index()];
                     break;
                 }
             }
