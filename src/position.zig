@@ -189,6 +189,9 @@ pub const Position = struct {
         if (self.state.previous != null and self.state.previous.?.en_passant != Square.none) {
             const a: *State = self.state.previous.?;
             std.debug.print("{}\n", .{a.en_passant.file()});
+            std.debug.print("BEGIN of trace\n", .{});
+            std.debug.dumpCurrentStackTrace(null);
+            std.debug.print("END of trace\n", .{});
             std.debug.print("{}\n", .{((self.state.previous).?).en_passant.file()});
             std.debug.print("{}\n", .{self.state.previous.?.en_passant.file()});
             // self.state.material_key ^= tables.hash_en_passant[self.state.previous.?.en_passant.file().index()];

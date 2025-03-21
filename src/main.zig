@@ -12,7 +12,14 @@ pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
     try stdout.print("Radiance {s} by Paul-Elie Pipelin (ppipelin)\n", .{types.computeVersion()});
 
-    var stdin = std.io.getStdIn().reader();
+    // var stdin = std.io.getStdIn().reader();
+    const input =
+        \\position startpos
+        \\go depth 2
+    ;
+
+    var fbs_r = std.io.fixedBufferStream(input);
+    var stdin = fbs_r.reader();
 
     try interface.loop(std.heap.c_allocator, &stdin, &stdout);
 }
