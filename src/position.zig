@@ -55,11 +55,11 @@ pub const State = packed struct {
     half_move: u8 = 0,
     full_move: u32 = 1,
     en_passant: Square = Square.none,
+    checkers: types.Bitboard = 0,
+    pinned: types.Bitboard = 0,
     last_captured_piece: Piece = Piece.none,
     material_key: u64 = 0,
     previous: ?*State = null,
-    checkers: types.Bitboard = 0,
-    pinned: types.Bitboard = 0,
 };
 
 pub const Position = struct {
@@ -169,6 +169,8 @@ pub const Position = struct {
         state.half_move = self.state.half_move + 1;
         state.full_move = self.state.full_move;
         state.en_passant = Square.none;
+        state.checkers = self.state.checkers;
+        state.pinned = self.state.pinned;
         state.last_captured_piece = Piece.none;
         state.material_key = self.state.material_key;
         state.previous = self.state;
