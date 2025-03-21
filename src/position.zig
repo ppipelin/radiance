@@ -185,6 +185,15 @@ pub const Position = struct {
             return error.MoveNone;
         }
 
+        // Remove last en_passant
+        if (self.state.previous != null and self.state.previous.?.en_passant != Square.none) {
+            const a: *State = self.state.previous.?;
+            std.debug.print("{}\n", .{a.en_passant.file()});
+            std.debug.print("{}\n", .{((self.state.previous).?).en_passant.file()});
+            std.debug.print("{}\n", .{self.state.previous.?.en_passant.file()});
+            // self.state.material_key ^= tables.hash_en_passant[self.state.previous.?.en_passant.file().index()];
+        }
+
         switch (from_piece.pieceToPieceType()) {
             // Disable castle if king/rook is moved
             PieceType.king => {

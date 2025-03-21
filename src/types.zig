@@ -66,8 +66,9 @@ pub const Square = enum(u8) {
         return @enumFromInt(@intFromEnum(self) >> 3);
     }
 
-    pub inline fn file(self: Square) File {
-        return @enumFromInt(@intFromEnum(self) & 0b111);
+    pub fn file(self: Square) File {
+        const trunc: u3 = @truncate(@intFromEnum(self));
+        return @enumFromInt(trunc);
     }
 
     pub inline fn diagonal(self: Square) u4 {
