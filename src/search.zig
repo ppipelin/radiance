@@ -177,6 +177,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     }
 
     // Order moves
+    pos.orderMoves(&move_list, types.Move.none);
 
     try root_moves.ensureTotalCapacity(allocator, root_moves_len);
     root_moves.clearRetainingCapacity();
@@ -284,6 +285,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
     var move_list_capture: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list_capture.deinit(allocator);
     pos.generateLegalMoves(allocator, pos.state.turn, &move_list_capture);
+    pos.orderMoves(&move_list_capture, types.Move.none);
 
     // Loop over all legal captures
     for (move_list_capture.items) |move| {
@@ -357,7 +359,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         // TODO: compute checkers
     } else {
         pos.generateLegalMoves(allocator, pos.state.turn, &move_list);
-        // order moves
+        pos.orderMoves(&move_list, types.Move.none);
     }
 
     // Loop over all legal moves
@@ -379,26 +381,24 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
             score = types.value_draw;
         } else {
             if (score == -types.value_none) {
-                // // LMR before full
-                // if (depth >= 2 && moveCount > 3 && !move.isCapture() && !move.isPromotion() && !b.inCheck(b.isWhiteTurn()))
-                // {
-                //   // Reduced LMR
-                //   UInt d = std::max<Int>(Int(1), Int(depth) - 4);
-                //   score = -abSearch<NonPV>(ss + 1, b, e, -(alpha + 1), -alpha, d - 1);
-                //   // Failed so roll back to full-depth null window
-                //   if (score > alpha && depth > d)
-                //   {
-                //     score = -abSearch<NonPV>(ss + 1, b, e, -(alpha + 1), -alpha, depth - 1);
-                //   }
-                // }
-                // // In case non PV search are called without LMR, null window search at current depth
-                // else if (!pv_node or move_count > 1) {
-                //     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, eval, -(alpha + 1), -alpha, current_depth - 1);
-                // }
+                // LMR before full
+                if (current_depth >= 2 and move_count > 3 and !move.isCapture() and !move.isPromotion() and !(pos.state.checkers > 0)) {
+                    // Reduced LMR
+                    const d: u8 = @max(1, current_depth -| 4);
+                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, d - 1);
+                    // Failed so roll back to full-depth null window
+                    if (score > alpha and current_depth > d) {
+                        score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1);
+                    }
+                }
+                // In case non PV search are called without LMR, null window search at current depth
+                else if (!pv_node or move_count > 1) {
+                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1);
+                }
                 // Full-depth search
-                // if (pv_node and (move_count == 1 or score > alpha)) {
-                score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1);
-                // }
+                if (pv_node and (move_count == 1 or score > alpha)) {
+                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1);
+                }
             }
         }
 
