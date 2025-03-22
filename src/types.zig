@@ -1,7 +1,7 @@
 //! This module provides functions types for pieces, colors and bitboards related components
 
-const std = @import("std");
 const position = @import("position.zig");
+const std = @import("std");
 const tables = @import("tables.zig");
 
 pub const major = 4;
