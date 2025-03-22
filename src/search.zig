@@ -239,7 +239,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
         }
 
         try stdout.print("info failedHighCnt {} alpha {} beta {}\n", .{ failed_high_cnt, alpha, beta });
-        try info(stdout, current_depth, root_moves.items[0].score);
+        try info(stdout, limits, current_depth, root_moves.items[0].score);
     }
 
     // Even if outofTime we keep a better move if there is one
@@ -459,8 +459,9 @@ fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
     }
 }
 
-fn info(stdout: anytype, depth: u16, score: types.Value) !void {
-    try stdout.print("info depth {} nodes {} nps {} time {} score cp {} pv ", .{ depth, interface.nodes_searched, 0, 0, score });
+fn info(stdout: anytype, limits: interface.Limits, depth: u16, score: types.Value) !void {
+    const time: u64 = @intCast(elapsed(limits));
+    try stdout.print("info depth {} nodes {} nps {} time {} score cp {} pv ", .{ depth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, score });
     try pvDisplay(stdout, root_moves.items[0].pv.items);
     try stdout.print("\n", .{});
 }
