@@ -48,7 +48,7 @@ const CastleInfo = enum(u4) {
     }
 };
 
-pub const State = packed struct {
+pub const State = struct {
     turn: Color = Color.white,
     castle_info: CastleInfo = CastleInfo.none,
     repetition: i7 = 0, // Zero if no repetition, x positive if happened once x half moves ago, negative indicates repetition
