@@ -402,6 +402,21 @@ pub const Move = packed struct {
         return self.from == other.from and self.to == other.to;
     }
 
+    pub const MoveSortContext = struct {
+        pos: position.Position,
+        m1: Move,
+        // m2: Move,
+    };
+
+    pub fn sort(context: MoveSortContext, m1: Move, m2: Move) bool {
+        const m1_from_piece: Piece = context.pos.board[m1.getFrom().index()];
+        const m2_from_piece: Piece = context.pos.board[m2.getFrom().index()];
+        const m1_to_piece: Piece = context.pos.board[m1.getTo().index()];
+        const m2_to_piece: Piece = context.pos.board[m2.getTo().index()];
+        return (if (m1.isCapture() and m1.getFlags() != MoveFlags.en_passant) tables.material[m1_to_piece.pieceToPieceType().index()] - tables.material[m1_from_piece.pieceToPieceType().index()] else 0) >
+            (if (m2.isCapture() and m2.getFlags() != MoveFlags.en_passant) tables.material[m2_to_piece.pieceToPieceType().index()] - tables.material[m2_from_piece.pieceToPieceType().index()] else 0);
+    }
+
     pub inline fn generateMove(allocator: std.mem.Allocator, comptime flag: MoveFlags, from: Square, to_: Bitboard, list: *std.ArrayListUnmanaged(Move)) void {
         var to: Bitboard = to_;
         // Only Square.none is out of u6
