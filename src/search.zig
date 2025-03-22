@@ -261,20 +261,11 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
 
     interface.nodes_searched += 1;
 
-    // In order to get the quiescence search to terminate, plies are usually restricted to moves that deal directly with the threat,
-    // such as moves that capture and recapture (often called a 'capture search') in chess
-    const stand_pat: types.Value = eval(pos.*);
-    if (stand_pat >= beta)
-        return beta;
-    if (alpha < stand_pat)
-        alpha = stand_pat;
-    if (outOfTime(limits))
-        return alpha;
-
     // Initialize data
     var s: position.State = position.State{};
     var pv: [200]types.Move = [_]types.Move{.none} ** 200;
     var score: types.Value = -types.value_none;
+    var best_score: types.Value = -types.value_none;
 
     // Initialize node
     if (pv_node) {
@@ -286,6 +277,21 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
     defer move_list_capture.deinit(allocator);
     pos.generateLegalMoves(allocator, pos.state.turn, &move_list_capture);
     pos.orderMoves(&move_list_capture, types.Move.none);
+
+    // if (pos.state.checkers > 0) {
+    //     best_score = -types.value_infinite;
+    // } else {
+    // Stand pat
+    // In order to get the quiescence search to terminate, plies are usually restricted to moves that deal directly with the threat,
+    // such as moves that capture and recapture (often called a 'capture search') in chess
+    best_score = eval(pos.*);
+    if (best_score >= beta)
+        return beta;
+    if (alpha < best_score)
+        alpha = best_score;
+    if (outOfTime(limits))
+        return alpha;
+    // }
 
     // Loop over all legal captures
     for (move_list_capture.items) |move| {
@@ -303,25 +309,28 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
 
         try pos.unMovePiece(move, false);
 
-        if (score >= beta) {
-            // beta cutoff
-            return beta;
-        }
-        if (score > alpha) {
-            // Update pv even in fail-high case
-            if (pv_node)
-                update_pv(ss[0].pv.?, move, ss[1].pv.?);
-            // alpha acts like max in MiniMax
-            alpha = score;
+        if (score > best_score) {
+            best_score = score;
+            if (score > alpha) {
+                // Update pv even in fail-high case
+                if (pv_node)
+                    update_pv(ss[0].pv.?, move, ss[1].pv.?);
+
+                if (score >= beta) {
+                    // beta cutoff
+                    return beta;
+                }
+                // alpha acts like max in MiniMax
+                alpha = score;
+            }
         }
 
         if (outOfTime(limits))
             break;
     }
 
-    // // Quiet position
-    // if (move_list_capture.empty()) {
-    //     return alpha;
+    // if (pos.state.checkers > 0 and best_score == -types.value_infinite) {
+    //     return -types.value_mate + ss[0].ply;
     // }
     return alpha;
 }
