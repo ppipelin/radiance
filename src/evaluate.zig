@@ -92,11 +92,23 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         score += pos.score_mg;
     }
 
-    // Evaluate sliders pseudo legal moveset
     const bb_white: types.Bitboard = pos.bb_colors[types.Color.white.index()];
     const bb_black: types.Bitboard = pos.bb_colors[types.Color.black.index()];
     const bb_all: types.Bitboard = bb_white | bb_black;
 
+    // Evaluate king pseudo legal moveset
+    // Malus for mg bonus for eg
+
+    const moveset_white_king = tables.getAttacks(types.PieceType.bishop, types.Color.white, @enumFromInt(types.lsb(bb_white & (pos.bb_pieces[types.PieceType.king.index()]))), bb_all) & ~bb_white;
+    const moveset_black_king = tables.getAttacks(types.PieceType.bishop, types.Color.black, @enumFromInt(types.lsb(bb_black & (pos.bb_pieces[types.PieceType.king.index()]))), bb_all) & ~bb_black;
+
+    if (endgame) {
+        score += @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
+    } else {
+        score -= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
+    }
+
+    // Evaluate sliders pseudo legal moveset
     var white_sliders_diag: types.Bitboard = bb_white & (pos.bb_pieces[types.PieceType.bishop.index()] | pos.bb_pieces[types.PieceType.queen.index()]);
     var white_sliders_orth: types.Bitboard = bb_white & (pos.bb_pieces[types.PieceType.rook.index()] | pos.bb_pieces[types.PieceType.queen.index()]);
 
@@ -110,22 +122,22 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     var moveset_black_orth: types.Bitboard = 0;
     while (white_sliders_diag != 0) {
         const sq: types.Square = types.popLsb(&white_sliders_diag);
-        moveset_white_diag |= tables.getAttacks(types.PieceType.bishop, types.Color.white, sq, bb_all);
+        moveset_white_diag |= tables.getAttacks(types.PieceType.bishop, types.Color.white, sq, bb_all) & ~bb_white;
     }
 
     while (white_sliders_orth != 0) {
         const sq: types.Square = types.popLsb(&white_sliders_orth);
-        moveset_white_orth |= tables.getAttacks(types.PieceType.rook, types.Color.white, sq, bb_all);
+        moveset_white_orth |= tables.getAttacks(types.PieceType.rook, types.Color.white, sq, bb_all) & ~bb_white;
     }
 
     while (black_sliders_diag != 0) {
         const sq: types.Square = types.popLsb(&black_sliders_diag);
-        moveset_black_diag |= tables.getAttacks(types.PieceType.bishop, types.Color.black, sq, bb_all);
+        moveset_black_diag |= tables.getAttacks(types.PieceType.bishop, types.Color.black, sq, bb_all) & ~bb_black;
     }
 
     while (black_sliders_orth != 0) {
         const sq: types.Square = types.popLsb(&black_sliders_orth);
-        moveset_black_orth |= tables.getAttacks(types.PieceType.rook, types.Color.black, sq, bb_all);
+        moveset_black_orth |= tables.getAttacks(types.PieceType.rook, types.Color.black, sq, bb_all) & ~bb_black;
     }
 
     score += 5 * (@as(types.Value, @popCount(moveset_white_diag)) + @as(types.Value, @popCount(moveset_white_orth)));
@@ -141,14 +153,14 @@ pub fn evaluateTable(pos: position.Position) types.Value {
 
     while (bb_white_pawn != 0) {
         const sq: types.Square = types.popLsb(&bb_white_pawn);
-        if (tables.passed_pawn[types.Color.white.index()][sq.index()] & bb_black > 0) {
+        if (tables.passed_pawn[types.Color.white.index()][sq.index()] & bb_black_pawn > 0) {
             score += tables.passed_pawn_table[sq.rank().relativeRank(types.Color.white).index()];
         }
     }
 
     while (bb_black_pawn != 0) {
         const sq: types.Square = types.popLsb(&bb_black_pawn);
-        if (tables.passed_pawn[types.Color.black.index()][sq.index()] & bb_white > 0) {
+        if (tables.passed_pawn[types.Color.black.index()][sq.index()] & bb_white_pawn > 0) {
             score -= tables.passed_pawn_table[sq.rank().relativeRank(types.Color.black).index()];
         }
     }
