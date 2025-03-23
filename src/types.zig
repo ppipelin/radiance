@@ -409,6 +409,22 @@ pub const Move = packed struct {
     };
 
     pub fn sort(context: MoveSortContext, m1: Move, m2: Move) bool {
+        if (context.m1 != Move.none) {
+            if (context.m1 == m1) {
+                return true;
+            } else if (context.m1 == m2) {
+                return false;
+            }
+        }
+
+        // if (context.m2 != Move.none) {
+        //     if (context.m2 == m1) {
+        //         return true;
+        //     } else if (context.m2 == m2) {
+        //         return false;
+        //     }
+        // }
+
         const m1_from_piece: Piece = context.pos.board[m1.getFrom().index()];
         const m2_from_piece: Piece = context.pos.board[m2.getFrom().index()];
         const m1_to_piece: Piece = context.pos.board[m1.getTo().index()];

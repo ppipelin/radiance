@@ -794,8 +794,17 @@ pub const Position = struct {
         }
     }
 
-    pub fn orderMoves(self: *Position, list: *std.ArrayListUnmanaged(Move), pv_move: Move) void {
+    pub fn orderMoves(self: *Position, list: *std.ArrayListUnmanaged(Move), pv_move_: Move) void {
+        var pv_move: Move = Move.none;
         // Search pvMove is in movelist. Speed up comparision if not.
+        if (pv_move_ != Move.none) {
+            for (list.items) |move| {
+                if (move == pv_move_) {
+                    pv_move = pv_move_;
+                    break;
+                }
+            }
+        }
 
         // find tt_move
 
