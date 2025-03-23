@@ -289,7 +289,11 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         // TODO: compute checkers
     } else {
         pos.generateLegalMoves(allocator, pos.state.turn, &move_list);
-        pos.orderMoves(&move_list, types.Move.none);
+        var pv_move: types.Move = types.Move.none;
+        if (root_moves.items[0].pv.items.len > ss[0].ply) {
+            pv_move = root_moves.items[0].pv.items[ss[0].ply];
+        }
+        pos.orderMoves(&move_list, pv_move);
     }
 
     // Loop over all legal moves
