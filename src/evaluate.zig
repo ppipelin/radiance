@@ -1,4 +1,5 @@
 const position = @import("position.zig");
+const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
 
@@ -35,6 +36,7 @@ inline fn computeIsolatedPawns(bb_pawn: types.Bitboard) types.Value {
 // Chebyshev distance of kings
 inline fn distanceKings(pos: position.Position) types.Value {
     var bb_king: types.Bitboard = pos.bb_pieces[types.PieceType.king.index()];
+    std.debug.assert(@popCount(bb_king) == 2);
     const k1: types.Square = types.popLsb(&bb_king);
     const k2: types.Square = types.popLsb(&bb_king);
 
