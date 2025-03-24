@@ -410,7 +410,7 @@ pub const Move = packed struct {
     pub const MoveSortContext = struct {
         pos: position.Position,
         m1: Move,
-        // m2: Move,
+        m2: Move,
     };
 
     pub fn sort(context: MoveSortContext, m1: Move, m2: Move) bool {
@@ -422,13 +422,13 @@ pub const Move = packed struct {
             }
         }
 
-        // if (context.m2 != Move.none) {
-        //     if (context.m2 == m1) {
-        //         return true;
-        //     } else if (context.m2 == m2) {
-        //         return false;
-        //     }
-        // }
+        if (context.m2 != Move.none) {
+            if (context.m2 == m1) {
+                return true;
+            } else if (context.m2 == m2) {
+                return false;
+            }
+        }
 
         const m1_from_piece: Piece = context.pos.board[m1.getFrom().index()];
         const m2_from_piece: Piece = context.pos.board[m2.getFrom().index()];
@@ -556,6 +556,8 @@ pub const value_draw: Value = 0;
 pub const value_stalemate: Value = 0;
 
 pub const value_mate: Value = 32000;
+pub const value_mate_in_max_depth: Value = value_mate - 200;
+pub const value_mated_in_max_depth: Value = -value_mate_in_max_depth;
 pub const value_infinite: Value = value_mate + 1;
 pub const value_none: Value = value_mate + 2;
 
