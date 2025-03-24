@@ -6,9 +6,11 @@ const utils = @import("utils.zig");
 const Bitboard = types.Bitboard;
 const Color = types.Color;
 const File = types.File;
+const Move = types.Move;
 const Piece = types.Piece;
 const PieceType = types.PieceType;
 const Square = types.Square;
+const Value = types.Value;
 
 ////// Initialize movegen, evaluation and position hashing //////
 
@@ -24,6 +26,9 @@ pub fn initAll(allocator: std.mem.Allocator) void {
 ////// Zobrist hashing //////
 
 const Key = u64;
+
+pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, u8, Move })) = .empty;
+
 // pnbrqkPNBRQK
 pub var hash_psq: [types.Piece.nb()][types.board_size2]Key = std.mem.zeroes([types.Piece.nb()][types.board_size2]Key);
 pub var hash_en_passant: [types.board_size]Key = std.mem.zeroes([types.board_size]Key);

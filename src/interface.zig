@@ -9,6 +9,7 @@ pub var limits: Limits = Limits{};
 pub var remaining: types.TimePoint = 0;
 pub var increment: types.TimePoint = 0;
 pub var nodes_searched: u64 = 0;
+pub var transposition_used: u64 = 0;
 
 const StateList = std.ArrayListUnmanaged(position.State);
 

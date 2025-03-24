@@ -1,6 +1,7 @@
 const interface = @import("interface.zig");
 const position = @import("position.zig");
 const std = @import("std");
+const tables = @import("tables.zig");
 const types = @import("types.zig");
 
 var root_moves: std.ArrayListUnmanaged(RootMove) = .empty;
@@ -162,6 +163,8 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     var ss: [*]Stack = &stack;
     ss = ss + 7;
 
+    tables.transposition_table.clearRetainingCapacity();
+
     for (0..200) |i| {
         ss[i].ply = @intCast(i);
     }
@@ -195,6 +198,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     }
 
     interface.nodes_searched = 0;
+    interface.transposition_used = 0;
 
     var current_depth: u8 = 1;
     while (current_depth <= limits.depth) : (current_depth += 1) {
@@ -304,6 +308,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
             ss[1].pv = null;
         }
 
+        const key: u64 = pos.state.material_key;
+
         try pos.movePiece(move, &s);
 
         ss[1].pv = &pv;
@@ -312,6 +318,23 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         if (pos.state.repetition < 0) {
             score = types.value_draw;
         } else {
+            const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move }) = tables.transposition_table.get(key);
+            if (found != null and found.?[1] > current_depth - 1) {
+                score = found.?[0];
+                if (score > types.value_mate_in_max_depth) {
+                    score -= ss[0].ply;
+                } else if (score < types.value_mate_in_max_depth) {
+                    score += ss[0].ply;
+                }
+
+                // Retrieved score doesn't meet the alpha beta requirements
+                if (score < alpha or score >= beta) {
+                    score = -types.value_none;
+                } else {
+                    interface.transposition_used += 1;
+                }
+            }
+
             if (score == -types.value_none) {
                 // LMR before full
                 if (current_depth >= 2 and move_count > 3 and !move.isCapture() and !move.isPromotion() and pos.state.checkers == 0) {
@@ -330,6 +353,12 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 // Full-depth search
                 if (pv_node and (move_count == 1 or score > alpha)) {
                     score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1);
+                    // Let's assert we don't store draw (repetition)
+                    if (score != types.value_draw) {
+                        if (found == null or found.?[1] <= current_depth - 1) {
+                            try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move });
+                        }
+                    }
                 }
             }
         }
@@ -376,7 +405,12 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
             // Fail high
             if (score >= beta) {
-                // transposition
+                if (score != types.value_draw) {
+                    const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move }) = tables.transposition_table.get(key);
+                    if (found == null or found.?[1] <= current_depth - 1) {
+                        try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move });
+                    }
+                }
                 break;
             } else {
                 alpha = score; // Update alpha! Always alpha < beta
@@ -468,7 +502,7 @@ fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
 
 fn info(stdout: anytype, limits: interface.Limits, depth: u16, score: types.Value) !void {
     const time: u64 = @intCast(elapsed(limits));
-    try stdout.print("info depth {} nodes {} nps {} time {} score cp {} pv ", .{ depth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, score });
+    try stdout.print("info depth {} nodes {} nps {} time {} hash {} hashfull {} hashused {} score cp {} pv ", .{ depth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, tables.transposition_table.size, 0, interface.transposition_used, score });
     try pvDisplay(stdout, root_moves.items[0].pv.items);
     try stdout.print("\n", .{});
 }
