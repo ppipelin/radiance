@@ -258,6 +258,8 @@ pub const Position = struct {
         if (move.isCapture() and !move.isEnPassant()) {
             if (to_piece == Piece.none) {
                 return error.CaptureNone;
+            } else if (to_piece == Piece.w_king or to_piece == Piece.b_king) {
+                return error.CaptureKing;
             } else {
                 // This should be the quickest to disable castle when rook is taken
                 var castleRemove: CastleInfo = CastleInfo.none;
@@ -422,7 +424,7 @@ pub const Position = struct {
         }
 
         // Move king
-        const to_king: Bitboard = tables.getAttacks(PieceType.king, color, our_king, bb_all) & ~attacked;
+        const to_king: Bitboard = tables.getAttacks(PieceType.king, color, our_king, bb_all) & ~attacked; // Careful: bb_us not excluded
         Move.generateMove(allocator, MoveFlags.capture, our_king, to_king & bb_them, list);
         Move.generateMove(allocator, MoveFlags.quiet, our_king, to_king & ~bb_all, list);
 
@@ -528,7 +530,7 @@ pub const Position = struct {
 
                     // Can be a promotion
                     if (pt == PieceType.pawn) {
-                        const remove_promoted_pawn: Bitboard = to & types.mask_rank[Rank.r8.relativeRank(color).index()];
+                        const remove_promoted_pawn: Bitboard = to & types.mask_rank[Rank.r8.relativeRank(color).index()] & capture_mask;
                         Move.generateMovePromotion(allocator, MoveFlags.capture, from, remove_promoted_pawn, list);
                         to &= ~remove_promoted_pawn;
                     }
@@ -645,7 +647,7 @@ pub const Position = struct {
         }
 
         // Move king
-        const to_king: Bitboard = tables.getAttacks(PieceType.king, color, our_king, bb_all) & ~attacked;
+        const to_king: Bitboard = tables.getAttacks(PieceType.king, color, our_king, bb_all) & ~attacked; // Careful: bb_us not excluded
         Move.generateMove(allocator, MoveFlags.capture, our_king, to_king & bb_them, list);
 
         switch (types.popcount(self.state.checkers)) {
@@ -729,7 +731,7 @@ pub const Position = struct {
 
                     // Can be a promotion
                     if (pt == PieceType.pawn) {
-                        const remove_promoted_pawn: Bitboard = to & types.mask_rank[Rank.r8.relativeRank(color).index()];
+                        const remove_promoted_pawn: Bitboard = to & types.mask_rank[Rank.r8.relativeRank(color).index()] & capture_mask;
                         Move.generateMovePromotion(allocator, MoveFlags.capture, from, remove_promoted_pawn, list);
                         to &= ~remove_promoted_pawn;
                     }
