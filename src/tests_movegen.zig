@@ -86,6 +86,20 @@ test "PerftPos5" {
     // try expectEqual(89_941_194, search.perftTest(std.testing.allocator, stdout, &pos, 5) catch unreachable);
 }
 
+test "PerftPin" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var s: position.State = position.State{};
+    var pos: position.Position = try position.Position.setFen(&s, "3K4/4Pp2/5q2/8/3k4/8/8/8 w - -");
+
+    const stdout = std.io.getStdErr().writer();
+    try expectEqual(4, search.perftTest(std.testing.allocator, stdout, &pos, 1) catch unreachable);
+    try expectEqual(104, search.perftTest(std.testing.allocator, stdout, &pos, 2) catch unreachable);
+    try expectEqual(673, search.perftTest(std.testing.allocator, stdout, &pos, 3) catch unreachable);
+    try expectEqual(18_786, search.perftTest(std.testing.allocator, stdout, &pos, 4) catch unreachable);
+}
+
 test "MovegenEnPassant" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
