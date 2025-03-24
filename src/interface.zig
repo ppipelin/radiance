@@ -45,7 +45,7 @@ const Option = struct {
 fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
     try options.put(allocator, "Threads", Option.initSpin("1", 1, 1));
     try options.put(allocator, "Hash", Option.initSpin("256", 0, 4096));
-    try options.put(allocator, "Search", Option.initCombo("NegamaxAlphaBeta var abNegamax var Minimax var Random", "NegamaxAlphaBeta"));
+    try options.put(allocator, "Search", Option.initCombo("NegamaxAlphaBeta var NegamaxAlphaBeta var Minimax var Random", "NegamaxAlphaBeta"));
     try options.put(allocator, "Evaluation", Option.initCombo("PSQ var PSQ var Shannon", "PSQ"));
 }
 
@@ -119,6 +119,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
             try stdout.print(
                 \\id name Radiance {s}
                 \\id author Paul-Elie Pipelin (ppipelin)
+                \\
             , .{types.computeVersion()});
             printOptions(stdout, options);
             try stdout.print(
