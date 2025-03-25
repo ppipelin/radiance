@@ -5,6 +5,7 @@ const std = @import("std");
 const types = @import("types.zig");
 
 pub var g_stop = false;
+pub var search_thread: ?std.Thread = null;
 pub var limits: Limits = Limits{};
 pub var remaining: types.TimePoint = 0;
 pub var increment: types.TimePoint = 0;
@@ -146,11 +147,22 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
 
         if (std.mem.eql(u8, "go", primary_token)) {
             existing_command = true;
-            cmd_go(allocator, stdout, &pos, &tokens, &states, &options) catch |err| {
-                try stdout.print("Command go failed with error {}, reset to startpos\n", .{err});
+
+            if (search_thread != null) {
+                g_stop = true;
+                search_thread.?.join();
+            }
+
+            search_thread = std.Thread.spawn(
+                .{ .stack_size = 64 * 1024 * 1024 },
+                cmd_go,
+                .{ allocator, stdout, &pos, &tokens, &states, &options },
+            ) catch |err| {
+                try stdout.print("Could not spawn thread! With error {}\n", .{err});
                 states.clearRetainingCapacity();
                 states.appendAssumeCapacity(position.State{});
                 pos = try position.Position.setFen(&states.items[states.items.len - 1], position.start_fen);
+                return;
             };
         }
 
@@ -203,6 +215,10 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
                 \\
             , .{});
         }
+    }
+    if (search_thread != null) {
+        g_stop = true;
+        search_thread.?.join();
     }
 }
 
