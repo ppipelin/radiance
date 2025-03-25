@@ -333,7 +333,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
             if (score == -types.value_none) {
                 // LMR before full
-                if (current_depth >= 2 and move_count > 3 and !move.isCapture() and !move.isPromotion() and !(pos.state.checkers > 0)) {
+                if (current_depth >= 2 and move_count > 3 and !move.isCapture() and !move.isPromotion() and pos.state.checkers == 0) {
                     // Reduced LMR
                     const d: u8 = @max(1, current_depth -| 4);
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, d - 1);

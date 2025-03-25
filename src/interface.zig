@@ -136,22 +136,22 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
 
         if (std.mem.eql(u8, "position", primary_token)) {
             existing_command = true;
-            if (cmd_position(&pos, &tokens, &states)) {} else |err| {
+            cmd_position(&pos, &tokens, &states) catch |err| {
                 try stdout.print("Command position failed with error {}, reset to startpos\n", .{err});
                 states.clearRetainingCapacity();
                 states.appendAssumeCapacity(position.State{});
                 pos = try position.Position.setFen(&states.items[states.items.len - 1], position.start_fen);
-            }
+            };
         }
 
         if (std.mem.eql(u8, "go", primary_token)) {
             existing_command = true;
-            if (cmd_go(allocator, stdout, &pos, &tokens, &states, &options)) {} else |err| {
+            cmd_go(allocator, stdout, &pos, &tokens, &states, &options) catch |err| {
                 try stdout.print("Command go failed with error {}, reset to startpos\n", .{err});
                 states.clearRetainingCapacity();
                 states.appendAssumeCapacity(position.State{});
                 pos = try position.Position.setFen(&states.items[states.items.len - 1], position.start_fen);
-            }
+            };
         }
 
         if (std.mem.eql(u8, "isready", primary_token)) {
@@ -163,11 +163,11 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
             existing_command = true;
             var tmp_options: std.StringArrayHashMapUnmanaged(Option) = try options.clone(allocator);
             defer tmp_options.deinit(allocator);
-            if (cmd_setoption(allocator, &tokens, &options)) {} else |err| {
+            cmd_setoption(allocator, &tokens, &options) catch |err| {
                 try stdout.print("Command setoption failed with error {}\n", .{err});
                 options.deinit(allocator);
                 options = try tmp_options.clone(allocator);
-            }
+            };
         }
 
         if (std.mem.eql(u8, "ponderhit", primary_token)) {
