@@ -54,7 +54,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
 
-    if (depth == 0) {
+    if (depth == 0 or interface.g_stop) {
         return 1;
     }
 
