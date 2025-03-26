@@ -265,8 +265,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     interface.nodes_searched += 1;
 
     if (current_depth <= 0) {
-        return eval(pos.*);
-        // return quiesce<pvNode ? PV : NonPV>(ss, b, e, alpha, beta);
+        // return eval(pos.*);
+        return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta);
     }
 
     // Initialize data
@@ -370,6 +370,70 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     return best_score;
+}
+
+fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Stack, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value) !types.Value {
+    const pv_node: bool = nodetype == NodeType.pv;
+
+    var alpha = alpha_;
+
+    interface.nodes_searched += 1;
+
+    // In order to get the quiescence search to terminate, plies are usually restricted to moves that deal directly with the threat,
+    // such as moves that capture and recapture (often called a 'capture search') in chess
+    const stand_pat: types.Value = eval(pos.*);
+    if (stand_pat >= beta)
+        return beta;
+    if (alpha < stand_pat)
+        alpha = stand_pat;
+    if (outOfTime(limits))
+        return alpha;
+
+    // Initialize data
+    var s: position.State = position.State{};
+    var pv: [200]types.Move = [_]types.Move{.none} ** 200;
+    var score: types.Value = -types.value_none;
+
+    // Initialize node
+    if (pv_node) {
+        ss[1].pv = &pv;
+        ss[0].pv.?[0] = types.Move.none;
+    }
+
+    var move_list_capture: std.ArrayListUnmanaged(types.Move) = .empty;
+    defer move_list_capture.deinit(allocator);
+    pos.generateLegalCaptures(allocator, pos.state.turn, &move_list_capture);
+    pos.orderMoves(&move_list_capture, types.Move.none);
+
+    // Loop over all legal captures
+    for (move_list_capture.items) |move| {
+        try pos.movePiece(move, &s);
+
+        if (pos.state.repetition < 0) {
+            score = types.value_draw;
+        } else {
+            score = -try quiesce(allocator, nodetype, ss + 1, pos, limits, eval, -beta, -alpha);
+        }
+
+        try pos.unMovePiece(move, false);
+
+        if (score >= beta) {
+            // beta cutoff
+            return beta;
+        }
+        if (score > alpha) {
+            // Update pv even in fail-high case
+            if (pv_node)
+                update_pv(ss[0].pv.?, move, ss[1].pv.?);
+            // alpha acts like max in MiniMax
+            alpha = score;
+        }
+
+        if (outOfTime(limits))
+            break;
+    }
+
+    return alpha;
 }
 
 fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
