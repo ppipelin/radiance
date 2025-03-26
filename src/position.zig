@@ -794,6 +794,14 @@ pub const Position = struct {
         }
     }
 
+    pub fn orderMoves(self: *Position, list: *std.ArrayListUnmanaged(Move), pv_move: Move) void {
+        // Search pvMove is in movelist. Speed up comparision if not.
+
+        // find tt_move
+
+        std.sort.pdq(Move, list.items, Move.MoveSortContext{ .pos = self.*, .m1 = pv_move }, Move.sort);
+    }
+
     pub fn print(self: Position, writer: anytype) void {
         const line = " +---+---+---+---+---+---+---+---+\n";
         const letters = "   A   B   C   D   E   F   G   H\n";
