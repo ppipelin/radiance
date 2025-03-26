@@ -47,7 +47,7 @@ const Option = struct {
 fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
     try options.put(allocator, "Threads", Option.initSpin("1", 1, 1));
     try options.put(allocator, "Hash", Option.initSpin("256", 0, 4096));
-    try options.put(allocator, "Search", Option.initCombo("NegamaxAlphaBeta var NegamaxAlphaBeta var Minimax var Random", "NegamaxAlphaBeta"));
+    try options.put(allocator, "Search", Option.initCombo("NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
     try options.put(allocator, "Evaluation", Option.initCombo("PSQ var PSQ var Shannon", "PSQ"));
 }
 
