@@ -822,6 +822,35 @@ pub const Position = struct {
         }
     }
 
+    pub fn orderMoves(self: *Position, list: *std.ArrayListUnmanaged(Move), pv_move_: Move) void {
+        var pv_move: Move = Move.none;
+        // Search pv_move_ is in movelist. Speed up comparision if not.
+        if (pv_move_ != Move.none) {
+            for (list.items) |move| {
+                if (move == pv_move_) {
+                    pv_move = pv_move_;
+                    break;
+                }
+            }
+        }
+
+        var tt_move: Move = Move.none;
+
+        const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move }) = tables.transposition_table.get(self.state.material_key);
+        if (found != null) {
+            _, _, const tt_move_: Move = found.?;
+            // Search tt_move_ is in movelist. Speed up comparision if not.
+            for (list.items) |move| {
+                if (move == tt_move_) {
+                    tt_move = tt_move_;
+                    break;
+                }
+            }
+        }
+
+        std.sort.pdq(Move, list.items, Move.MoveSortContext{ .pos = self.*, .m1 = pv_move, .m2 = tt_move }, Move.sort);
+    }
+
     pub fn endgame(self: Position, col: Color) bool {
         // Compute score based on the endgame condition
         // Once ennemy has less pieces our king attacks the other one
