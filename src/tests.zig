@@ -11,6 +11,9 @@ const expectEqualSlices = std.testing.expectEqualSlices;
 const allocator = std.testing.allocator;
 
 test "Position" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
     var s: position.State = position.State{};
     var pos: position.Position = position.Position.init(&s);
     try expectEqual(0, pos.state.material_key);
@@ -28,6 +31,9 @@ test "Position" {
 }
 
 test "Fen" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
     var s: position.State = position.State{};
     const fen: []const u8 = position.start_fen;
     var pos: position.Position = try position.Position.setFen(&s, fen);
@@ -39,6 +45,9 @@ test "Fen" {
 }
 
 test "FenIncomplete" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
     var s: position.State = position.State{};
     const fen: []const u8 = position.start_fen[0..45];
     var pos: position.Position = try position.Position.setFen(&s, fen);
@@ -50,6 +59,9 @@ test "FenIncomplete" {
 }
 
 test "FenMoved" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
     var s: position.State = position.State{};
     const fen: []const u8 = "rnbqkb1r/pppppppp/5n2/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 100 100";
     var pos: position.Position = try position.Position.setFen(&s, fen);
@@ -66,6 +78,9 @@ test "Move" {
 }
 
 test "MoveUnmovePiece" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, position.start_fen);
 
