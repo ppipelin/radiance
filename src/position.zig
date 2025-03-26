@@ -375,6 +375,35 @@ pub const Position = struct {
         }
     }
 
+    pub fn moveNull(self: *Position, state: *State) !void {
+        // Reset data and set as previous
+        state.turn = self.state.turn;
+        state.castle_info = self.state.castle_info;
+        // Increment ply counters. In particular, half_move will be reset to zero later on in case of a capture or a pawn move.
+        state.half_move = self.state.half_move + 1;
+        state.full_move = self.state.full_move;
+        state.en_passant = Square.none;
+        state.checkers = self.state.checkers;
+        state.pinned = self.state.pinned;
+        state.last_captured_piece = Piece.none;
+        state.material_key = self.state.material_key;
+        state.previous = self.state;
+        self.state = state;
+
+        if (self.state.previous != null and self.state.previous.?.en_passant != Square.none) {
+            self.state.material_key ^= tables.hash_en_passant[self.state.previous.?.en_passant.file().index()];
+        }
+
+        if (!self.state.turn.isWhite())
+            self.state.full_move += 1;
+        self.state.turn = self.state.turn.invert();
+        self.state.material_key ^= tables.hash_turn;
+    }
+
+    pub fn unMoveNull(self: *Position) !void {
+        self.state = self.state.previous.?;
+    }
+
     pub fn generateLegalMoves(self: *Position, allocator: std.mem.Allocator, color: Color, list: *std.ArrayListUnmanaged(Move)) void {
         const bb_us: Bitboard = self.bb_colors[color.index()];
         const bb_them: Bitboard = self.bb_colors[color.invert().index()];
