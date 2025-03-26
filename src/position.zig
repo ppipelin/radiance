@@ -333,6 +333,8 @@ pub const Position = struct {
                 }
             }
         }
+
+        self.updateCheckersPinned();
     }
 
     /// silent will not change self.state
@@ -398,10 +400,44 @@ pub const Position = struct {
             self.state.full_move += 1;
         self.state.turn = self.state.turn.invert();
         self.state.material_key ^= tables.hash_turn;
+
+        self.updateCheckersPinned();
     }
 
     pub fn unMoveNull(self: *Position) !void {
         self.state = self.state.previous.?;
+    }
+
+    pub fn updateCheckersPinned(self: *Position) void {
+        const bb_us: types.Bitboard = self.bb_colors[self.state.turn.index()];
+        const bb_them: types.Bitboard = self.bb_colors[self.state.turn.invert().index()];
+
+        const our_king: types.Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[types.PieceType.king.index()]));
+
+        self.state.pinned = 0;
+
+        // Compute checkers from non blockables piece types
+        // All knights can attack the king the same way a knight would attack form the king's square
+        self.state.checkers = tables.getAttacks(PieceType.knight, self.state.turn.invert(), our_king, 0) & bb_them & self.bb_pieces[PieceType.knight.index()];
+        // Same method for pawn, transform the king into a pawn
+        self.state.checkers |= tables.pawn_attacks[self.state.turn.index()][our_king.index()] & bb_them & self.bb_pieces[PieceType.pawn.index()];
+
+        // Compute candidate checkers from sliders and pinned pieces, transform the king into a slider
+        var candidates: types.Bitboard = tables.getAttacks(PieceType.bishop, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
+        candidates |= tables.getAttacks(PieceType.rook, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
+
+        while (candidates != 0) {
+            const sq: Square = types.popLsb(&candidates);
+            const bb_between: types.Bitboard = tables.squares_between[our_king.index()][sq.index()] & bb_us;
+
+            if (bb_between == 0) {
+                // No our piece between king and slider: check
+                self.state.checkers ^= sq.sqToBB();
+            } else if ((bb_between & (bb_between - 1)) == 0) {
+                // Only one of our piece between king and slider: pinned
+                self.state.pinned ^= bb_between;
+            }
+        }
     }
 
     pub fn generateLegalMoves(self: *Position, allocator: std.mem.Allocator, color: Color, list: *std.ArrayListUnmanaged(Move)) void {
@@ -416,7 +452,6 @@ pub const Position = struct {
         // Squares that can be moved on
         var quiet_mask: Bitboard = 0;
         var attacked: Bitboard = 0;
-        self.state.pinned = 0;
 
         for (std.enums.values(PieceType)) |pt| {
             if (pt == PieceType.none)
@@ -426,29 +461,6 @@ pub const Position = struct {
                 const from: Square = types.popLsb(&from_bb);
                 // Extract the king as it can't move to a place that it covers
                 attacked |= tables.getAttacks(pt, color.invert(), from, bb_all ^ our_king.sqToBB());
-            }
-        }
-
-        // Compute checkers from non blockables piece types
-        // All knights can attack the king the same way a knight would attack form the king's square
-        self.state.checkers = tables.getAttacks(PieceType.knight, color.invert(), our_king, 0) & bb_them & self.bb_pieces[PieceType.knight.index()];
-        // Same method for pawn, transform the king into a pawn
-        self.state.checkers |= tables.pawn_attacks[color.index()][our_king.index()] & bb_them & self.bb_pieces[PieceType.pawn.index()];
-
-        // Compute candidate checkers from sliders and pinned pieces, transform the king into a slider
-        var candidates: Bitboard = tables.getAttacks(PieceType.bishop, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[color.invert().index()]);
-        candidates |= tables.getAttacks(PieceType.rook, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[color.invert().index()]);
-
-        while (candidates != 0) {
-            const sq: Square = types.popLsb(&candidates);
-            const bb_between: Bitboard = tables.squares_between[our_king.index()][sq.index()] & bb_us;
-
-            if (bb_between == 0) {
-                // No our piece between king and slider: check
-                self.state.checkers ^= sq.sqToBB();
-            } else if ((bb_between & (bb_between - 1)) == 0) {
-                // Only one of our piece between king and slider: pinned
-                self.state.pinned ^= bb_between;
             }
         }
 
@@ -640,7 +652,6 @@ pub const Position = struct {
         // Squares that can be moved on
         var quiet_mask: Bitboard = 0;
         var attacked: Bitboard = 0;
-        self.state.pinned = 0;
 
         for (std.enums.values(PieceType)) |pt| {
             if (pt == PieceType.none)
@@ -650,29 +661,6 @@ pub const Position = struct {
                 const from: Square = types.popLsb(&from_bb);
                 // Extract the king as it can't move to a place that it covers
                 attacked |= tables.getAttacks(pt, color.invert(), from, bb_all ^ our_king.sqToBB());
-            }
-        }
-
-        // Compute checkers from non blockables piece types
-        // All knights can attack the king the same way a knight would attack form the king's square
-        self.state.checkers = tables.getAttacks(PieceType.knight, color.invert(), our_king, 0) & bb_them & self.bb_pieces[PieceType.knight.index()];
-        // Same method for pawn, transform the king into a pawn
-        self.state.checkers |= tables.pawn_attacks[color.index()][our_king.index()] & bb_them & self.bb_pieces[PieceType.pawn.index()];
-
-        // Compute candidate checkers from sliders and pinned pieces, transform the king into a slider
-        var candidates: Bitboard = tables.getAttacks(PieceType.bishop, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[color.invert().index()]);
-        candidates |= tables.getAttacks(PieceType.rook, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[color.invert().index()]);
-
-        while (candidates != 0) {
-            const sq: Square = types.popLsb(&candidates);
-            const bb_between: Bitboard = tables.squares_between[our_king.index()][sq.index()] & bb_us;
-
-            if (bb_between == 0) {
-                // No our piece between king and slider: check
-                self.state.checkers ^= sq.sqToBB();
-            } else if ((bb_between & (bb_between - 1)) == 0) {
-                // Only one of our piece between king and slider: pinned
-                self.state.pinned ^= bb_between;
             }
         }
 
@@ -980,6 +968,8 @@ pub const Position = struct {
         } else {
             return error.UnknownTurn;
         }
+
+        pos.updateCheckersPinned();
 
         const castle: ?[]const u8 = tokens.next();
         if (castle == null)
