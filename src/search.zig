@@ -279,6 +279,24 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     // Initialize node
     var move_count: u16 = 0;
 
+    // Pruning
+    // Null move pruning
+    const static_eval: types.Value = (if (pos.state.turn.isWhite()) pos.score_mg else -pos.score_mg);
+    if (!is_nmr and current_depth >= 3 and static_eval > beta and @popCount(pos.state.checkers) == 0) {
+        const tapered: u8 = @intCast(@min(@divTrunc(static_eval - beta, 200), 6));
+        const r: u8 = tapered + @divTrunc(current_depth, 3) + 5;
+        try pos.moveNull(&s);
+        const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, current_depth -| r, true);
+        try pos.unMoveNull();
+        if (current_depth > 1 and outOfTime(limits))
+            return -types.value_none;
+
+        // Do not return unproven mate
+        if (null_score >= beta and null_score < types.value_mate_in_max_depth) {
+            return null_score;
+        }
+    }
+
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
 
