@@ -487,7 +487,7 @@ pub const Move = packed struct {
         }
     }
 
-    pub inline fn displayMoves(writer: anytype, list: std.ArrayListUnmanaged(Move)) void {
+    pub inline fn displayMoves(writer: anytype, list: std.ArrayListUnmanaged(Move)) !void {
         writer.print("Number of moves: {d}\n", .{list.items.len}) catch unreachable;
         for (list.items) |item| {
             try item.printUCI(writer);

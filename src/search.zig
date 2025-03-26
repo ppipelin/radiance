@@ -60,8 +60,12 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
 
     pos.generateLegalMoves(allocator, pos.state.turn, &move_list);
 
-    if (depth == 1)
+    if (depth == 1) {
+        if (verbose) {
+            try types.Move.displayMoves(stdout, move_list);
+        }
         return move_list.items.len;
+    }
 
     for (move_list.items) |move| {
         var s: position.State = position.State{};
@@ -80,7 +84,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
     return nodes;
 }
 
-pub fn perftTest(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, depth: u8) !u64 {
+pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u8) !u64 {
     var nodes: u64 = 0;
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
@@ -104,7 +108,7 @@ pub fn perftTest(allocator: std.mem.Allocator, stdout: anytype, pos: *position.P
 
         try pos.movePiece(move, &s);
 
-        const nodes_number = try (perftTest(allocator, stdout, pos, depth - 1));
+        const nodes_number = try (perftTest(allocator, pos, depth - 1));
         nodes += nodes_number;
 
         try pos.unMovePiece(move, false);
