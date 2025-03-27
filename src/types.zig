@@ -1,6 +1,22 @@
 //! This module provides functions types for pieces, colors and bitboards related components
 
+const position = @import("position.zig");
 const std = @import("std");
+const tables = @import("tables.zig");
+
+pub const major = 4;
+pub const minor = 0;
+pub const patch = 0;
+
+pub fn computeVersion() []const u8 {
+    if (minor == 0 and patch == 0) {
+        return std.fmt.comptimePrint("{d}", .{major});
+    } else if (patch == 0) {
+        return std.fmt.comptimePrint("{d}.{d}", .{ major, minor });
+    } else {
+        return std.fmt.comptimePrint("{d}.{d}.{d}", .{ major, minor, patch });
+    }
+}
 
 ////// Chess //////
 
@@ -333,8 +349,6 @@ pub const Move = packed struct {
             }
         }
 
-        // In standard,
-        // In chess 960,
         if (from_piece.pieceToPieceType() == PieceType.king) {
             // Standard, caslting is done by targeting the square
             if (from == Square.e1.relativeSquare(pos.state.turn) and to == Square.g1.relativeSquare(pos.state.turn)) {
@@ -513,6 +527,14 @@ pub const value_stalemate: Value = 0;
 pub const value_mate: Value = 32000;
 pub const value_infinite: Value = value_mate + 1;
 pub const value_none: Value = value_mate + 2;
+
+////// Interface //////
+
+pub const TimePoint = i64; // A value in milliseconds
+
+pub inline fn now() TimePoint {
+    return std.time.milliTimestamp();
+}
 
 ////// Bitboard //////
 

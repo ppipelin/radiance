@@ -71,13 +71,29 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const exe_tests_interface = b.addTest(.{
+        .root_source_file = b.path("src/tests_interface.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const exe_tests_evaluate = b.addTest(.{
+        .root_source_file = b.path("src/tests_evaluate.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const run_exe_tests = b.addRunArtifact(exe_tests);
     const run_exe_tests_movegen = b.addRunArtifact(exe_tests_movegen);
     const run_exe_tests_960 = b.addRunArtifact(exe_tests_960);
+    const run_exe_tests_interface = b.addRunArtifact(exe_tests_interface);
+    const run_exe_tests_evaluate = b.addRunArtifact(exe_tests_evaluate);
 
     run_exe_tests.has_side_effects = true;
     run_exe_tests_movegen.has_side_effects = true;
     run_exe_tests_960.has_side_effects = true;
+    run_exe_tests_interface.has_side_effects = true;
+    run_exe_tests_evaluate.has_side_effects = true;
 
     // Similar to creating the run step earlier, this exposes a `test` step to
     // the `zig build --help` menu, providing a way for the user to request
@@ -86,4 +102,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_exe_tests.step);
     test_step.dependOn(&run_exe_tests_movegen.step);
     test_step.dependOn(&run_exe_tests_960.step);
+    test_step.dependOn(&run_exe_tests_interface.step);
+    test_step.dependOn(&run_exe_tests_evaluate.step);
 }
