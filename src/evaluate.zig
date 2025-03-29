@@ -89,10 +89,11 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         } else if (pos.score_material_w < pos.score_material_b) {
             score += pos.score_king_w;
         }
-        score += pos.score_eg;
-    } else {
-        score += pos.score_mg;
     }
+
+    const tapered: f16 = @as(f16, @floatFromInt((pos.score_material_w + pos.score_material_b) - 2 * tables.material[types.PieceType.king.index()])) / (2251 * 2);
+    score += @intFromFloat(tapered * @as(f16, @floatFromInt(pos.score_mg)));
+    score += @intFromFloat((1 - tapered) * @as(f16, @floatFromInt(pos.score_eg)));
 
     const bb_white: types.Bitboard = pos.bb_colors[types.Color.white.index()];
     const bb_black: types.Bitboard = pos.bb_colors[types.Color.black.index()];
