@@ -194,7 +194,12 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
 
         if (std.mem.eql(u8, "eval", primary_token)) {
             existing_command = true;
-            try stdout.print("UCI - Received eval\n", .{});
+            const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
+            if (std.mem.eql(u8, evaluation_mode, "Shannon")) {
+                try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(pos)});
+            } else if (std.mem.eql(u8, evaluation_mode, "PSQ")) {
+                try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(pos)});
+            }
         }
 
         if (!existing_command) {
