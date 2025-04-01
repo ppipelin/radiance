@@ -21,15 +21,14 @@ pub inline fn computeBlockedPawns(bb_pawn: types.Bitboard, col: types.Color, blo
 }
 
 pub inline fn computeIsolatedPawns(bb_pawn: types.Bitboard) types.Value {
-    const left_neighbors = (bb_pawn & ~types.mask_file[types.File.fh.index()]) >> 1;
-    const right_neighbors = (bb_pawn & ~types.mask_file[types.File.fa.index()]) << 1;
+    const left_neighbors = (bb_pawn & ~types.mask_file[types.File.fh.index()]) << 1;
+    const right_neighbors = (bb_pawn & ~types.mask_file[types.File.fa.index()]) >> 1;
     var adjacent_pawns = left_neighbors | right_neighbors;
 
     for (types.mask_file) |mask| {
         if ((mask & adjacent_pawns) > 1)
             adjacent_pawns |= mask;
     }
-
     return @popCount(bb_pawn & ~adjacent_pawns);
 }
 
