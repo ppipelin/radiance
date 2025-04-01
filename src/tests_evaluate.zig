@@ -63,15 +63,26 @@ test "EvaluatePawnHeuristics" {
     tables.initAll(std.testing.allocator);
     defer tables.deinitAll(std.testing.allocator);
 
-    const fen: []const u8 = "3k4/7p/3p2P1/3P2P1/P6P/P7/P1P3P1/3K4 w - -";
+    var fen: []const u8 = "3k4/7p/3p2P1/3P2P1/P6P/P7/P1P3P1/3K4 w - -";
 
     var s: position.State = position.State{};
-    const pos: position.Position = try position.Position.setFen(&s, fen);
+    var pos: position.Position = try position.Position.setFen(&s, fen);
 
-    const bb_white: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
-    const bb_black: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
+    var bb_white: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
+    var bb_black: types.Bitboard = pos.bb_colors[types.Color.black.index()];
 
     try std.testing.expectEqual(6, evaluate.computeDoubledPawns(bb_white));
     try std.testing.expectEqual(1, evaluate.computeBlockedPawns(bb_white, types.Color.white, bb_black));
     try std.testing.expectEqual(3, evaluate.computeIsolatedPawns(bb_white));
+
+    fen = "8/8/n4pk1/P5pp/3P4/6PP/5K1P/8 w - -";
+
+    pos = try position.Position.setFen(&s, fen);
+
+    bb_white = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
+    bb_black = pos.bb_colors[types.Color.black.index()];
+
+    try std.testing.expectEqual(2, evaluate.computeDoubledPawns(bb_white));
+    try std.testing.expectEqual(1, evaluate.computeBlockedPawns(bb_white, types.Color.white, bb_black));
+    try std.testing.expectEqual(2, evaluate.computeIsolatedPawns(bb_white));
 }
