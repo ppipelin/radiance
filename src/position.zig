@@ -209,17 +209,18 @@ pub const Position = struct {
             },
             PieceType.rook => {
                 const col: Color = from_piece.pieceToColor();
-                const is_white = col.isWhite();
-                if (move.getFrom().file() == File.fh) {
-                    if (self.state.castle_info.index() & (if (is_white) CastleInfo.K else CastleInfo.k).index() > 0) {
-                        self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~(if (is_white) CastleInfo.K.index() else CastleInfo.k.index()));
-                        self.state.material_key ^= tables.hash_castling[CastleInfo.K.relativeCastle(col).indexLsb()];
-                    }
-                } else if (move.getFrom().file() == File.fa) {
-                    if (self.state.castle_info.index() & (if (is_white) CastleInfo.Q else CastleInfo.q).index() > 0) {
-                        self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~(if (is_white) CastleInfo.Q.index() else CastleInfo.q.index()));
-                        self.state.material_key ^= tables.hash_castling[CastleInfo.Q.relativeCastle(col).indexLsb()];
-                    }
+                if (move.getFrom() == self.rook_initial[0] and (self.state.castle_info.index() & CastleInfo.Q.index()) > 0) {
+                    self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~CastleInfo.Q.index());
+                    self.state.material_key ^= tables.hash_castling[CastleInfo.Q.relativeCastle(col).indexLsb()];
+                } else if (move.getFrom() == self.rook_initial[1] and (self.state.castle_info.index() & CastleInfo.K.index()) > 0) {
+                    self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~CastleInfo.K.index());
+                    self.state.material_key ^= tables.hash_castling[CastleInfo.K.relativeCastle(col).indexLsb()];
+                } else if (move.getFrom() == self.rook_initial[2] and (self.state.castle_info.index() & CastleInfo.q.index()) > 0) {
+                    self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~CastleInfo.q.index());
+                    self.state.material_key ^= tables.hash_castling[CastleInfo.q.relativeCastle(col).indexLsb()];
+                } else if (move.getFrom() == self.rook_initial[3] and (self.state.castle_info.index() & CastleInfo.k.index()) > 0) {
+                    self.state.castle_info = @enumFromInt(self.state.castle_info.index() & ~CastleInfo.k.index());
+                    self.state.material_key ^= tables.hash_castling[CastleInfo.k.relativeCastle(col).indexLsb()];
                 }
             },
             PieceType.pawn => {
@@ -530,8 +531,9 @@ pub const Position = struct {
                 // OO
                 if (self.state.castle_info.index() & CastleInfo.K.relativeCastle(color).index() > 0) {
                     const to_king_oo: Square = Square.g1.relativeSquare(color);
+                    const to_rook_oo: Square = Square.f1.relativeSquare(color);
                     const path_king_oo: Bitboard = tables.squares_between[our_king.index()][to_king_oo.index()] | to_king_oo.sqToBB();
-                    const path_rook_oo: Bitboard = tables.squares_between[our_king.index()][self.rook_initial[1 + 2 * @as(u8, color.invert().index())].index()];
+                    const path_rook_oo: Bitboard = tables.squares_between[to_rook_oo.index()][self.rook_initial[1 + 2 * @as(u8, color.invert().index())].index()] | to_rook_oo.sqToBB();
                     if ((path_king_oo | path_rook_oo) & (bb_all & ~self.rook_initial[1 + 2 * @as(u8, color.invert().index())].sqToBB() & ~our_king.sqToBB()) == 0 and path_king_oo & attacked == 0) {
                         list.append(allocator, Move.init(MoveFlags.oo, our_king, to_king_oo)) catch unreachable;
                     }
@@ -539,8 +541,9 @@ pub const Position = struct {
                 // OOO
                 if (self.state.castle_info.index() & CastleInfo.Q.relativeCastle(color).index() > 0) {
                     const to_king_ooo: Square = Square.c1.relativeSquare(color);
+                    const to_rook_ooo: Square = Square.d1.relativeSquare(color);
                     const path_king_ooo: Bitboard = tables.squares_between[our_king.index()][to_king_ooo.index()] | to_king_ooo.sqToBB();
-                    const path_rook_ooo: Bitboard = tables.squares_between[our_king.index()][self.rook_initial[0 + 2 * @as(u8, color.invert().index())].index()];
+                    const path_rook_ooo: Bitboard = tables.squares_between[to_rook_ooo.index()][self.rook_initial[0 + 2 * @as(u8, color.invert().index())].index()] | to_rook_ooo.sqToBB();
                     if ((path_king_ooo | path_rook_ooo) & (bb_all & ~self.rook_initial[0 + 2 * @as(u8, color.invert().index())].sqToBB() & ~our_king.sqToBB()) == 0 and path_king_ooo & attacked == 0) {
                         list.append(allocator, Move.init(MoveFlags.ooo, our_king, to_king_ooo)) catch unreachable;
                     }
