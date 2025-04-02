@@ -90,9 +90,9 @@ test "MoveUnmovePiece" {
     var s3: position.State = position.State{};
     try pos.movePiece(types.Move.init(types.MoveFlags.quiet, types.Square.e7, types.Square.e6), &s3);
 
-    try pos.unMovePiece(types.Move.init(types.MoveFlags.quiet, types.Square.e7, types.Square.e6), false);
+    try pos.unMovePiece(types.Move.init(types.MoveFlags.quiet, types.Square.e7, types.Square.e6));
 
-    try pos.unMovePiece(types.Move.init(types.MoveFlags.quiet, types.Square.a2, types.Square.a3), false);
+    try pos.unMovePiece(types.Move.init(types.MoveFlags.quiet, types.Square.a2, types.Square.a3));
 
     var buffer: [90]u8 = undefined;
     const computed_fen = pos.getFen(&buffer);

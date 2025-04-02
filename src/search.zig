@@ -79,7 +79,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
             try stdout.print(", {} : {}\n", .{ move.getFlags(), nodes_number });
         }
 
-        try pos.unMovePiece(move, false);
+        try pos.unMovePiece(move);
     }
     return nodes;
 }
@@ -111,7 +111,7 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
         const nodes_number = try (perftTest(allocator, pos, depth - 1));
         nodes += nodes_number;
 
-        try pos.unMovePiece(move, false);
+        try pos.unMovePiece(move);
 
         var fen_after: [90]u8 = undefined;
         const fen_after_c = pos.getFen(&fen_after);
@@ -385,7 +385,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         }
 
         // Undo move
-        try pos.unMovePiece(move, false);
+        try pos.unMovePiece(move);
 
         // Useless ?
         if (current_depth > 1 and outOfTime(interface.limits))
@@ -495,7 +495,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
             score = -try quiesce(allocator, nodetype, ss + 1, pos, limits, eval, -beta, -alpha, false);
         }
 
-        try pos.unMovePiece(move, false);
+        try pos.unMovePiece(move);
 
         if (score >= beta) {
             // beta cutoff
