@@ -941,7 +941,10 @@ pub const Position = struct {
         var sq: i32 = Square.a8.index();
         var tokens = std.mem.tokenizeScalar(u8, fen, ' ');
         const bd: []const u8 = tokens.next().?;
-        var rook_cnt: u8 = 0;
+
+        var passed_king_w: bool = false;
+        var passed_king_b: bool = false;
+
         for (bd) |ch| {
             if (std.ascii.isDigit(ch)) {
                 sq += @as(i32, ch - '0') * Direction.east.index();
@@ -951,9 +954,18 @@ pub const Position = struct {
                 const p: Piece = try Piece.firstIndex(ch);
                 pos.add(p, @enumFromInt(sq));
                 pos.state.material_key ^= tables.hash_psq[p.index()][@intCast(sq)];
-                if (ch == 'R' and rook_cnt < 2) {
-                    pos.rook_initial[rook_cnt] = @enumFromInt(sq);
-                    rook_cnt += 1;
+
+                if (p == Piece.w_king) {
+                    passed_king_w = true;
+                }
+                if (p == Piece.b_king) {
+                    passed_king_b = true;
+                }
+                if (ch == 'R') {
+                    pos.rook_initial[@intFromBool(passed_king_w)] = @enumFromInt(sq);
+                }
+                if (ch == 'r') {
+                    pos.rook_initial[2 + @as(usize, @intFromBool(passed_king_b))] = @enumFromInt(sq);
                 }
                 sq += 1;
             }

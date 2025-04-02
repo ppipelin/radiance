@@ -77,6 +77,29 @@ test "PerftPos5" {
     // try expectEqual(89_941_194, search.perftTest(std.testing.allocator, &pos, 5) catch unreachable);
 }
 
+test "PerftMoveCastleAddress" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var s: position.State = position.State{};
+    var pos: position.Position = try position.Position.setFen(&s, "2bq1rk1/1pp2pbp/3p2p1/3Pn3/1PPBP1P1/2N4P/5PB1/3QK2R b K -");
+    try expectEqual(30, search.perftTest(std.testing.allocator, &pos, 1) catch unreachable);
+    try expectEqual(998, search.perftTest(std.testing.allocator, &pos, 2) catch unreachable);
+    try expectEqual(31_067, search.perftTest(std.testing.allocator, &pos, 3) catch unreachable);
+    try expectEqual(1_057_671, search.perftTest(std.testing.allocator, &pos, 4) catch unreachable);
+
+    pos = try position.Position.setFen(&s, "3q1rk1/1pp2pbp/3p2p1/3Pnb2/1PPBP1P1/2N4P/5PB1/3QK2R w K - 1 2");
+    try expectEqual(37, search.perftTest(std.testing.allocator, &pos, 1) catch unreachable);
+    try expectEqual(1_205, search.perftTest(std.testing.allocator, &pos, 2) catch unreachable);
+    try expectEqual(42_491, search.perftTest(std.testing.allocator, &pos, 3) catch unreachable);
+    try expectEqual(1_398_494, search.perftTest(std.testing.allocator, &pos, 4) catch unreachable);
+    try expectEqual(49_583_496, search.perftTest(std.testing.allocator, &pos, 5) catch unreachable);
+
+    pos = try position.Position.setFen(&s, "3q1rk1/1pp2pbp/3p2p1/3Pn3/1PPB2P1/2NB3P/5P2/3QK2b w - -");
+    try expectEqual(36, search.perftTest(std.testing.allocator, &pos, 1) catch unreachable);
+    try expectEqual(1_175, search.perftTest(std.testing.allocator, &pos, 2) catch unreachable);
+}
+
 test "PerftPin" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
