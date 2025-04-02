@@ -82,17 +82,6 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     // Once ennemy has less pieces our king attacks the other one
     // King, seven pawns a rook and a bishop
     const endgame: bool = (if (pos.state.turn.isWhite()) pos.score_material_b else pos.score_material_w) <= tables.material[types.PieceType.king.index()] + 7 * tables.material[types.PieceType.pawn.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
-    if (endgame) {
-        score += if (pos.state.turn.isWhite()) distanceKings(pos) else -distanceKings(pos);
-        if (pos.score_material_w > pos.score_material_b) {
-            score += -pos.score_king_b;
-        } else if (pos.score_material_w < pos.score_material_b) {
-            score += pos.score_king_w;
-        }
-        score += pos.score_eg;
-    } else {
-        score += pos.score_mg;
-    }
 
     const bb_white: types.Bitboard = pos.bb_colors[types.Color.white.index()];
     const bb_black: types.Bitboard = pos.bb_colors[types.Color.black.index()];
@@ -111,11 +100,11 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     }
 
     // Evaluate sliders pseudo legal moveset
-    var white_sliders_diag: types.Bitboard = bb_white & (pos.bb_pieces[types.PieceType.bishop.index()] | pos.bb_pieces[types.PieceType.queen.index()]);
-    var white_sliders_orth: types.Bitboard = bb_white & (pos.bb_pieces[types.PieceType.rook.index()] | pos.bb_pieces[types.PieceType.queen.index()]);
+    var white_sliders_diag: types.Bitboard = bb_white & (pos.bb_pieces[types.PieceType.bishop.index()]); // | pos.bb_pieces[types.PieceType.queen.index()]
+    var white_sliders_orth: types.Bitboard = bb_white & (pos.bb_pieces[types.PieceType.rook.index()]); // | pos.bb_pieces[types.PieceType.queen.index()]
 
-    var black_sliders_diag: types.Bitboard = bb_black & (pos.bb_pieces[types.PieceType.bishop.index()] | pos.bb_pieces[types.PieceType.queen.index()]);
-    var black_sliders_orth: types.Bitboard = bb_black & (pos.bb_pieces[types.PieceType.rook.index()] | pos.bb_pieces[types.PieceType.queen.index()]);
+    var black_sliders_diag: types.Bitboard = bb_black & (pos.bb_pieces[types.PieceType.bishop.index()]); // | pos.bb_pieces[types.PieceType.queen.index()]
+    var black_sliders_orth: types.Bitboard = bb_black & (pos.bb_pieces[types.PieceType.rook.index()]); // | pos.bb_pieces[types.PieceType.queen.index()]
 
     var moveset_white_diag: types.Bitboard = 0;
     var moveset_white_orth: types.Bitboard = 0;
@@ -150,8 +139,8 @@ pub fn evaluateTable(pos: position.Position) types.Value {
 
     score -=
         50 * (computeIsolatedPawns(bb_white_pawn_) - computeIsolatedPawns(bb_black_pawn_)) +
-        20 * (computeDoubledPawns(bb_white_pawn_) - computeDoubledPawns(bb_black_pawn_)) +
-        10 * (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_black) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_white));
+        20 * (computeDoubledPawns(bb_white_pawn_) - computeDoubledPawns(bb_black_pawn_));
+    // 10 * (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_black) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_white));
 
     var bb_white_pawn: types.Bitboard = bb_white_pawn_;
     while (bb_white_pawn != 0) {
@@ -167,6 +156,19 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         if (tables.passed_pawn[types.Color.black.index()][sq.index()] & bb_white_pawn_ == 0) {
             score -= tables.passed_pawn_table[sq.rank().relativeRank(types.Color.black).index()];
         }
+    }
+
+    if (endgame) {
+        // if (pos.score_material_w > pos.score_material_b) {
+        if (score > 0) {
+            score += -pos.score_king_b;
+        } else if (score < 0) {
+            score += pos.score_king_w;
+        }
+        score += if (pos.state.turn.isWhite()) distanceKings(pos) else -distanceKings(pos);
+        score += pos.score_eg;
+    } else {
+        score += pos.score_mg;
     }
 
     return if (pos.state.turn.isWhite()) score else -score;
