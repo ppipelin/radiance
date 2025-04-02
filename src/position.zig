@@ -71,7 +71,7 @@ pub const Position = struct {
     bb_colors: [Color.nb()]Bitboard = undefined,
 
     // Rook initial positions are recorded for 960
-    rook_initial: [4]Square = [_]Square{ Square.a1, Square.h1, Square.a8, Square.h8 },
+    rook_initial: [4]Square = [_]Square{ Square.none, Square.none, Square.none, Square.none },
 
     // Zobrist hash
     zobrist: u64 = 0,
@@ -177,9 +177,9 @@ pub const Position = struct {
         self.state = state;
 
         const from: Square = move.getFrom();
-        const to: Square = move.getTo();
+        var to: Square = move.getTo();
         var from_piece: Piece = self.board[from.index()];
-        const to_piece: Piece = self.board[to.index()];
+        var to_piece: Piece = self.board[to.index()];
 
         if (from_piece == Piece.none) {
             return error.MoveNone;
@@ -290,7 +290,17 @@ pub const Position = struct {
             }
         }
 
-        // Add
+        if (move.getFlags() == MoveFlags.oo) {
+            to = Square.g1.relativeSquare(self.state.turn); // Needed for 960 UCI
+            to_piece = self.board[self.rook_initial[1 + @as(usize, self.state.turn.invert().index()) * 2].index()];
+            self.remove(to_piece, self.rook_initial[1 + @as(usize, self.state.turn.invert().index()) * 2]);
+        } else if (move.getFlags() == MoveFlags.ooo) {
+            to = Square.c1.relativeSquare(self.state.turn); // Needed for 960 UCI
+            to_piece = self.board[self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2].index()];
+            self.remove(to_piece, self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2]);
+        }
+
+        // Remove/Add
         self.removeAdd(from_piece, from, to);
         self.state.material_key ^= tables.hash_psq[from_piece.index()][from.index()];
         self.state.material_key ^= tables.hash_psq[from_piece.index()][to.index()];
@@ -303,20 +313,10 @@ pub const Position = struct {
         // If castling we move the rook as well
         switch (move.getFlags()) {
             MoveFlags.oo => {
-                var tmp: State = State{};
-                // CHESS 960 BUG
-                try self.movePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() + 3), @enumFromInt(from.index() + 3 - 2)), &tmp);
-                // We have moved, we need to set the turn back
-                self.state = state;
-                self.state.material_key ^= tables.hash_turn;
+                self.add(to_piece, Square.f1.relativeSquare(self.state.turn.invert()));
             },
             MoveFlags.ooo => {
-                var tmp: State = State{};
-                // CHESS 960 BUG
-                try self.movePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() - 4), @enumFromInt(from.index() - 4 + 3)), &tmp);
-                // We have moved, we need to set the turn back
-                self.state = state;
-                self.state.material_key ^= tables.hash_turn;
+                self.add(to_piece, Square.d1.relativeSquare(self.state.turn.invert()));
             },
             else => {},
         }
@@ -340,8 +340,18 @@ pub const Position = struct {
     /// silent will not change self.state
     pub fn unMovePiece(self: *Position, move: Move, silent: bool) !void {
         const from: Square = move.getFrom();
-        const to: Square = move.getTo();
-        const to_piece: Piece = self.board[to.index()];
+        var to: Square = move.getTo();
+        var to_piece: Piece = self.board[to.index()];
+
+        if (move.getFlags() == MoveFlags.oo) {
+            to = Square.g1.relativeSquare(self.state.turn.invert()); // Needed for 960 UCI
+            to_piece = self.board[to.index()];
+            self.remove(PieceType.pieceTypeToPiece(PieceType.rook, self.state.turn.invert()), Square.f1.relativeSquare(self.state.turn.invert()));
+        } else if (move.getFlags() == MoveFlags.ooo) {
+            to = Square.c1.relativeSquare(self.state.turn.invert()); // Needed for 960 UCI
+            to_piece = self.board[to.index()];
+            self.remove(PieceType.pieceTypeToPiece(PieceType.rook, self.state.turn.invert()), Square.d1.relativeSquare(self.state.turn.invert()));
+        }
 
         // Remove/Add
         self.removeAdd(to_piece, to, from);
@@ -371,9 +381,9 @@ pub const Position = struct {
 
         // If castling we move the rook as well
         if (move.getFlags() == MoveFlags.oo) {
-            try self.unMovePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() + 3), @enumFromInt(from.index() + 3 - 2)), true);
+            self.add(PieceType.pieceTypeToPiece(PieceType.rook, self.state.turn), self.rook_initial[1 + @as(usize, self.state.turn.invert().index()) * 2]);
         } else if (move.getFlags() == MoveFlags.ooo) {
-            try self.unMovePiece(Move.init(MoveFlags.quiet, @enumFromInt(from.index() - 4), @enumFromInt(from.index() - 4 + 3)), true);
+            self.add(PieceType.pieceTypeToPiece(PieceType.rook, self.state.turn), self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2]);
         }
     }
 
@@ -942,8 +952,11 @@ pub const Position = struct {
         var tokens = std.mem.tokenizeScalar(u8, fen, ' ');
         const bd: []const u8 = tokens.next().?;
 
+        // Behavior is : take the farthest rook to king for castling
         var passed_king_w: bool = false;
         var passed_king_b: bool = false;
+        var found_rook_w: bool = false;
+        var found_rook_b: bool = false;
 
         for (bd) |ch| {
             if (std.ascii.isDigit(ch)) {
@@ -957,15 +970,19 @@ pub const Position = struct {
 
                 if (p == Piece.w_king) {
                     passed_king_w = true;
+                    found_rook_w = false;
                 }
                 if (p == Piece.b_king) {
                     passed_king_b = true;
+                    found_rook_b = false;
                 }
-                if (ch == 'R') {
+                if (ch == 'R' and (passed_king_w or !found_rook_w)) {
                     pos.rook_initial[@intFromBool(passed_king_w)] = @enumFromInt(sq);
+                    found_rook_w = true;
                 }
-                if (ch == 'r') {
+                if (ch == 'r' and (passed_king_b or !found_rook_b)) {
                     pos.rook_initial[2 + @as(usize, @intFromBool(passed_king_b))] = @enumFromInt(sq);
+                    found_rook_b = true;
                 }
                 sq += 1;
             }

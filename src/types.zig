@@ -349,12 +349,19 @@ pub const Move = packed struct {
             }
         }
 
-        // In Chess960, castling is still indicated using the standard UCI move format
-        // (e.g., e1g1 for kingside castling or e1c1 for queenside castling)
+        // In standard,
+        // In chess 960,
         if (from_piece.pieceToPieceType() == PieceType.king) {
+            // Standard, caslting is done by targeting the square
             if (from == Square.e1.relativeSquare(pos.state.turn) and to == Square.g1.relativeSquare(pos.state.turn)) {
                 flags = MoveFlags.oo.index();
             } else if (from == Square.e1.relativeSquare(pos.state.turn) and to == Square.c1.relativeSquare(pos.state.turn)) {
+                flags = MoveFlags.ooo.index();
+            }
+            // Chess960, castling is done by targeting the friendly rook
+            if (to_piece.pieceToPieceType() == PieceType.rook and to_piece.pieceToColor() == from_piece.pieceToColor() and to.index() > from.index()) {
+                flags = MoveFlags.oo.index();
+            } else if (to_piece.pieceToPieceType() == PieceType.rook and to_piece.pieceToColor() == from_piece.pieceToColor() and to.index() < from.index()) {
                 flags = MoveFlags.ooo.index();
             }
         } else if (from_piece.pieceToPieceType() == PieceType.pawn) {
