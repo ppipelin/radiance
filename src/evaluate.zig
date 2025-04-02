@@ -3,16 +3,16 @@ const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
 
-inline fn computeDoubledPawns(bb_pawn: types.Bitboard) types.Value {
+pub inline fn computeDoubledPawns(bb_pawn: types.Bitboard) types.Value {
     var doubled_pawns: types.Value = 0;
     for (types.mask_file) |mask| {
         if (@popCount(mask & bb_pawn) > 1)
-            doubled_pawns += 1;
+            doubled_pawns += @popCount(mask & bb_pawn);
     }
     return doubled_pawns;
 }
 
-inline fn computeBlockedPawns(bb_pawn: types.Bitboard, col: types.Color, blockers: types.Bitboard) types.Value {
+pub inline fn computeBlockedPawns(bb_pawn: types.Bitboard, col: types.Color, blockers: types.Bitboard) types.Value {
     if (col.isWhite()) {
         return @popCount((bb_pawn <<| types.board_size) & blockers);
     } else {
@@ -20,7 +20,7 @@ inline fn computeBlockedPawns(bb_pawn: types.Bitboard, col: types.Color, blocker
     }
 }
 
-inline fn computeIsolatedPawns(bb_pawn: types.Bitboard) types.Value {
+pub inline fn computeIsolatedPawns(bb_pawn: types.Bitboard) types.Value {
     const left_neighbors = (bb_pawn & ~types.mask_file[types.File.fh.index()]) >> 1;
     const right_neighbors = (bb_pawn & ~types.mask_file[types.File.fa.index()]) << 1;
     var adjacent_pawns = left_neighbors | right_neighbors;
@@ -151,7 +151,7 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     score -=
         50 * (computeIsolatedPawns(bb_white_pawn_) - computeIsolatedPawns(bb_black_pawn_)) +
         20 * (computeDoubledPawns(bb_white_pawn_) - computeDoubledPawns(bb_black_pawn_)) +
-        10 * (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_all) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_all));
+        10 * (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_black) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_white));
 
     var bb_white_pawn: types.Bitboard = bb_white_pawn_;
     while (bb_white_pawn != 0) {
