@@ -288,6 +288,7 @@ pub fn deinitAll(allocator: std.mem.Allocator) void {
 }
 
 pub inline fn getAttacks(pt: PieceType, color: Color, sq: Square, blockers: Bitboard) Bitboard {
+    std.debug.assert(sq.index() < 64);
     return switch (pt) {
         PieceType.pawn => pawn_attacks[color.index()][sq.index()],
         PieceType.rook => moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable,
