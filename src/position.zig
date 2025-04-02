@@ -337,8 +337,7 @@ pub const Position = struct {
         self.updateCheckersPinned();
     }
 
-    /// silent will not change self.state
-    pub fn unMovePiece(self: *Position, move: Move, silent: bool) !void {
+    pub fn unMovePiece(self: *Position, move: Move) !void {
         const from: Square = move.getFrom();
         var to: Square = move.getTo();
         var to_piece: Piece = self.board[to.index()];
@@ -356,28 +355,26 @@ pub const Position = struct {
         // Remove/Add
         self.removeAdd(to_piece, to, from);
 
-        if (!silent) {
-            // Was a promotion
-            if (move.isPromotion()) {
-                // Before delete we store the data we need
-                const is_white: bool = to_piece.pieceToColor().isWhite();
-                // Remove promoted piece back into pawn (already moved back)
-                self.remove(to_piece, from);
-                self.add(if (is_white) Piece.w_pawn else Piece.b_pawn, from);
-                // to_piece = self.board[from.index()]; // update, may not be needed if we don't need later
-            }
-
-            if (self.state.last_captured_piece != Piece.none) {
-                var local_to: Square = to;
-                // Case where capture was en passant
-                if (move.isEnPassant())
-                    local_to = if (self.state.last_captured_piece.pieceToColor().isWhite()) to.add(Direction.north) else to.add(Direction.south);
-
-                self.add(self.state.last_captured_piece, local_to);
-            }
-
-            self.state = self.state.previous.?;
+        // Was a promotion
+        if (move.isPromotion()) {
+            // Before delete we store the data we need
+            const is_white: bool = to_piece.pieceToColor().isWhite();
+            // Remove promoted piece back into pawn (already moved back)
+            self.remove(to_piece, from);
+            self.add(if (is_white) Piece.w_pawn else Piece.b_pawn, from);
+            // to_piece = self.board[from.index()]; // update, may not be needed if we don't need later
         }
+
+        if (self.state.last_captured_piece != Piece.none) {
+            var local_to: Square = to;
+            // Case where capture was en passant
+            if (move.isEnPassant())
+                local_to = if (self.state.last_captured_piece.pieceToColor().isWhite()) to.add(Direction.north) else to.add(Direction.south);
+
+            self.add(self.state.last_captured_piece, local_to);
+        }
+
+        self.state = self.state.previous.?;
 
         // If castling we move the rook as well
         if (move.getFlags() == MoveFlags.oo) {
