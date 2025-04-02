@@ -24,10 +24,10 @@ pub fn initAll(allocator: std.mem.Allocator) void {
 ////// Zobrist hashing //////
 
 const Key = u64;
-// KQRBNPkqrbnp
+// pnbrqkPNBRQK
 pub var hash_psq: [types.Piece.nb()][types.board_size2]Key = std.mem.zeroes([types.Piece.nb()][types.board_size2]Key);
-// KQkq
 pub var hash_en_passant: [types.board_size]Key = std.mem.zeroes([types.board_size]Key);
+// qkQK
 pub var hash_castling: [4]Key = std.mem.zeroes([4]Key);
 pub var hash_turn: Key = 0;
 
