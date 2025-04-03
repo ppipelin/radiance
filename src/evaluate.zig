@@ -156,7 +156,6 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     }
 
     if (endgame) {
-        // if (pos.score_material_w > pos.score_material_b) {
         if (score > 0) {
             score += -pos.score_king_b;
         } else if (score < 0) {
