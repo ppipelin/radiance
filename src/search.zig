@@ -359,8 +359,16 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
             }
 
             if (score == -types.value_none) {
+                // Passed pawns moves are not reduced
+                const from_piece: types.Piece = pos.board[move.getFrom().index()];
+                var is_passed_pawn: bool = false;
+                if (from_piece.pieceToPieceType() == types.PieceType.pawn) {
+                    const bb_them_pawn: types.Bitboard = pos.bb_colors[pos.state.turn.invert().index()] & pos.bb_pieces[types.PieceType.pawn.index()];
+                    is_passed_pawn = (tables.passed_pawn[pos.state.turn.index()][move.getFrom().index()] & bb_them_pawn) == 0;
+                }
+
                 // LMR before full
-                if (current_depth >= 2 and move_count > 3 and !move.isCapture() and !move.isPromotion() and pos.state.checkers == 0) {
+                if (current_depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
                     // Reduced LMR
                     const d: u8 = @max(1, current_depth -| 4);
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, d - 1, false);
