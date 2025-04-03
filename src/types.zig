@@ -430,12 +430,37 @@ pub const Move = packed struct {
             }
         }
 
-        const m1_from_piece: Piece = context.pos.board[m1.getFrom().index()];
-        const m2_from_piece: Piece = context.pos.board[m2.getFrom().index()];
-        const m1_to_piece: Piece = context.pos.board[m1.getTo().index()];
-        const m2_to_piece: Piece = context.pos.board[m2.getTo().index()];
-        return (if (m1.isCapture() and m1.getFlags() != MoveFlags.en_passant) tables.material[m1_to_piece.pieceToPieceType().index()] - tables.material[m1_from_piece.pieceToPieceType().index()] else 0) >
-            (if (m2.isCapture() and m2.getFlags() != MoveFlags.en_passant) tables.material[m2_to_piece.pieceToPieceType().index()] - tables.material[m2_from_piece.pieceToPieceType().index()] else 0);
+        var m1_from_piece: PieceType = context.pos.board[m1.getFrom().index()].pieceToPieceType();
+        var m2_from_piece: PieceType = context.pos.board[m2.getFrom().index()].pieceToPieceType();
+
+        // Promotion
+        if (m1.isPromotion()) {
+            m1_from_piece = MoveFlags.promoteType(m1.getFlags());
+        }
+
+        if (m2.isPromotion()) {
+            m2_from_piece = MoveFlags.promoteType(m2.getFlags());
+        }
+
+        var m1_to_piece: PieceType = context.pos.board[m1.getTo().index()].pieceToPieceType();
+        var m2_to_piece: PieceType = context.pos.board[m2.getTo().index()].pieceToPieceType();
+
+        // Castle (bonus and 960 specific cases)
+        var m1_caslte_bonus: Value = 0;
+        var m2_caslte_bonus: Value = 0;
+
+        if (m1.isCastle()) {
+            m1_caslte_bonus = 50;
+            m1_to_piece = PieceType.none;
+        }
+
+        if (m2.isCastle()) {
+            m2_caslte_bonus = 50;
+            m2_to_piece = PieceType.none;
+        }
+
+        return (if (m1.isCapture() and m1.getFlags() != MoveFlags.en_passant) tables.material[m1_to_piece.index()] - tables.material[m1_from_piece.index()] else m1_caslte_bonus) >
+            (if (m2.isCapture() and m2.getFlags() != MoveFlags.en_passant) tables.material[m2_to_piece.index()] - tables.material[m2_from_piece.index()] else m2_caslte_bonus);
     }
 
     pub inline fn generateMove(allocator: std.mem.Allocator, comptime flag: MoveFlags, from: Square, to_: Bitboard, list: *std.ArrayListUnmanaged(Move)) void {
