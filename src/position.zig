@@ -821,6 +821,13 @@ pub const Position = struct {
         std.sort.pdq(Move, list.items, Move.MoveSortContext{ .pos = self.*, .m1 = pv_move, .m2 = tt_move }, Move.sort);
     }
 
+    pub fn endgame(self: Position, col: Color) bool {
+        // Compute score based on the endgame condition
+        // Once ennemy has less pieces our king attacks the other one
+        // King, seven pawns a rook and a bishop
+        return (if (col.isWhite()) self.score_material_b else self.score_material_w) <= tables.material[types.PieceType.king.index()] + 7 * tables.material[types.PieceType.pawn.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
+    }
+
     pub fn print(self: Position, writer: anytype) void {
         const line = " +---+---+---+---+---+---+---+---+\n";
         const letters = "   A   B   C   D   E   F   G   H\n";

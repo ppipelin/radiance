@@ -78,10 +78,7 @@ pub fn evaluateShannon(pos: position.Position) types.Value {
 pub fn evaluateTable(pos: position.Position) types.Value {
     var score: types.Value = pos.score_material_w - pos.score_material_b;
 
-    // Compute score based on the endgame condition
-    // Once ennemy has less pieces our king attacks the other one
-    // King, seven pawns a rook and a bishop
-    const endgame: bool = (if (pos.state.turn.isWhite()) pos.score_material_b else pos.score_material_w) <= tables.material[types.PieceType.king.index()] + 7 * tables.material[types.PieceType.pawn.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
+    const endgame: bool = pos.endgame(pos.state.turn);
 
     const bb_white: types.Bitboard = pos.bb_colors[types.Color.white.index()];
     const bb_black: types.Bitboard = pos.bb_colors[types.Color.black.index()];

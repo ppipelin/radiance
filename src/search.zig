@@ -286,7 +286,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     // Pruning
     // Null move pruning
     const static_eval: types.Value = (if (pos.state.turn.isWhite()) pos.score_mg else -pos.score_mg);
-    if (!is_nmr and current_depth >= 3 and static_eval > beta and @popCount(pos.state.checkers) == 0) {
+    if (!is_nmr and current_depth >= 3 and !pos.endgame(pos.state.turn.invert()) and static_eval > beta and @popCount(pos.state.checkers) == 0) {
         const tapered: u8 = @intCast(@min(@divTrunc(static_eval - beta, 200), 6));
         const r: u8 = tapered + @divTrunc(current_depth, 3) + 5;
         try pos.moveNull(&s);
