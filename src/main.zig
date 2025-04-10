@@ -15,5 +15,5 @@ pub fn main() !void {
 
     var stdin = std.io.getStdIn().reader();
 
-    try interface.loop(std.heap.c_allocator, &stdin, &stdout);
+    try interface.loop(allocator, &stdin, &stdout);
 }

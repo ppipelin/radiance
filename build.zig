@@ -75,14 +75,12 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/tests_interface.zig"),
         .target = target,
         .optimize = optimize,
-        .link_libc = true,
     });
 
     const exe_tests_evaluate = b.addTest(.{
         .root_source_file = b.path("src/tests_evaluate.zig"),
         .target = target,
         .optimize = optimize,
-        .link_libc = true,
     });
 
     const run_exe_tests = b.addRunArtifact(exe_tests);
