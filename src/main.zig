@@ -6,8 +6,9 @@ const tables = @import("tables.zig");
 const types = @import("types.zig");
 
 pub fn main() !void {
-    tables.initAll(std.heap.c_allocator);
-    defer tables.deinitAll(std.heap.c_allocator);
+    const allocator = std.heap.c_allocator;
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
 
     const stdout = std.io.getStdOut().writer();
     try stdout.print("Radiance {s} by Paul-Elie Pipelin (ppipelin)\n", .{types.computeVersion()});
