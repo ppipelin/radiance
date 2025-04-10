@@ -199,6 +199,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
 
     interface.nodes_searched = 0;
     interface.transposition_used = 0;
+    interface.seldepth = 0;
 
     var current_depth: u8 = 1;
     while (current_depth <= limits.depth) : (current_depth += 1) {
@@ -462,6 +463,9 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
     var alpha = alpha_;
 
     interface.nodes_searched += 1;
+    if (interface.seldepth < ss[0].ply + 1) {
+        interface.seldepth = ss[0].ply + 1;
+    }
 
     // In order to get the quiescence search to terminate, plies are usually restricted to moves that deal directly with the threat,
     // such as moves that capture and recapture (often called a 'capture search') in chess
@@ -535,7 +539,7 @@ fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
 
 fn info(stdout: anytype, limits: interface.Limits, depth: u16, score: types.Value) !void {
     const time: u64 = @intCast(elapsed(limits));
-    try stdout.print("info depth {} nodes {} nps {} time {} hash {} hashfull {} hashused {} score cp {} pv ", .{ depth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, tables.transposition_table.size, 0, interface.transposition_used, score });
+    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hash {} hashfull {} hashused {} score cp {} pv ", .{ depth, interface.seldepth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, tables.transposition_table.size, 0, interface.transposition_used, score });
     try pvDisplay(stdout, root_moves.items[0].pv.items);
     try stdout.print("\n", .{});
 }
