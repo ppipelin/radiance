@@ -346,7 +346,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 score = found.?[0];
                 if (score > types.value_mate_in_max_depth) {
                     score -= ss[0].ply;
-                } else if (score < types.value_mate_in_max_depth) {
+                } else if (score < types.value_mated_in_max_depth) {
                     score += ss[0].ply;
                 }
 
@@ -429,22 +429,24 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         // Update ss->pv
         if (score > best_score) {
             best_score = score;
-            if (pv_node and !root_node) // Update pv even in fail-high case
-            {
-                update_pv(ss[0].pv.?, move, ss[1].pv.?);
-            }
-
-            // Fail high
-            if (score >= beta) {
-                if (score != types.value_draw) {
-                    const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move }) = tables.transposition_table.get(key);
-                    if (found == null or found.?[1] <= current_depth - 1) {
-                        try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move });
-                    }
+            if (score > alpha) {
+                if (pv_node and !root_node) // Update pv even in fail-high case
+                {
+                    update_pv(ss[0].pv.?, move, ss[1].pv.?);
                 }
-                break;
-            } else {
-                alpha = score; // Update alpha! Always alpha < beta
+
+                // Fail high
+                if (score >= beta) {
+                    if (score != types.value_draw) {
+                        const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move }) = tables.transposition_table.get(key);
+                        if (found == null or found.?[1] <= current_depth - 1) {
+                            try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move });
+                        }
+                    }
+                    break;
+                } else {
+                    alpha = score; // Update alpha! Always alpha < beta
+                }
             }
         }
     }
