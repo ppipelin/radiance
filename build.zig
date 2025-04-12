@@ -104,4 +104,37 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_exe_tests_960.step);
     test_step.dependOn(&run_exe_tests_interface.step);
     test_step.dependOn(&run_exe_tests_evaluate.step);
+
+    const deploy_step = b.step("deploy", "Deploy executables");
+
+    const targets: []const struct {
+        query: std.Target.Query,
+        name: []const u8,
+    } = &.{
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .windows, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64 } }, .name = "radiance_x86_64-win" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .windows, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64_v2 } }, .name = "radiance_x86_64_v2-win" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .windows, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64_v3 } }, .name = "radiance_x86_64_v3-win" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .windows, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64_v4 } }, .name = "radiance_x86_64_v4-win" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .linux, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64 } }, .name = "radiance_x86_64-linux" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .linux, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64_v2 } }, .name = "radiance_x86_64_v2-linux" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .linux, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64_v3 } }, .name = "radiance_x86_64_v3-linux" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .linux, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64_v4 } }, .name = "radiance_x86_64_v4-linux" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .macos, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64 } }, .name = "radiance_x86_64-macos" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .macos, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64_v2 } }, .name = "radiance_x86_64_v2-macos" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .macos, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64_v3 } }, .name = "radiance_x86_64_v3-macos" },
+        .{ .query = .{ .cpu_arch = .x86_64, .os_tag = .macos, .cpu_model = .{ .explicit = &std.Target.x86.cpu.x86_64_v4 } }, .name = "radiance_x86_64_v4-macos" },
+    };
+
+    for (targets) |t| {
+        const deploy_exe = b.addExecutable(.{
+            .name = t.name,
+            .root_source_file = b.path("src/main.zig"),
+            .target = b.resolveTargetQuery(t.query),
+            .optimize = .ReleaseFast,
+            .link_libc = true,
+        });
+
+        const deploy_cmd = b.addInstallArtifact(deploy_exe, .{});
+        deploy_step.dependOn(&deploy_cmd.step);
+    }
 }

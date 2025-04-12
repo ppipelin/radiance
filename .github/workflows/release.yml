@@ -1,0 +1,94 @@
+name: release
+
+on:
+  push:
+    tags:
+      - '**'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+    runs-on: ubuntu-latest
+    name: Build and Release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v1
+
+      - run: zig build test
+
+      - run: zig build deploy
+
+      - name: Upload Windows Executable
+        uses: actions/upload-artifact@v4
+        with:
+            name: radiance
+            path: ${{ github.workspace }}/zig-out/bin/*
+
+  release:
+    needs: build
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    name: Release
+
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Extract release notes
+      uses: ffurrer2/extract-release-notes@v2
+      with:
+        release_notes_file: RELEASE_NOTES.md
+
+    - name: Append custom message to release notes
+      run: |
+        echo "" >> RELEASE_NOTES.md
+        echo -e "\n### Executables\nExecutables versions are related to cpu features, for modern cpu use latest version (v3 for 2013+ and v4 for 2022+).\n" >> RELEASE_NOTES.md
+
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: radiance
+        path: ${{ github.workspace }}/exe/
+
+    - name: Create release
+      run: gh release create ${{ github.ref_name }} -t "Radiance ${{ github.ref_name }}" --notes-file RELEASE_NOTES.md --prerelease
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Rename file
+      run: |
+        mv ${{ github.workspace }}/exe/radiance_x86_64-win.exe ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64-win.exe
+        mv ${{ github.workspace }}/exe/radiance_x86_64_v2-win.exe ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v2-win.exe
+        mv ${{ github.workspace }}/exe/radiance_x86_64_v3-win.exe ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v3-win.exe
+        mv ${{ github.workspace }}/exe/radiance_x86_64_v4-win.exe ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v4-win.exe
+        mv ${{ github.workspace }}/exe/radiance_x86_64-linux ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64-linux
+        mv ${{ github.workspace }}/exe/radiance_x86_64_v2-linux ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v2-linux
+        mv ${{ github.workspace }}/exe/radiance_x86_64_v3-linux ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v3-linux
+        mv ${{ github.workspace }}/exe/radiance_x86_64_v4-linux ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v4-linux
+        mv ${{ github.workspace }}/exe/radiance_x86_64-macos ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64-macos
+        mv ${{ github.workspace }}/exe/radiance_x86_64_v2-macos ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v2-macos
+        mv ${{ github.workspace }}/exe/radiance_x86_64_v3-macos ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v3-macos
+        mv ${{ github.workspace }}/exe/radiance_x86_64_v4-macos ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v4-macos
+
+    - name: Upload executables
+      run: |
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64-win.exe
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v2-win.exe
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v3-win.exe
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v4-win.exe
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64-linux
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v2-linux
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v3-linux
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v4-linux
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64-macos
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v2-macos
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v3-macos
+        gh release upload ${{ github.ref_name }} ${{ github.workspace }}/exe/radiance_${{ github.ref_name }}_x86_64_v4-macos
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
