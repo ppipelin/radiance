@@ -383,7 +383,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 }
                 // Full-depth search
                 if (pv_node and (move_count == 1 or score > alpha)) {
-                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1, false);
+                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1 + @intFromBool(pos.state.checkers != 0), false);
                     // Let's assert we don't store draw (repetition)
                     if (score != types.value_draw) {
                         if (found == null or found.?[1] <= current_depth - 1) {
