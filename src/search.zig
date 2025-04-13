@@ -271,6 +271,10 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
     interface.nodes_searched += 1;
 
+    // Quiescence search at depth 0 and razoring for non_pv where material difference is more than q+r+b
+    // const razoring_threshold = (tables.material[types.PieceType.queen.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()]);
+    // const razoring: bool = (if (pos.state.turn.isWhite()) pos.score_material_b - pos.score_material_w else pos.score_material_w - pos.score_material_b) >= razoring_threshold;
+    // or (!pv_node and razoring)
     if (current_depth <= 0) {
         // return eval(pos.*);
         return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_nmr);
