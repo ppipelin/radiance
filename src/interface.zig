@@ -405,12 +405,13 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position
         } else if (std.mem.eql(u8, "ponder", token.?)) {}
     }
 
+    const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
+
     var t = try std.time.Timer.start();
     if (limits.perft > 0) {
-        const nodes = try search.perft(allocator, stdout, pos, limits.perft, true);
+        const nodes = try search.perft(allocator, stdout, pos, limits.perft, is_960, true);
         const nodes_f: f64 = @floatFromInt(nodes);
         const time_f: f64 = @floatFromInt(t.read());
-
         try stdout.print("info nodes {} time {} ({d:.1} Mnps)\n", .{ nodes, std.fmt.fmtDuration(t.read()), (nodes_f / (time_f / 1000.0)) });
     } else {
         const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
@@ -418,14 +419,14 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position
         const search_mode: []const u8 = options.get("Search").?.current_value;
         if (std.mem.eql(u8, search_mode, "Random")) {
             try stdout.print("bestmove ", .{});
-            try (try search.searchRandom(allocator, pos)).printUCI(stdout);
+            try (try search.searchRandom(allocator, pos, is_960)).printUCI(stdout);
             try stdout.print("\n", .{});
         } else if (std.mem.eql(u8, search_mode, "NegamaxAlphaBeta")) {
             var move: types.Move = .none;
             if (std.mem.eql(u8, evaluation_mode, "Shannon")) {
-                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateShannon);
+                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateShannon, is_960);
             } else if (std.mem.eql(u8, evaluation_mode, "PSQ")) {
-                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateTable);
+                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateTable, is_960);
             }
             try stdout.print("bestmove ", .{});
             try move.printUCI(stdout);

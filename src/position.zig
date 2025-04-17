@@ -450,7 +450,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn generateLegalMoves(self: *Position, allocator: std.mem.Allocator, color: Color, list: *std.ArrayListUnmanaged(Move)) void {
+    pub fn generateLegalMoves(self: *Position, allocator: std.mem.Allocator, color: Color, list: *std.ArrayListUnmanaged(Move), is_960: bool) void {
         const bb_us: Bitboard = self.bb_colors[color.index()];
         const bb_them: Bitboard = self.bb_colors[color.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
@@ -550,8 +550,11 @@ pub const Position = struct {
                     const path_king_oo: Bitboard = tables.squares_between[our_king.index()][to_king_oo.index()] | to_king_oo.sqToBB();
                     const path_rook_oo: Bitboard = tables.squares_between[to_rook_oo.index()][rook_sq.index()] | to_rook_oo.sqToBB();
                     if (rook_sq.sqToBB() & attacked_horizontal == 0 and (path_king_oo | path_rook_oo) & (bb_all & ~rook_sq.sqToBB() & ~our_king.sqToBB()) == 0 and path_king_oo & attacked == 0) {
-                        list.append(allocator, Move.init(MoveFlags.oo, our_king, rook_sq)) catch unreachable;
-                        // list.append(allocator, Move.init(MoveFlags.oo, our_king, to_king_oo)) catch unreachable;
+                        if (is_960) {
+                            list.append(allocator, Move.init(MoveFlags.oo, our_king, rook_sq)) catch unreachable;
+                        } else {
+                            list.append(allocator, Move.init(MoveFlags.oo, our_king, to_king_oo)) catch unreachable;
+                        }
                     }
                 }
                 // OOO
@@ -562,8 +565,11 @@ pub const Position = struct {
                     const path_king_ooo: Bitboard = tables.squares_between[our_king.index()][to_king_ooo.index()] | to_king_ooo.sqToBB();
                     const path_rook_ooo: Bitboard = tables.squares_between[to_rook_ooo.index()][rook_sq.index()] | to_rook_ooo.sqToBB();
                     if (rook_sq.sqToBB() & attacked_horizontal == 0 and (path_king_ooo | path_rook_ooo) & (bb_all & ~rook_sq.sqToBB() & ~our_king.sqToBB()) == 0 and path_king_ooo & attacked == 0) {
-                        list.append(allocator, Move.init(MoveFlags.ooo, our_king, rook_sq)) catch unreachable;
-                        // list.append(allocator, Move.init(MoveFlags.ooo, our_king, to_king_ooo)) catch unreachable;
+                        if (is_960) {
+                            list.append(allocator, Move.init(MoveFlags.ooo, our_king, rook_sq)) catch unreachable;
+                        } else {
+                            list.append(allocator, Move.init(MoveFlags.ooo, our_king, to_king_ooo)) catch unreachable;
+                        }
                     }
                 }
 

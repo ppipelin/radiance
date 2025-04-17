@@ -258,8 +258,8 @@ test "SearchLeakNoInterface" {
     var move: types.Move = .none;
     var limits = interface.limits;
     limits.depth = 8;
-    move = try search.iterativeDeepening(allocator, stdout, &pos, limits, evaluate.evaluateShannon);
-    move = try search.iterativeDeepening(allocator, stdout, &pos, limits, evaluate.evaluateTable);
+    move = try search.iterativeDeepening(allocator, stdout, &pos, limits, evaluate.evaluateShannon, false);
+    move = try search.iterativeDeepening(allocator, stdout, &pos, limits, evaluate.evaluateTable, false);
     try stdout.print("bestmove ", .{});
     try move.printUCI(stdout);
     try stdout.print("\n", .{});

@@ -49,7 +49,7 @@ inline fn outOfTime(limits: interface.Limits) bool {
     return elapsed(limits) > remaining_computed;
 }
 
-pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, depth: u8, verbose: bool) !u64 {
+pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, depth: u8, is_960: bool, verbose: bool) !u64 {
     var nodes: u64 = 0;
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
@@ -58,7 +58,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
         return 1;
     }
 
-    pos.generateLegalMoves(allocator, pos.state.turn, &move_list);
+    pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
 
     if (depth == 1) {
         if (verbose) {
@@ -72,7 +72,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
 
         try pos.movePiece(move, &s);
 
-        const nodes_number = try (perft(allocator, stdout, pos, depth - 1, false));
+        const nodes_number = try (perft(allocator, stdout, pos, depth - 1, is_960, false));
         nodes += nodes_number;
         if (verbose) {
             try move.printUCI(stdout);
@@ -84,7 +84,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
     return nodes;
 }
 
-pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u8) !u64 {
+pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u8, is_960: bool) !u64 {
     var nodes: u64 = 0;
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
@@ -93,7 +93,7 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
         return 1;
     }
 
-    pos.generateLegalMoves(allocator, pos.state.turn, &move_list);
+    pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
 
     if (depth == 1)
         return move_list.items.len;
@@ -108,7 +108,7 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
 
         try pos.movePiece(move, &s);
 
-        const nodes_number = try (perftTest(allocator, pos, depth - 1));
+        const nodes_number = try (perftTest(allocator, pos, depth - 1, is_960));
         nodes += nodes_number;
 
         try pos.unMovePiece(move);
@@ -133,10 +133,10 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
     return nodes;
 }
 
-pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position) !types.Move {
+pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, is_960: bool) !types.Move {
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
-    pos.generateLegalMoves(allocator, pos.state.turn, &move_list);
+    pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
 
     if (move_list.items.len == 0)
         return error.MoveAfterCheckmate;
@@ -150,7 +150,7 @@ pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position) !type
     return move_list.items[rand.intRangeAtMost(u8, 0, len - 1)];
 }
 
-pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value) !types.Move {
+pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, is_960: bool) !types.Move {
     if (limits.movetime > 0) {
         interface.remaining = limits.movetime * 30;
     } else {
@@ -173,7 +173,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
 
-    pos.generateLegalMoves(allocator, pos.state.turn, &move_list);
+    pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
 
     const root_moves_len: usize = move_list.items.len;
     if (root_moves_len == 0) {
@@ -221,7 +221,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
         // Disable by alpha = -types.value_infinite; beta = types.value_infinite;
         // alpha = -types.value_infinite; beta = types.value_infinite;
         while (true) {
-            const score: types.Value = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, current_depth, false);
+            const score: types.Value = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, current_depth, is_960, false);
             if (current_depth > 1 and outOfTime(limits))
                 break;
 
@@ -263,7 +263,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     return move;
 }
 
-fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Stack, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, current_depth: u8, is_nmr: bool) !types.Value {
+fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Stack, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, current_depth: u8, is_960: bool, is_nmr: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
@@ -296,7 +296,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         const tapered: u8 = @intCast(@min(@divTrunc(static_eval - beta, 200), 6));
         const r: u8 = tapered + @divTrunc(current_depth, 3) + 5;
         try pos.moveNull(&s);
-        const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, current_depth -| r, true);
+        const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, current_depth -| r, is_960, true);
         try pos.unMoveNull();
         if (current_depth > 1 and outOfTime(limits))
             return -types.value_none;
@@ -316,7 +316,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         }
         // TODO: compute checkers
     } else {
-        pos.generateLegalMoves(allocator, pos.state.turn, &move_list);
+        pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
         var pv_move: types.Move = types.Move.none;
         if (root_moves.items[0].pv.items.len > ss[0].ply) {
             pv_move = root_moves.items[0].pv.items[ss[0].ply];
@@ -375,19 +375,19 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 if (current_depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
                     // Reduced LMR
                     const d: u8 = @max(1, current_depth -| 4);
-                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, d - 1, false);
+                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, d - 1, is_960, false);
                     // Failed so roll back to full-depth null window
                     if (score > alpha and current_depth > d) {
-                        score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1, false);
+                        score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1, is_960, false);
                     }
                 }
                 // In case non PV search are called without LMR, null window search at current depth
                 else if (!pv_node or move_count > 1) {
-                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1, false);
+                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1, is_960, false);
                 }
                 // Full-depth search
                 if (pv_node and (move_count == 1 or score > alpha)) {
-                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1 + @intFromBool(pos.state.checkers != 0), false);
+                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
                     // Let's assert we don't store draw (repetition)
                     if (score != types.value_draw) {
                         if (found == null or found.?[1] <= current_depth - 1) {
