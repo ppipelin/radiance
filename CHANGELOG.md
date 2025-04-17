@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.1] - 2025-04-17
+
+### Fixed
+
+- Castle notation changes between variants.
+
 ## [4.0] - 2025-04-16
 
 ### Added
@@ -270,7 +276,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - UCI `position` command
 - `Random` search
 
-[Unreleased]: https://github.com/ppipelin/radiance/
+[Unreleased]: https://github.com/ppipelin/radiance/compare/4.0.1...HEAD
+[4.0.1]: https://github.com/ppipelin/radiance/compare/4.0...4.0.1
 [4.0]: https://github.com/ppipelin/radiance/tag/4.0
 [3.5]: https://github.com/ppipelin/radiance_archived/compare/3.4...3.5
 [3.4]: https://github.com/ppipelin/radiance_archived/compare/3.3...3.4
