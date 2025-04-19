@@ -16,37 +16,36 @@ const Magic = struct {
         blockers &= self.mask;
         blockers = blockers *% self.magic;
         blockers >>= self.shift;
+        std.debug.assert(blockers < 4096);
         return @truncate(blockers);
     }
 
     pub fn computeValue(self: Magic, blockers_: Bitboard) Bitboard {
-        const ptr = self.ptr;
-        var blockers = blockers_;
-        blockers &= self.mask;
-        blockers = blockers *% self.magic;
-        blockers >>= self.shift;
-        std.debug.assert(blockers < 4096);
-        return ptr[blockers];
+        const index = self.computeIndex(blockers_);
+        return self.ptr[index];
     }
 };
 
 pub var magics_bishop: [types.board_size2]Magic = std.mem.zeroes([types.board_size2]Magic);
 pub var magics_rook: [types.board_size2]Magic = std.mem.zeroes([types.board_size2]Magic);
+pub var collisions_found_bishop: [types.board_size2]u12 = std.mem.zeroes([types.board_size2]u12);
+pub var collisions_found_rook: [types.board_size2]u12 = std.mem.zeroes([types.board_size2]u12);
+
 pub fn compute(allocator: std.mem.Allocator) void {
     const seed: u64 = @intCast(std.time.nanoTimestamp());
     var prng = std.Random.DefaultPrng.init(seed);
 
     var sq = types.Square.a1;
     while (sq != types.Square.none) : (sq = sq.inc().*) {
-        generateMagic(&magics_bishop[sq.index()], sq, tables.moves_bishop_mask[sq.index()], tables.getBishopAttacks, allocator, &prng, BBits);
+        generateMagic(allocator, &magics_bishop[sq.index()], sq, tables.moves_bishop_mask[sq.index()], tables.getBishopAttacks, bishop_bits, &prng);
 
-        generateMagic(&magics_rook[sq.index()], sq, tables.moves_rook_mask[sq.index()], tables.getRookAttacks, allocator, &prng, RBits);
+        generateMagic(allocator, &magics_rook[sq.index()], sq, tables.moves_rook_mask[sq.index()], tables.getRookAttacks, rook_bits, &prng);
 
         std.debug.print("found magic for sq {}\n", .{sq});
     }
 }
 
-const RBits = [types.board_size2]u8{
+const rook_bits = [types.board_size2]u8{
     12, 11, 11, 11, 11, 11, 11, 12,
     11, 10, 10, 10, 10, 10, 10, 11,
     11, 10, 10, 10, 10, 10, 10, 11,
@@ -57,7 +56,7 @@ const RBits = [types.board_size2]u8{
     12, 11, 11, 11, 11, 11, 11, 12,
 };
 
-const BBits = [types.board_size2]u8{
+const bishop_bits = [types.board_size2]u8{
     6, 5, 5, 5, 5, 5, 5, 6,
     5, 5, 5, 5, 5, 5, 5, 5,
     5, 5, 7, 7, 7, 7, 5, 5,
@@ -68,7 +67,7 @@ const BBits = [types.board_size2]u8{
     6, 5, 5, 5, 5, 5, 5, 6,
 };
 
-fn generateMagic(magic_out: *Magic, sq: types.Square, mask: Bitboard, getMovesFn: fn (types.Square, Bitboard) Bitboard, allocator: std.mem.Allocator, prng: *std.Random.DefaultPrng, bits: [types.board_size2]u8) void {
+fn generateMagic(allocator: std.mem.Allocator, magic_out: *Magic, sq: types.Square, mask: Bitboard, getAttacks: fn (types.Square, Bitboard) Bitboard, bits: [types.board_size2]u8, prng: *std.Random.DefaultPrng) void {
     var blockers: std.ArrayListUnmanaged(Bitboard) = .empty;
     defer blockers.deinit(allocator);
 
@@ -90,7 +89,7 @@ fn generateMagic(magic_out: *Magic, sq: types.Square, mask: Bitboard, getMovesFn
                 valid = false;
                 break;
             }
-            const moves = getMovesFn(sq, blocker);
+            const moves = getAttacks(sq, blocker);
             if (magic.ptr[index] == 0) {
                 magic.ptr[index] = moves;
             } else if (magic.ptr[index] != moves) {

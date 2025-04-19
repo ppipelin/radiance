@@ -297,10 +297,10 @@ pub fn getAttacks(pt: PieceType, color: Color, sq: Square, blockers: Bitboard) B
     return switch (pt) {
         PieceType.pawn => pawn_attacks[color.index()][sq.index()],
         // PieceType.rook => moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable,
-        PieceType.rook => magic.magics_rook[sq.index()].computeValue(blockers),
         // PieceType.bishop => moves_bishop[sq.index()].get(moves_bishop_mask[sq.index()] & blockers) orelse unreachable,
-        PieceType.bishop => magic.magics_bishop[sq.index()].computeValue(blockers),
         // PieceType.queen => (moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable) | (moves_bishop[sq.index()].get(moves_bishop_mask[sq.index()] & blockers) orelse unreachable),
+        PieceType.rook => magic.magics_rook[sq.index()].computeValue(blockers),
+        PieceType.bishop => magic.magics_bishop[sq.index()].computeValue(blockers),
         PieceType.queen => magic.magics_bishop[sq.index()].computeValue(blockers) | magic.magics_rook[sq.index()].computeValue(blockers),
         else => pseudo_legal_attacks[pt.index()][sq.index()],
     };
