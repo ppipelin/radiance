@@ -1,4 +1,5 @@
 const interface = @import("interface.zig");
+const magic = @import("magic.zig");
 const position = @import("position.zig");
 const search = @import("search.zig");
 const std = @import("std");
@@ -15,5 +16,15 @@ pub fn main() !void {
 
     var stdin = std.io.getStdIn().reader();
 
-    try interface.loop(allocator, &stdin, &stdout);
+    const args = try std.process.argsAlloc(allocator);
+
+    if (args.len > 1 and std.mem.eql(u8, args[1], "compute")) {
+        var iterations: u64 = 1;
+        if (args.len > 2) {
+            iterations = try std.fmt.parseInt(u64, args[2], 10);
+        }
+        magic.compute(allocator, iterations);
+    } else {
+        try interface.loop(allocator, &stdin, &stdout);
+    }
 }
