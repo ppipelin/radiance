@@ -159,6 +159,18 @@ test "PerftEnPassantCheckPinnedPromotion" {
     try expectEqual(134_351, search.perftTest(allocator, &pos, 5, false) catch unreachable);
 }
 
+test "PerftQueens" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var s: position.State = position.State{};
+    var pos: position.Position = try position.Position.setFen(&s, "4k3/pppppppp/8/QQQQQQQQ/8/QQQQQQQQ/8/4K3 w - - 0 1");
+    try expectEqual(130, search.perftTest(allocator, &pos, 1, false) catch unreachable);
+    try expectEqual(1009, search.perftTest(allocator, &pos, 2, false) catch unreachable);
+    try expectEqual(134_922, search.perftTest(allocator, &pos, 3, false) catch unreachable);
+    try expectEqual(1_088_511, search.perftTest(allocator, &pos, 4, false) catch unreachable);
+}
+
 test "MovegenEnPassant" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);

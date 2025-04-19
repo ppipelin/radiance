@@ -83,17 +83,25 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const exe_tests_magic = b.addTest(.{
+        .root_source_file = b.path("src/tests_magic.zig"),
+        .target = target,
+        .optimize = .ReleaseSafe,
+    });
+
     const run_exe_tests = b.addRunArtifact(exe_tests);
     const run_exe_tests_movegen = b.addRunArtifact(exe_tests_movegen);
     const run_exe_tests_960 = b.addRunArtifact(exe_tests_960);
     const run_exe_tests_interface = b.addRunArtifact(exe_tests_interface);
     const run_exe_tests_evaluate = b.addRunArtifact(exe_tests_evaluate);
+    const run_exe_tests_magic = b.addRunArtifact(exe_tests_magic);
 
     run_exe_tests.has_side_effects = true;
     run_exe_tests_movegen.has_side_effects = true;
     run_exe_tests_960.has_side_effects = true;
     run_exe_tests_interface.has_side_effects = true;
     run_exe_tests_evaluate.has_side_effects = true;
+    run_exe_tests_magic.has_side_effects = true;
 
     // Similar to creating the run step earlier, this exposes a `test` step to
     // the `zig build --help` menu, providing a way for the user to request
@@ -104,6 +112,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_exe_tests_960.step);
     test_step.dependOn(&run_exe_tests_interface.step);
     test_step.dependOn(&run_exe_tests_evaluate.step);
+    test_step.dependOn(&run_exe_tests_magic.step);
 
     const deploy_step = b.step("deploy", "Deploy executables");
 
