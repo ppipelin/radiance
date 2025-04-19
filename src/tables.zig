@@ -22,6 +22,9 @@ pub fn initAll(allocator: std.mem.Allocator) void {
     initNonBlockable();
     initPassedPawn();
     initZobrist();
+    var t = std.time.Timer.start() catch unreachable;
+    @import("magic.zig").compute(allocator);
+    std.debug.print("time {}\n", .{std.fmt.fmtDuration(t.read())});
 }
 
 ////// Zobrist hashing //////
@@ -164,11 +167,11 @@ inline fn reverseBitboard(b_: Bitboard) Bitboard {
         ((b >> 16) & 0xffff0000) | (b >> 48);
 }
 
-inline fn getBishopAttacks(sq: Square, blockers: Bitboard) Bitboard {
+pub inline fn getBishopAttacks(sq: Square, blockers: Bitboard) Bitboard {
     return slidingBB(sq, blockers, types.mask_diagonal[@intCast(sq.diagonal())]) | slidingBB(sq, blockers, types.mask_anti_diagonal[@intCast(sq.antiDiagonal())]);
 }
 
-inline fn getRookAttacks(sq: Square, blockers: Bitboard) Bitboard {
+pub inline fn getRookAttacks(sq: Square, blockers: Bitboard) Bitboard {
     return slidingBB(sq, blockers, types.mask_file[sq.file().index()]) | slidingBB(sq, blockers, types.mask_rank[sq.rank().index()]);
 }
 
@@ -293,9 +296,12 @@ pub inline fn getAttacks(pt: PieceType, color: Color, sq: Square, blockers: Bitb
     std.debug.assert(sq.index() < 64);
     return switch (pt) {
         PieceType.pawn => pawn_attacks[color.index()][sq.index()],
-        PieceType.rook => moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable,
+        // PieceType.rook => moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable,
+        PieceType.rook => magic.magics_rook[sq.index()].computeValue(blockers),
+        // PieceType.bishop => moves_bishop[sq.index()].get(moves_bishop_mask[sq.index()] & blockers) orelse unreachable,
         PieceType.bishop => magic.magics_bishop[sq.index()].computeValue(blockers),
-        PieceType.queen => (moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable) | (moves_bishop[sq.index()].get(moves_bishop_mask[sq.index()] & blockers) orelse unreachable),
+        // PieceType.queen => (moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable) | (moves_bishop[sq.index()].get(moves_bishop_mask[sq.index()] & blockers) orelse unreachable),
+        PieceType.queen => magic.magics_bishop[sq.index()].computeValue(blockers) | magic.magics_rook[sq.index()].computeValue(blockers),
         else => pseudo_legal_attacks[pt.index()][sq.index()],
     };
 }
