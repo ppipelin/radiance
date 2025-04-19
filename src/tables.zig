@@ -1,3 +1,4 @@
+const magic = @import("magic.zig");
 const position = @import("position.zig");
 const std = @import("std");
 const types = @import("types.zig");
@@ -293,7 +294,7 @@ pub inline fn getAttacks(pt: PieceType, color: Color, sq: Square, blockers: Bitb
     return switch (pt) {
         PieceType.pawn => pawn_attacks[color.index()][sq.index()],
         PieceType.rook => moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable,
-        PieceType.bishop => moves_bishop[sq.index()].get(moves_bishop_mask[sq.index()] & blockers) orelse unreachable,
+        PieceType.bishop => magic.magics_bishop[sq.index()].computeValue(blockers),
         PieceType.queen => (moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable) | (moves_bishop[sq.index()].get(moves_bishop_mask[sq.index()] & blockers) orelse unreachable),
         else => pseudo_legal_attacks[pt.index()][sq.index()],
     };
