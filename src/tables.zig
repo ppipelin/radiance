@@ -167,11 +167,11 @@ inline fn reverseBitboard(b_: Bitboard) Bitboard {
         ((b >> 16) & 0xffff0000) | (b >> 48);
 }
 
-pub inline fn getBishopAttacks(sq: Square, blockers: Bitboard) Bitboard {
+pub fn getBishopAttacks(sq: Square, blockers: Bitboard) Bitboard {
     return slidingBB(sq, blockers, types.mask_diagonal[@intCast(sq.diagonal())]) | slidingBB(sq, blockers, types.mask_anti_diagonal[@intCast(sq.antiDiagonal())]);
 }
 
-pub inline fn getRookAttacks(sq: Square, blockers: Bitboard) Bitboard {
+pub fn getRookAttacks(sq: Square, blockers: Bitboard) Bitboard {
     return slidingBB(sq, blockers, types.mask_file[sq.file().index()]) | slidingBB(sq, blockers, types.mask_rank[sq.rank().index()]);
 }
 
@@ -292,7 +292,7 @@ pub fn deinitAll(allocator: std.mem.Allocator) void {
     transposition_table.clearAndFree(allocator);
 }
 
-pub inline fn getAttacks(pt: PieceType, color: Color, sq: Square, blockers: Bitboard) Bitboard {
+pub fn getAttacks(pt: PieceType, color: Color, sq: Square, blockers: Bitboard) Bitboard {
     std.debug.assert(sq.index() < 64);
     return switch (pt) {
         PieceType.pawn => pawn_attacks[color.index()][sq.index()],
