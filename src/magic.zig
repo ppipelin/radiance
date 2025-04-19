@@ -16,17 +16,13 @@ const Magic = struct {
         blockers &= self.mask;
         blockers = blockers *% self.magic;
         blockers >>= self.shift;
+        std.debug.assert(blockers < 4096);
         return @truncate(blockers);
     }
 
     pub fn computeValue(self: Magic, blockers_: Bitboard) Bitboard {
-        const ptr = self.ptr;
-        var blockers = blockers_;
-        blockers &= self.mask;
-        blockers = blockers *% self.magic;
-        blockers >>= self.shift;
-        std.debug.assert(blockers < 4096);
-        return ptr[blockers];
+        const index = self.computeIndex(blockers_);
+        return self.ptr[index];
     }
 };
 
