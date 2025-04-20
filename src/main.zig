@@ -18,16 +18,6 @@ pub fn main() !void {
 
     const args = try std.process.argsAlloc(allocator);
 
-    magic.compute(allocator);
-    std.debug.print("\n\nmagics found :\n", .{});
-    for (0..types.board_size2) |i| {
-        std.debug.print("{x}\n", .{magic.magics_bishop[i].magic});
-    }
-
-    for (0..types.board_size2) |i| {
-        std.debug.print("{x}\n", .{magic.magics_rook[i].magic});
-    }
-
     if (args.len > 1 and std.mem.eql(u8, args[1], "compute")) {
         magic.compute(allocator);
     } else {

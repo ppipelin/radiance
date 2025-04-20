@@ -22,9 +22,7 @@ pub fn initAll(allocator: std.mem.Allocator) void {
     initNonBlockable();
     initPassedPawn();
     initZobrist();
-    var t = std.time.Timer.start() catch unreachable;
-    @import("magic.zig").compute(allocator);
-    std.debug.print("time {}\n", .{std.fmt.fmtDuration(t.read())});
+    magic.initMagic(allocator);
 }
 
 ////// Zobrist hashing //////
