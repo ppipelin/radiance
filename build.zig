@@ -112,6 +112,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_exe_tests_960.step);
     test_step.dependOn(&run_exe_tests_interface.step);
     test_step.dependOn(&run_exe_tests_evaluate.step);
+    test_step.dependOn(&run_exe_tests_magic.step);
 
     const deploy_step = b.step("deploy", "Deploy executables");
 
