@@ -19,7 +19,11 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
 
     if (args.len > 1 and std.mem.eql(u8, args[1], "compute")) {
-        magic.compute(allocator);
+        var iterations: u64 = 1;
+        if (args.len > 2) {
+            iterations = try std.fmt.parseInt(u64, args[2], 10);
+        }
+        magic.compute(allocator, iterations);
     } else {
         try interface.loop(allocator, &stdin, &stdout);
     }
