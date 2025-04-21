@@ -9,13 +9,14 @@ var magic_holder: [130000]Bitboard = std.mem.zeroes([130000]Bitboard); // Max sh
 
 const Magic = struct {
     ptr: ?[*]Bitboard, // pointer to attack_table for each particular square
-    mask: Bitboard, // to mask relevant squares of both lines (no outer squares)
+    premask: Bitboard, // to mask relevant squares of both lines (no outer squares)
+    postmask: Bitboard, // to mask relevant squares of both lines (no outer squares)
     magic: Bitboard, // magic 64-bit factor
     shift: u6, // shift right
 
     fn computeIndex(self: Magic, blockers_: Bitboard) u12 {
         var blockers = blockers_;
-        blockers &= self.mask;
+        blockers &= self.premask;
         blockers = blockers *% self.magic;
         blockers >>= self.shift;
         std.debug.assert(blockers < 4096);
@@ -24,7 +25,7 @@ const Magic = struct {
 
     pub fn computeValue(self: Magic, blockers_: Bitboard) Bitboard {
         const index = self.computeIndex(blockers_);
-        return self.ptr.?[index];
+        return self.ptr.?[index]; // self.postmask &
     }
 
     fn nnz(self: Magic) u16 {
@@ -37,7 +38,8 @@ const Magic = struct {
 
     const empty: Magic = .{
         .ptr = null,
-        .mask = 0,
+        .premask = 0,
+        .postmask = 0,
         .magic = 0,
         .shift = 0,
     };
@@ -77,9 +79,9 @@ pub fn compute(allocator: std.mem.Allocator, iterations: u64) void {
         while (sq != types.Square.none) : (sq = sq.inc().*) {
             var magic_b: Magic = .empty;
             var magic_r: Magic = .empty;
-            generateMagic(allocator, &magic_b, ptr, sq, tables.moves_bishop_mask[sq.index()], tables.getBishopAttacks, bishop_bits, &prng);
+            generateMagic(allocator, &magic_b, ptr, sq, tables.moves_bishop_mask[sq.index()], tables.getBishopAttacks(sq, 0), tables.getBishopAttacks, bishop_bits, &prng);
             ptr = ptr + (@as(u64, 1) << @truncate(64 - @as(usize, magic_b.shift)));
-            generateMagic(allocator, &magic_r, ptr, sq, tables.moves_rook_mask[sq.index()], tables.getRookAttacks, rook_bits, &prng);
+            generateMagic(allocator, &magic_r, ptr, sq, tables.moves_rook_mask[sq.index()], tables.getRookAttacks(sq, 0), tables.getRookAttacks, rook_bits, &prng);
             ptr = ptr + (@as(u64, 1) << @truncate(64 - @as(usize, magic_r.shift)));
 
             // If magic array is more sparse take new one
@@ -122,10 +124,10 @@ pub fn initMagic(allocator: std.mem.Allocator) void {
         var blockers: std.ArrayListUnmanaged(Bitboard) = .empty;
         defer blockers.deinit(allocator);
 
-        magics_bishop[sq.index()] = Magic{ .ptr = ptr, .mask = tables.moves_bishop_mask[sq.index()], .magic = magic_numbers[sq.index()], .shift = @truncate(64 - bishop_bits[sq.index()]) };
+        magics_bishop[sq.index()] = Magic{ .ptr = ptr, .premask = tables.moves_bishop_mask[sq.index()], .postmask = tables.getBishopAttacks(sq, 0), .magic = magic_numbers[sq.index()], .shift = @truncate(64 - bishop_bits[sq.index()]) };
 
         blockers.append(allocator, 0) catch unreachable;
-        tables.computeBlockers(magics_bishop[sq.index()].mask, &blockers, allocator);
+        tables.computeBlockers(magics_bishop[sq.index()].premask, &blockers, allocator);
         for (blockers.items) |blocker| {
             const index = magics_bishop[sq.index()].computeIndex(blocker);
             magics_bishop[sq.index()].ptr.?[index] = tables.getBishopAttacks(sq, blocker);
@@ -134,10 +136,10 @@ pub fn initMagic(allocator: std.mem.Allocator) void {
 
         defer blockers.clearRetainingCapacity();
 
-        magics_rook[sq.index()] = Magic{ .ptr = ptr, .mask = tables.moves_rook_mask[sq.index()], .magic = magic_numbers[types.board_size2 + sq.index()], .shift = @truncate(64 - rook_bits[sq.index()]) };
+        magics_rook[sq.index()] = Magic{ .ptr = ptr, .premask = tables.moves_rook_mask[sq.index()], .postmask = tables.getRookAttacks(sq, 0), .magic = magic_numbers[types.board_size2 + sq.index()], .shift = @truncate(64 - rook_bits[sq.index()]) };
 
         blockers.append(allocator, 0) catch unreachable;
-        tables.computeBlockers(magics_rook[sq.index()].mask, &blockers, allocator);
+        tables.computeBlockers(magics_rook[sq.index()].premask, &blockers, allocator);
         for (blockers.items) |blocker| {
             const index = magics_rook[sq.index()].computeIndex(blocker);
             magics_rook[sq.index()].ptr.?[index] = tables.getRookAttacks(sq, blocker);
@@ -168,12 +170,12 @@ const bishop_bits = [types.board_size2]u8{
     6, 5, 5, 5, 5, 5, 5, 6,
 };
 
-fn generateMagic(allocator: std.mem.Allocator, magic_out: *Magic, ptr: [*]Bitboard, sq: types.Square, mask: Bitboard, getAttacks: fn (types.Square, Bitboard) Bitboard, bits: [types.board_size2]u8, prng: *std.Random.DefaultPrng) void {
+fn generateMagic(allocator: std.mem.Allocator, magic_out: *Magic, ptr: [*]Bitboard, sq: types.Square, premask: Bitboard, postmask: Bitboard, getAttacks: fn (types.Square, Bitboard) Bitboard, bits: [types.board_size2]u8, prng: *std.Random.DefaultPrng) void {
     var blockers: std.ArrayListUnmanaged(Bitboard) = .empty;
     defer blockers.deinit(allocator);
 
     blockers.append(allocator, 0) catch unreachable;
-    tables.computeBlockers(mask, &blockers, allocator);
+    tables.computeBlockers(premask, &blockers, allocator);
 
     while (true) {
         // Erase previous data
@@ -181,7 +183,8 @@ fn generateMagic(allocator: std.mem.Allocator, magic_out: *Magic, ptr: [*]Bitboa
 
         var magic = Magic{
             .ptr = ptr,
-            .mask = mask,
+            .premask = premask,
+            .postmask = postmask,
             .magic = prng.random().int(u64) & prng.random().int(u64) & prng.random().int(u64),
             .shift = @truncate(64 - bits[sq.index()]),
         };
