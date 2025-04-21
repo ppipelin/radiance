@@ -29,7 +29,7 @@ const Magic = struct {
 
     fn nnz(self: Magic) u16 {
         var count: u16 = 0;
-        for (0..(@as(usize, 1) << self.shift)) |val| {
+        for (0..(@as(u64, 1) << @truncate(64 - @as(usize, self.shift)))) |val| {
             if (val != 0) count += 1;
         }
         return count;
@@ -78,9 +78,9 @@ pub fn compute(allocator: std.mem.Allocator, iterations: u64) void {
             var magic_b: Magic = .empty;
             var magic_r: Magic = .empty;
             generateMagic(allocator, &magic_b, ptr, sq, tables.moves_bishop_mask[sq.index()], tables.getBishopAttacks, bishop_bits, &prng);
-            ptr = ptr + (@as(u64, 1) << magic_b.shift);
+            ptr = ptr + (@as(u64, 1) << @truncate(64 - @as(usize, magic_b.shift)));
             generateMagic(allocator, &magic_r, ptr, sq, tables.moves_rook_mask[sq.index()], tables.getRookAttacks, rook_bits, &prng);
-            ptr = ptr + (@as(u64, 1) << magic_r.shift);
+            ptr = ptr + (@as(u64, 1) << @truncate(64 - @as(usize, magic_r.shift)));
 
             // If magic array is more sparse take new one
             if (magic_b.nnz() < magics_bishop[sq.index()].nnz()) {
@@ -141,7 +141,6 @@ pub fn initMagic(allocator: std.mem.Allocator) void {
         for (blockers.items) |blocker| {
             const index = magics_rook[sq.index()].computeIndex(blocker);
             magics_rook[sq.index()].ptr.?[index] = tables.getRookAttacks(sq, blocker);
-            // ptr = ptr + (@as(u64, 1) << magics_rook[sq.index()].shift);
             ptr = ptr + 1;
         }
     }
@@ -177,6 +176,9 @@ fn generateMagic(allocator: std.mem.Allocator, magic_out: *Magic, ptr: [*]Bitboa
     tables.computeBlockers(mask, &blockers, allocator);
 
     while (true) {
+        // Erase previous data
+        @memset(ptr[0..((@as(u64, 1) << @truncate(bits[sq.index()])))], 0);
+
         var magic = Magic{
             .ptr = ptr,
             .mask = mask,
