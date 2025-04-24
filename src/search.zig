@@ -290,20 +290,30 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     var move_count: u16 = 0;
 
     // Pruning
-    // Null move pruning
-    const static_eval: types.Value = (if (pos.state.turn.isWhite()) pos.score_mg else -pos.score_mg);
-    if (!is_nmr and current_depth >= 3 and !pos.endgame(pos.state.turn.invert()) and static_eval > beta and @popCount(pos.state.checkers) == 0) {
-        const tapered: u8 = @intCast(@min(@divTrunc(static_eval - beta, 200), 6));
-        const r: u8 = tapered + @divTrunc(current_depth, 3) + 5;
-        try pos.moveNull(&s);
-        const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, current_depth -| r, is_960, true);
-        try pos.unMoveNull();
-        if (current_depth > 1 and outOfTime(limits))
-            return -types.value_none;
+    if (@popCount(pos.state.checkers) == 0) {
+        const static_eval: types.Value = eval(pos.*);
 
-        // Do not return unproven mate
-        if (null_score >= beta and null_score < types.value_mate_in_max_depth) {
-            return null_score;
+        // Reverse Futility Pruning
+        if (!pv_node and current_depth <= 8 and beta < types.value_mate_in_max_depth) {
+            const futility_margin: types.Value = @as(types.Value, current_depth) * 80;
+            if (static_eval - futility_margin >= beta)
+                return beta;
+        }
+
+        // Null move pruning
+        if (!is_nmr and current_depth >= 3 and !pos.endgame(pos.state.turn.invert()) and static_eval > beta) {
+            const tapered: u8 = @intCast(@min(@divTrunc(static_eval - beta, 200), 6));
+            const r: u8 = tapered + @divTrunc(current_depth, 3) + 5;
+            try pos.moveNull(&s);
+            const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, current_depth -| r, is_960, true);
+            try pos.unMoveNull();
+            if (current_depth > 1 and outOfTime(limits))
+                return -types.value_none;
+
+            // Do not return unproven mate
+            if (null_score >= beta and null_score < types.value_mate_in_max_depth) {
+                return null_score;
+            }
         }
     }
 
@@ -479,10 +489,6 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
     const stand_pat: types.Value = eval(pos.*);
     if (stand_pat >= beta)
         return beta;
-    if (alpha < stand_pat)
-        alpha = stand_pat;
-    if (outOfTime(limits))
-        return alpha;
 
     // Initialize data
     var s: position.State = position.State{};
@@ -500,11 +506,42 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
     pos.generateLegalCaptures(allocator, pos.state.turn, &move_list_capture);
     pos.orderMoves(&move_list_capture, types.Move.none);
 
+    // Delta pruning
+    const margin: types.Value = 200;
+
+    if (!pos.endgame(pos.state.turn)) {
+        var best_capture: types.Value = tables.material[types.PieceType.queen.index()];
+        for (move_list_capture.items) |move| {
+            if (move.isPromotion()) {
+                best_capture += tables.material[types.PieceType.queen.index()] - tables.material[types.PieceType.pawn.index()];
+                break;
+            }
+        }
+
+        // if ((if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w) +| best_capture < (alpha -| margin))
+        if (stand_pat +| best_capture < (alpha -| margin))
+            return alpha;
+    }
+
+    if (alpha < stand_pat)
+        alpha = stand_pat;
+    if (outOfTime(limits))
+        return alpha;
+
     // Loop over all legal captures
     for (move_list_capture.items) |move| {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }
+
+        // Delta pruning inside
+        // if (!pos.endgame(pos.state.turn)) {
+        //     var capture_value: types.Value = pos.board[move.getTo().index()].pieceToPieceType().index();
+        //     if (move.isPromotion())
+        //         capture_value += tables.material[types.PieceType.queen.index()] - 100;
+        //     if ((if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w) +| capture_value < alpha -| margin)
+        //         continue;
+        // }
 
         try pos.movePiece(move, &s);
 
