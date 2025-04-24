@@ -15,6 +15,7 @@
 ## Move Generation and Ordering
 
 - Precomputed Bitboard Move Generation
+- Fancy Magic Bitboards For Sliders
 - Transposition Table Move Ordering
 - Principal Variation Move Ordering
 - MVV-LVA
@@ -25,8 +26,9 @@
 - [Principal Variation Search](https://www.chessprogramming.org/Principal_Variation_Search)
 - [Alpha-Beta](https://www.chessprogramming.org/Alpha-Beta) Pruning
 - [Aspiration Window](https://www.chessprogramming.org/Aspiration_Windows)
-- [Late Move Reduction](https://www.chessprogramming.org/Late_Move_Reductions)
+- [Late Move Reductions](https://www.chessprogramming.org/Late_Move_Reductions)
 - [Null Move Pruning](https://www.chessprogramming.org/Null_Move_Pruning)
+- [Reverse Futility Pruning](https://www.chessprogramming.org/Reverse_Futility_Pruning)
 - [Quiescence Search](https://www.chessprogramming.org/Quiescence_Search)
 - Threefold Repetition
 - Time Management
