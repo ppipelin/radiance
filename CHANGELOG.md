@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Reverse Futility Pruning
+- Fancy Magic Bitboards
+- `compute` args
+
+### Changed
+
+- Use real evaluation for `static_eval`
+
 ## [4.0.1] - 2025-04-17
 
 ### Fixed
