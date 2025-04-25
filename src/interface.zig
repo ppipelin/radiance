@@ -423,7 +423,9 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position
             try stdout.print("\n", .{});
         } else if (std.mem.eql(u8, search_mode, "NegamaxAlphaBeta")) {
             var move: types.Move = .none;
-            if (std.mem.eql(u8, evaluation_mode, "Shannon")) {
+            if (std.mem.eql(u8, evaluation_mode, "Materialist")) {
+                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateMaterialist, is_960);
+            } else if (std.mem.eql(u8, evaluation_mode, "Shannon")) {
                 move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateShannon, is_960);
             } else if (std.mem.eql(u8, evaluation_mode, "PSQ")) {
                 move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateTable, is_960);
