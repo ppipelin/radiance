@@ -78,13 +78,13 @@ stop
 
 ### UCI options
 
-| Name           | Type  | Default value       |  Valid values                  | Description                                          |
-| -------------- | ----- | ------------------- | ------------------------------ | ---------------------------------------------------- |
-| `Hash`         | spin  |         256         |           [1, 65536]           | Memory allocated to the transposition table (in MB). |
-| `Threads`      | spin  |          1          |             [1, 1]             | Number of threads used to search.                    |
-| `Evaluation`   | combo |        "PSQ"        |       ["PSQ", "Shannon"]       | Type of evaluation function.                         |
-| `Search`       | combo |  "NegamaxAlphaBeta" | ["NegamaxAlphaBeta", "Random"] | Type of search function.                             |
-| `UCI_Chess960` | check |        false        |        ["true", "false"]       |                                                      |
+| Name           | Type  | Default value       |  Valid values                     | Description                                          |
+| -------------- | ----- | ------------------- | --------------------------------- | ---------------------------------------------------- |
+| `Hash`         | spin  |         256         |             [1, 65536]            | Memory allocated to the transposition table (in MB). |
+| `Threads`      | spin  |          1          |               [1, 1]              | Number of threads used to search.                    |
+| `Evaluation`   | combo |        "PSQ"        | ["PSQ", "Shannon", "Materialist"] | Type of evaluation function.                         |
+| `Search`       | combo |  "NegamaxAlphaBeta" |   ["NegamaxAlphaBeta", "Random"]  | Type of search function.                             |
+| `UCI_Chess960` | check |        false        |          ["true", "false"]        |                                                      |
 
 ### Commands
 

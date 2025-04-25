@@ -78,6 +78,10 @@ fn evaluateShannonColor(pos: position.Position, col: types.Color) types.Value {
         50 * (malus_doubled_pawn + malus_blocked_pawn + malus_isolated_pawn);
 }
 
+pub fn evaluateMaterialist(pos: position.Position) types.Value {
+    return (if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w);
+}
+
 pub fn evaluateShannon(pos: position.Position) types.Value {
     return evaluateShannonColor(pos, pos.state.turn) - evaluateShannonColor(pos, pos.state.turn.invert());
 }
