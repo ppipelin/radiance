@@ -324,7 +324,6 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         for (root_moves.items) |root_move| {
             try move_list.append(allocator, root_move.pv.items[0]);
         }
-        // TODO: compute checkers
     } else {
         pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
         var pv_move: types.Move = types.Move.none;
