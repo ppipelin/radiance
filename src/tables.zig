@@ -11,6 +11,7 @@ const Move = types.Move;
 const Piece = types.Piece;
 const PieceType = types.PieceType;
 const Square = types.Square;
+const TableBound = types.TableBound;
 const Value = types.Value;
 
 ////// Initialize movegen, evaluation and position hashing //////
@@ -29,7 +30,7 @@ pub fn initAll(allocator: std.mem.Allocator) void {
 
 const Key = u64;
 
-pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, u8, Move })) = .empty;
+pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, u8, Move, TableBound })) = .empty;
 
 // pnbrqkPNBRQK
 pub var hash_psq: [types.Piece.nb()][types.board_size2]Key = std.mem.zeroes([types.Piece.nb()][types.board_size2]Key);
