@@ -263,11 +263,12 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     return move;
 }
 
-fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Stack, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, current_depth: u8, is_960: bool, is_nmr: bool) !types.Value {
+fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Stack, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, current_depth: u8, is_960: bool, is_nmr: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
     var alpha = alpha_;
+    var beta = beta_;
 
     interface.nodes_searched += 1;
 
@@ -344,7 +345,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
             ss[1].pv = null;
         }
 
-        const key: u64 = pos.state.material_key;
+        const key: tables.Key = pos.state.material_key;
 
         try pos.movePiece(move, &s);
 
@@ -354,21 +355,26 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         if (pos.state.repetition < 0) {
             score = types.value_draw;
         } else {
-            const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move }) = tables.transposition_table.get(key);
-            if (found != null and found.?[1] > current_depth - 1) {
-                score = found.?[0];
+            const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(key);
+            if (found != null) {
+                var tt_eval = found.?[0];
                 if (score > types.value_mate_in_max_depth) {
-                    score -= ss[0].ply;
+                    tt_eval -= ss[0].ply;
                 } else if (score < types.value_mated_in_max_depth) {
-                    score += ss[0].ply;
+                    tt_eval += ss[0].ply;
                 }
 
-                // Retrieved score doesn't meet the alpha beta requirements
-                if (score < alpha or score >= beta) {
-                    score = -types.value_none;
-                } else {
-                    interface.transposition_used += 1;
+                if (!is_nmr and !pv_node and found.?[1] > current_depth - 1) {
+                    switch (found.?[3]) {
+                        .exact => score = tt_eval,
+                        .lowerbound => alpha = @max(alpha, score),
+                        .upperbound => beta = @min(beta, score),
+                    }
+                    if (alpha >= beta) {
+                        score = tt_eval;
+                    }
                 }
+                interface.transposition_used += 1;
             }
 
             if (score == -types.value_none) {
@@ -400,7 +406,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                     // Let's assert we don't store draw (repetition)
                     if (score != types.value_draw) {
                         if (found == null or found.?[1] <= current_depth - 1) {
-                            try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move });
+                            const tt_flag: types.TableBound = if (score >= beta) .lowerbound else if (alpha != alpha_) .exact else .upperbound;
+
+                            try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move, tt_flag });
                         }
                     }
                 }
@@ -451,9 +459,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 // Fail high
                 if (score >= beta) {
                     if (score != types.value_draw) {
-                        const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move }) = tables.transposition_table.get(key);
+                        const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(key);
                         if (found == null or found.?[1] <= current_depth - 1) {
-                            try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move });
+                            try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move, .lowerbound });
                         }
                     }
                     break;

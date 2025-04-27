@@ -6,6 +6,7 @@ const Bitboard = types.Bitboard;
 const Color = types.Color;
 const Direction = types.Direction;
 const File = types.File;
+const Key = tables.Key;
 const Move = types.Move;
 const MoveFlags = types.MoveFlags;
 const Piece = types.Piece;
@@ -58,7 +59,7 @@ pub const State = struct {
     checkers: types.Bitboard = 0,
     pinned: types.Bitboard = 0,
     last_captured_piece: Piece = Piece.none,
-    material_key: u64 = 0,
+    material_key: Key = 0,
     previous: ?*State = null,
 };
 
@@ -830,9 +831,9 @@ pub const Position = struct {
 
         var tt_move: Move = Move.none;
 
-        const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move }) = tables.transposition_table.get(self.state.material_key);
+        const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(self.state.material_key);
         if (found != null) {
-            _, _, const tt_move_: Move = found.?;
+            const tt_move_: Move = found.?[2];
             // Search tt_move_ is in movelist. Speed up comparision if not.
             for (list.items) |move| {
                 if (move == tt_move_) {
