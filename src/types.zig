@@ -594,6 +594,12 @@ pub inline fn now() TimePoint {
     return std.time.milliTimestamp();
 }
 
+pub const TableBound = enum(u2) {
+    exact,
+    lowerbound,
+    upperbound,
+};
+
 ////// Bitboard //////
 
 pub const Bitboard = u64;
