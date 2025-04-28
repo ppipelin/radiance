@@ -411,6 +411,7 @@ pub const Move = packed struct {
         pos: position.Position,
         m1: Move,
         m2: Move,
+        attacked: Bitboard,
     };
 
     pub fn sort(context: MoveSortContext, m1: Move, m2: Move) bool {
@@ -459,8 +460,8 @@ pub const Move = packed struct {
             m2_to_piece = PieceType.none;
         }
 
-        return (if (m1.isCapture() and m1.getFlags() != MoveFlags.en_passant) tables.material[m1_to_piece.index()] - tables.material[m1_from_piece.index()] else m1_caslte_bonus) >
-            (if (m2.isCapture() and m2.getFlags() != MoveFlags.en_passant) tables.material[m2_to_piece.index()] - tables.material[m2_from_piece.index()] else m2_caslte_bonus);
+        return (if (m1.isCapture() and m1.getFlags() != MoveFlags.en_passant) tables.material[m1_to_piece.index()] - tables.material[m1_from_piece.index()] else m1_caslte_bonus) - @intFromBool(m1.getTo().sqToBB() & context.attacked != 0) >
+            (if (m2.isCapture() and m2.getFlags() != MoveFlags.en_passant) tables.material[m2_to_piece.index()] - tables.material[m2_from_piece.index()] else m2_caslte_bonus) - @intFromBool(m2.getTo().sqToBB() & context.attacked != 0);
     }
 
     pub inline fn generateMove(allocator: std.mem.Allocator, comptime flag: MoveFlags, from: Square, to_: Bitboard, list: *std.ArrayListUnmanaged(Move)) void {
