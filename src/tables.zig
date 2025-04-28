@@ -28,7 +28,7 @@ pub fn initAll(allocator: std.mem.Allocator) void {
 
 ////// Zobrist hashing //////
 
-const Key = u64;
+pub const Key = u64;
 
 pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, u8, Move, TableBound })) = .empty;
 
