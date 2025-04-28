@@ -55,18 +55,18 @@ fn evaluateShannonColor(pos: position.Position, col: types.Color) types.Value {
     const malus_isolated_pawn: types.Value = computeIsolatedPawns(bb_us_pawn);
 
     // Does not include pawn quiet moves
-    const mobility: types.Value = 0;
+    var mobility: types.Value = 0;
 
-    // const bb_all: types.Bitboard = bb_us | bb_them;
-    // for (std.enums.values(types.PieceType)) |pt| {
-    //     if (pt == types.PieceType.none)
-    //         continue;
-    //     var from_bb: types.Bitboard = pos.bb_pieces[pt.index()] & bb_us;
-    //     while (from_bb != 0) {
-    //         const from: types.Square = types.popLsb(&from_bb);
-    //         mobility += @popCount(tables.getAttacks(pt, col, from, bb_all) & ~bb_us);
-    //     }
-    // }
+    const bb_all: types.Bitboard = bb_us | bb_them;
+    for (std.enums.values(types.PieceType)) |pt| {
+        if (pt == types.PieceType.none or pt == types.PieceType.pawn)
+            continue;
+        var from_bb: types.Bitboard = pos.bb_pieces[pt.index()] & bb_us;
+        while (from_bb != 0) {
+            const from: types.Square = types.popLsb(&from_bb);
+            mobility += @popCount(tables.getAttacks(pt, col, from, bb_all) & ~bb_us);
+        }
+    }
 
     return 20_000 * @as(types.Value, @popCount(pos.bb_pieces[types.PieceType.king.index()] & bb_us)) +
         900 * @as(types.Value, @popCount(pos.bb_pieces[types.PieceType.queen.index()] & bb_us)) +
