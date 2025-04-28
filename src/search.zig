@@ -150,7 +150,9 @@ pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, is_96
     return move_list.items[rand.intRangeAtMost(u8, 0, len - 1)];
 }
 
-pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, is_960: bool) !types.Move {
+pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !types.Move {
+    const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
+
     if (limits.movetime > 0) {
         interface.remaining = limits.movetime * 30;
     } else {
@@ -250,7 +252,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
         }
 
         try stdout.print("info failedHighCnt {} alpha {} beta {}\n", .{ failed_high_cnt, alpha, beta });
-        try info(stdout, limits, current_depth, root_moves.items[0].score);
+        try info(stdout, limits, current_depth, root_moves.items[0].score, options);
     }
 
     // Even if outofTime we keep a better move if there is one
@@ -588,9 +590,13 @@ fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
     }
 }
 
-fn info(stdout: anytype, limits: interface.Limits, depth: u16, score: types.Value) !void {
+fn info(stdout: anytype, limits: interface.Limits, depth: u16, score: types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const time: u64 = @intCast(elapsed(limits));
-    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hash {} hashfull {} hashused {} score cp {} pv ", .{ depth, interface.seldepth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, tables.transposition_table.size, 0, interface.transposition_used, score });
+
+    const hash_size: u16 = try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10);
+    const hashfull: u128 = @divTrunc(@as(u128, tables.transposition_table.size) * (@sizeOf(tables.Key) + @sizeOf(std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound })) + @sizeOf(u32)) * 1000, @as(u128, hash_size) * 1000000);
+
+    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hash {} hashfull {} hashused {} score cp {} pv ", .{ depth, interface.seldepth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, tables.transposition_table.size, hashfull, interface.transposition_used, score });
     try pvDisplay(stdout, root_moves.items[0].pv.items);
     try stdout.print("\n", .{});
 }
