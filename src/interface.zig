@@ -28,7 +28,7 @@ pub const Limits = struct {
     movetime: types.TimePoint = 0,
 };
 
-const Option = struct {
+pub const Option = struct {
     default_value: []const u8 = "",
     current_value: []const u8 = "",
     type: []const u8 = "",
@@ -49,8 +49,8 @@ const Option = struct {
     }
 };
 
-fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
-    try options.put(allocator, "Hash", Option.initSpin("256", 0, 4096));
+pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
+    try options.put(allocator, "Hash", Option.initSpin("256", 0, 65535));
     try options.put(allocator, "Threads", Option.initSpin("1", 1, 1));
     try options.put(allocator, "Evaluation", Option.initCombo("PSQ var PSQ var Shannon", "PSQ"));
     try options.put(allocator, "Search", Option.initCombo("NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
@@ -162,7 +162,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
             search_thread = std.Thread.spawn(
                 .{ .stack_size = 64 * 1024 * 1024 },
                 cmd_go,
-                .{ allocator, stdout, &pos, &tokens, &states, &options },
+                .{ allocator, stdout, &pos, &tokens, &states, options },
             ) catch |err| {
                 try stdout.print("Could not spawn thread! With error {}\n", .{err});
                 states.clearRetainingCapacity();
@@ -327,7 +327,7 @@ fn cmd_position(pos: *position.Position, tokens: anytype, states: *StateList) !v
     }
 }
 
-fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, tokens: anytype, states: *StateList, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
+fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, tokens: anytype, states: *StateList, options: std.StringArrayHashMapUnmanaged(Option)) !void {
     _ = states;
     limits = Limits{};
     var token: ?[]const u8 = tokens.next();
@@ -424,11 +424,11 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position
         } else if (std.mem.eql(u8, search_mode, "NegamaxAlphaBeta")) {
             var move: types.Move = .none;
             if (std.mem.eql(u8, evaluation_mode, "Materialist")) {
-                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateMaterialist, is_960);
+                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateMaterialist, options);
             } else if (std.mem.eql(u8, evaluation_mode, "Shannon")) {
-                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateShannon, is_960);
+                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateShannon, options);
             } else if (std.mem.eql(u8, evaluation_mode, "PSQ")) {
-                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateTable, is_960);
+                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateTable, options);
             }
             try stdout.print("bestmove ", .{});
             try move.printUCI(stdout);
