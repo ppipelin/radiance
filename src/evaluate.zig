@@ -172,9 +172,9 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         score += if (pos.state.turn.isWhite()) distanceKings(pos) else -distanceKings(pos);
     }
 
-    const tapered: f16 = @as(f16, @floatFromInt(pos.score_material_w + pos.score_material_b - 2 * tables.material[types.PieceType.king.index()])) / (4152 * 2);
-    score += @intFromFloat(tapered * @as(f16, @floatFromInt(pos.score_mg)));
-    score += @intFromFloat((1 - tapered) * @as(f16, @floatFromInt(pos.score_eg)));
+    const tapered: i64 = @divTrunc(@as(i64, pos.score_material_w + pos.score_material_b - 2 * tables.material[types.PieceType.king.index()]) * 10_000, (4152 * 2));
+    score += @truncate(@divTrunc(tapered * pos.score_mg, 10_000));
+    score += @truncate(@divTrunc((10_000 - tapered) * pos.score_eg, 10_000));
 
     return if (pos.state.turn.isWhite()) score else -score;
 }
