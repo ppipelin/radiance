@@ -113,33 +113,31 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     var black_sliders_diag: types.Bitboard = bb_black & (pos.bb_pieces[types.PieceType.bishop.index()]);
     var black_sliders_orth: types.Bitboard = bb_black & (pos.bb_pieces[types.PieceType.rook.index()]);
 
-    var moveset_white_diag: types.Bitboard = 0;
-    var moveset_white_orth: types.Bitboard = 0;
+    var moveset_white: types.Value = 0;
+    var moveset_black: types.Value = 0;
 
-    var moveset_black_diag: types.Bitboard = 0;
-    var moveset_black_orth: types.Bitboard = 0;
     while (white_sliders_diag != 0) {
         const sq: types.Square = types.popLsb(&white_sliders_diag);
-        moveset_white_diag |= tables.getAttacks(types.PieceType.bishop, types.Color.white, sq, bb_all) & ~bb_white;
+        moveset_white += @as(types.Value, @popCount(tables.getAttacks(types.PieceType.bishop, types.Color.white, sq, bb_all) & ~bb_white));
     }
 
     while (white_sliders_orth != 0) {
         const sq: types.Square = types.popLsb(&white_sliders_orth);
-        moveset_white_orth |= tables.getAttacks(types.PieceType.rook, types.Color.white, sq, bb_all) & ~bb_white;
+        moveset_white += @as(types.Value, @popCount(tables.getAttacks(types.PieceType.rook, types.Color.white, sq, bb_all) & ~bb_white));
     }
 
     while (black_sliders_diag != 0) {
         const sq: types.Square = types.popLsb(&black_sliders_diag);
-        moveset_black_diag |= tables.getAttacks(types.PieceType.bishop, types.Color.black, sq, bb_all) & ~bb_black;
+        moveset_black += @as(types.Value, @popCount(tables.getAttacks(types.PieceType.bishop, types.Color.black, sq, bb_all) & ~bb_black));
     }
 
     while (black_sliders_orth != 0) {
         const sq: types.Square = types.popLsb(&black_sliders_orth);
-        moveset_black_orth |= tables.getAttacks(types.PieceType.rook, types.Color.black, sq, bb_all) & ~bb_black;
+        moveset_black += @as(types.Value, @popCount(tables.getAttacks(types.PieceType.rook, types.Color.black, sq, bb_all) & ~bb_black));
     }
 
-    score += 5 * (@as(types.Value, @popCount(moveset_white_diag)) + @as(types.Value, @popCount(moveset_white_orth)));
-    score -= 5 * (@as(types.Value, @popCount(moveset_black_diag)) + @as(types.Value, @popCount(moveset_black_orth)));
+    score += 5 * moveset_white;
+    score -= 5 * moveset_black;
 
     const bb_white_pawn_: types.Bitboard = bb_white & pos.bb_pieces[types.PieceType.pawn.index()];
     const bb_black_pawn_: types.Bitboard = bb_black & pos.bb_pieces[types.PieceType.pawn.index()];
