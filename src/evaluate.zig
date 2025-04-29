@@ -97,8 +97,11 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     // Evaluate king pseudo legal moveset
     // Malus for mg bonus for eg
 
-    const moveset_white_king = tables.getAttacks(types.PieceType.king, types.Color.white, @enumFromInt(types.lsb(bb_white & (pos.bb_pieces[types.PieceType.king.index()]))), bb_all) & ~bb_white;
-    const moveset_black_king = tables.getAttacks(types.PieceType.king, types.Color.black, @enumFromInt(types.lsb(bb_black & (pos.bb_pieces[types.PieceType.king.index()]))), bb_all) & ~bb_black;
+    const white_king: types.Square = @enumFromInt(types.lsb(bb_white & pos.bb_pieces[types.PieceType.king.index()]));
+    const black_king: types.Square = @enumFromInt(types.lsb(bb_black & pos.bb_pieces[types.PieceType.king.index()]));
+
+    const moveset_white_king = tables.getAttacks(types.PieceType.king, types.Color.white, white_king, bb_all) & ~bb_white;
+    const moveset_black_king = tables.getAttacks(types.PieceType.king, types.Color.black, black_king, bb_all) & ~bb_black;
 
     if (endgame) {
         score += @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
@@ -172,6 +175,20 @@ pub fn evaluateTable(pos: position.Position) types.Value {
             score += pos.score_king_w;
         }
         score += if (pos.state.turn.isWhite()) distanceKings(pos) else -distanceKings(pos);
+    } else {
+        // Pawn bonus when in side of king
+        const filter_left = types.file | types.file >> 1 | types.file >> 2 | types.file >> 3;
+        const filter_right = types.file >> 4 | types.file >> 5 | types.file >> 6 | types.file >> 7;
+        if (white_king.file().index() < 4) {
+            score += 5 * @popCount(filter_left & bb_white_pawn_);
+        } else {
+            score += 5 * @popCount(filter_right & bb_white_pawn_);
+        }
+        if (black_king.file().index() < 4) {
+            score -= 5 * @popCount(filter_left & bb_black_pawn_);
+        } else {
+            score -= 5 * @popCount(filter_right & bb_black_pawn_);
+        }
     }
 
     const tapered: i64 = @divTrunc(@as(i64, pos.score_material_w + pos.score_material_b - 2 * tables.material[types.PieceType.king.index()]) * 10_000, (4152 * 2));
