@@ -24,6 +24,8 @@ pub fn main() !void {
             iterations = try std.fmt.parseInt(u64, args[2], 10);
         }
         magic.compute(allocator, iterations);
+    } else if (args.len > 1 and std.mem.eql(u8, args[1], "bench")) {
+        try interface.cmd_bench(allocator, &stdout);
     } else {
         try interface.loop(allocator, &stdin, &stdout);
     }
