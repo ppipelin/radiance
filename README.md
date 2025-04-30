@@ -94,6 +94,7 @@ stop
 - `position [fen <string> | startpos | kiwi | lasker] [moves <string>...]`
 - `eval`
 - `go [movetime <int> | [wtime <int>] [btime <int>] [winc <int>] [binc <int>] | depth <int> | infinite | perft <int>]`
+- `bench`
 - `stop`
 - `quit`
 - `ucinewgame`
