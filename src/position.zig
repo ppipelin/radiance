@@ -58,6 +58,8 @@ pub const State = struct {
     en_passant: Square = Square.none,
     checkers: types.Bitboard = 0,
     pinned: types.Bitboard = 0,
+    attacked: Bitboard = 0,
+    attacked_horizontal: Bitboard = 0,
     last_captured_piece: Piece = Piece.none,
     material_key: Key = 0,
     previous: ?*State = null,
@@ -451,7 +453,41 @@ pub const Position = struct {
         }
     }
 
+    pub fn updateAttacked(self: *Position) void {
+        const bb_us: types.Bitboard = self.bb_colors[self.state.turn.index()];
+        const bb_them: types.Bitboard = self.bb_colors[self.state.turn.invert().index()];
+        const bb_all: types.Bitboard = bb_us | bb_them;
+
+        const our_king: types.Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[types.PieceType.king.index()]));
+
+        self.state.attacked = 0;
+        // If the rook is attacked by a horizontal slider we can't caslte
+        self.state.attacked_horizontal = 0;
+
+        for (PieceType.list()) |pt| {
+            if (pt == PieceType.none)
+                continue;
+            var from_bb: Bitboard = self.bb_pieces[pt.index()] & bb_them;
+            while (from_bb != 0) {
+                const from: Square = types.popLsb(&from_bb);
+                // Extract the king as it can't move to a place that it covers
+                if (pt == PieceType.queen and from.rank() == our_king.rank()) {
+                    const tmp: Bitboard = tables.getAttacks(PieceType.rook, self.state.turn.invert(), from, bb_all ^ our_king.sqToBB());
+                    self.state.attacked_horizontal |= tmp;
+                    self.state.attacked |= tmp | tables.getAttacks(PieceType.bishop, self.state.turn.invert(), from, bb_all ^ our_king.sqToBB());
+                } else if (pt == PieceType.rook and from.rank() == our_king.rank()) {
+                    const tmp: Bitboard = tables.getAttacks(pt, self.state.turn.invert(), from, bb_all ^ our_king.sqToBB());
+                    self.state.attacked_horizontal |= tmp;
+                    self.state.attacked |= tmp;
+                } else {
+                    self.state.attacked |= tables.getAttacks(pt, self.state.turn.invert(), from, bb_all ^ our_king.sqToBB());
+                }
+            }
+        }
+    }
+
     pub fn generateLegalMoves(self: *Position, allocator: std.mem.Allocator, color: Color, list: *std.ArrayListUnmanaged(Move), is_960: bool) void {
+        self.updateAttacked();
         const bb_us: Bitboard = self.bb_colors[color.index()];
         const bb_them: Bitboard = self.bb_colors[color.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
@@ -462,33 +498,9 @@ pub const Position = struct {
         var capture_mask: Bitboard = 0;
         // Squares that can be moved on
         var quiet_mask: Bitboard = 0;
-        var attacked: Bitboard = 0;
-        // If the rook is attacked by a horizontal slider we can't caslte
-        var attacked_horizontal: Bitboard = 0;
-
-        for (PieceType.list()) |pt| {
-            if (pt == PieceType.none)
-                continue;
-            var from_bb: Bitboard = self.bb_pieces[pt.index()] & bb_them;
-            while (from_bb != 0) {
-                const from: Square = types.popLsb(&from_bb);
-                // Extract the king as it can't move to a place that it covers
-                if (pt == PieceType.queen and from.rank() == our_king.rank()) {
-                    const tmp: Bitboard = tables.getAttacks(PieceType.rook, color.invert(), from, bb_all ^ our_king.sqToBB());
-                    attacked_horizontal |= tmp;
-                    attacked |= tmp | tables.getAttacks(PieceType.bishop, color.invert(), from, bb_all ^ our_king.sqToBB());
-                } else if (pt == PieceType.rook and from.rank() == our_king.rank()) {
-                    const tmp: Bitboard = tables.getAttacks(pt, color.invert(), from, bb_all ^ our_king.sqToBB());
-                    attacked_horizontal |= tmp;
-                    attacked |= tmp;
-                } else {
-                    attacked |= tables.getAttacks(pt, color.invert(), from, bb_all ^ our_king.sqToBB());
-                }
-            }
-        }
 
         // Move king
-        const to_king: Bitboard = tables.getAttacks(PieceType.king, color, our_king, bb_all) & ~attacked; // Careful: bb_us not excluded
+        const to_king: Bitboard = tables.getAttacks(PieceType.king, color, our_king, bb_all) & ~self.state.attacked; // Careful: bb_us not excluded
         Move.generateMove(allocator, MoveFlags.capture, our_king, to_king & bb_them, list);
         Move.generateMove(allocator, MoveFlags.quiet, our_king, to_king & ~bb_all, list);
 
@@ -550,7 +562,7 @@ pub const Position = struct {
                     const rook_sq: Square = self.rook_initial[1 + 2 * @as(u8, color.invert().index())];
                     const path_king_oo: Bitboard = tables.squares_between[our_king.index()][to_king_oo.index()] | to_king_oo.sqToBB();
                     const path_rook_oo: Bitboard = tables.squares_between[to_rook_oo.index()][rook_sq.index()] | to_rook_oo.sqToBB();
-                    if (rook_sq.sqToBB() & attacked_horizontal == 0 and (path_king_oo | path_rook_oo) & (bb_all & ~rook_sq.sqToBB() & ~our_king.sqToBB()) == 0 and path_king_oo & attacked == 0) {
+                    if (rook_sq.sqToBB() & self.state.attacked_horizontal == 0 and (path_king_oo | path_rook_oo) & (bb_all & ~rook_sq.sqToBB() & ~our_king.sqToBB()) == 0 and path_king_oo & self.state.attacked == 0) {
                         if (is_960) {
                             list.append(allocator, Move.init(MoveFlags.oo, our_king, rook_sq)) catch unreachable;
                         } else {
@@ -565,7 +577,7 @@ pub const Position = struct {
                     const rook_sq: Square = self.rook_initial[0 + 2 * @as(u8, color.invert().index())];
                     const path_king_ooo: Bitboard = tables.squares_between[our_king.index()][to_king_ooo.index()] | to_king_ooo.sqToBB();
                     const path_rook_ooo: Bitboard = tables.squares_between[to_rook_ooo.index()][rook_sq.index()] | to_rook_ooo.sqToBB();
-                    if (rook_sq.sqToBB() & attacked_horizontal == 0 and (path_king_ooo | path_rook_ooo) & (bb_all & ~rook_sq.sqToBB() & ~our_king.sqToBB()) == 0 and path_king_ooo & attacked == 0) {
+                    if (rook_sq.sqToBB() & self.state.attacked_horizontal == 0 and (path_king_ooo | path_rook_ooo) & (bb_all & ~rook_sq.sqToBB() & ~our_king.sqToBB()) == 0 and path_king_ooo & self.state.attacked == 0) {
                         if (is_960) {
                             list.append(allocator, Move.init(MoveFlags.ooo, our_king, rook_sq)) catch unreachable;
                         } else {
@@ -676,6 +688,7 @@ pub const Position = struct {
     }
 
     pub fn generateLegalCaptures(self: *Position, allocator: std.mem.Allocator, color: Color, list: *std.ArrayListUnmanaged(Move)) void {
+        self.updateAttacked();
         const bb_us: Bitboard = self.bb_colors[color.index()];
         const bb_them: Bitboard = self.bb_colors[color.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
@@ -686,21 +699,9 @@ pub const Position = struct {
         var capture_mask: Bitboard = 0;
         // Squares that can be moved on
         var quiet_mask: Bitboard = 0;
-        var attacked: Bitboard = 0;
-
-        for (std.enums.values(PieceType)) |pt| {
-            if (pt == PieceType.none)
-                continue;
-            var from_bb: Bitboard = self.bb_pieces[pt.index()] & bb_them;
-            while (from_bb != 0) {
-                const from: Square = types.popLsb(&from_bb);
-                // Extract the king as it can't move to a place that it covers
-                attacked |= tables.getAttacks(pt, color.invert(), from, bb_all ^ our_king.sqToBB());
-            }
-        }
 
         // Move king
-        const to_king: Bitboard = tables.getAttacks(PieceType.king, color, our_king, bb_all) & ~attacked; // Careful: bb_us not excluded
+        const to_king: Bitboard = tables.getAttacks(PieceType.king, color, our_king, bb_all) & ~self.state.attacked; // Careful: bb_us not excluded
         Move.generateMove(allocator, MoveFlags.capture, our_king, to_king & bb_them, list);
 
         switch (types.popcount(self.state.checkers)) {
@@ -843,7 +844,7 @@ pub const Position = struct {
             }
         }
 
-        std.sort.pdq(Move, list.items, Move.MoveSortContext{ .pos = self.*, .m1 = pv_move, .m2 = tt_move }, Move.sort);
+        std.sort.pdq(Move, list.items, Move.MoveSortContext{ .pos = self.*, .m1 = pv_move, .m2 = tt_move, .attacked = self.state.attacked }, Move.sort);
     }
 
     pub fn endgame(self: Position, col: Color) bool {

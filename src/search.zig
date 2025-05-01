@@ -136,6 +136,7 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
 pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, is_960: bool) !types.Move {
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
+    pos.updateAttacked();
     pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
 
     if (move_list.items.len == 0)
@@ -175,6 +176,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
 
+    pos.updateAttacked();
     pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
 
     const root_moves_len: usize = move_list.items.len;
