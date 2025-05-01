@@ -330,6 +330,7 @@ fn cmd_position(pos: *position.Position, tokens: anytype, states: *StateList) !v
         while (token != null) : (token = tokens_rest_iterator.next()) {
             states.appendAssumeCapacity(position.State{});
             try pos.movePiece(try types.Move.initFromStr(pos.*, token.?), &states.items[states.items.len - 1]);
+            pos.updateCheckersPinned();
         }
     }
 }
