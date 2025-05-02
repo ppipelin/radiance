@@ -58,7 +58,7 @@ fn evaluateShannonColor(pos: position.Position, col: types.Color) types.Value {
     var mobility: types.Value = 0;
 
     const bb_all: types.Bitboard = bb_us | bb_them;
-    for (std.enums.values(types.PieceType)) |pt| {
+    for (types.PieceType.list()) |pt| {
         if (pt == types.PieceType.none or pt == types.PieceType.pawn)
             continue;
         var from_bb: types.Bitboard = pos.bb_pieces[pt.index()] & bb_us;

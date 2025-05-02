@@ -466,7 +466,7 @@ pub const Position = struct {
         // If the rook is attacked by a horizontal slider we can't caslte
         var attacked_horizontal: Bitboard = 0;
 
-        for (std.enums.values(PieceType)) |pt| {
+        for (PieceType.list()) |pt| {
             if (pt == PieceType.none)
                 continue;
             var from_bb: Bitboard = self.bb_pieces[pt.index()] & bb_them;
@@ -632,7 +632,7 @@ pub const Position = struct {
 
         // All non pinned moves
 
-        for (std.enums.values(PieceType)) |pt| {
+        for (PieceType.list()) |pt| {
             if (pt == PieceType.none or pt == PieceType.king)
                 continue;
 
@@ -796,7 +796,7 @@ pub const Position = struct {
 
         // All non pinned moves
 
-        for (std.enums.values(PieceType)) |pt| {
+        for (PieceType.list()) |pt| {
             if (pt == PieceType.none or pt == PieceType.king)
                 continue;
 
