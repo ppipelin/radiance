@@ -619,11 +619,11 @@ pub const Position = struct {
                         const pawn_push: Square = from.add(Direction.north.relativeDir(color));
                         // Push, cannot promote if pinned
                         if ((quiet_mask & line & pawn_push.sqToBB()) > 0) {
-                            list.append(allocator, Move.init(MoveFlags.quiet, from, from.add(Direction.north.relativeDir(color)))) catch unreachable;
                             // Double push
                             if (from.rank() == Rank.r2.relativeRank(color) and quiet_mask & from.add(Direction.north_north.relativeDir(color)).sqToBB() > 0) {
                                 list.append(allocator, Move.init(MoveFlags.double_push, from, from.add(Direction.north_north.relativeDir(color)))) catch unreachable;
                             }
+                            list.append(allocator, Move.init(MoveFlags.quiet, from, from.add(Direction.north.relativeDir(color)))) catch unreachable;
                         }
                     }
                 }
@@ -664,12 +664,12 @@ pub const Position = struct {
                 if (pawn_push.rank() == Rank.r8.relativeRank(color)) {
                     Move.generateMovePromotion(allocator, MoveFlags.quiet, from, quiet_mask & pawn_push.sqToBB(), list);
                 } else {
-                    if (quiet_mask & pawn_push.sqToBB() > 0)
-                        list.append(allocator, Move.init(MoveFlags.quiet, from, from.add(Direction.north.relativeDir(color)))) catch unreachable;
                     // Double push
                     if (from.rank() == Rank.r2.relativeRank(color) and quiet_mask & from.add(Direction.north_north.relativeDir(color)).sqToBB() > 0) {
                         list.append(allocator, Move.init(MoveFlags.double_push, from, from.add(Direction.north_north.relativeDir(color)))) catch unreachable;
                     }
+                    if (quiet_mask & pawn_push.sqToBB() > 0)
+                        list.append(allocator, Move.init(MoveFlags.quiet, from, from.add(Direction.north.relativeDir(color)))) catch unreachable;
                 }
             }
         }
