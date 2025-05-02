@@ -214,6 +214,12 @@ pub const PieceType = enum(u3) {
             else => Piece.none,
         };
     }
+
+    pub fn list() []const PieceType {
+        const all_piece_types = [_]PieceType{ .king, .queen, .rook, .bishop, .knight, .pawn };
+
+        return all_piece_types[0..];
+    }
 };
 
 pub const Piece = enum(u8) {
