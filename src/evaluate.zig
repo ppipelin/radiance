@@ -100,12 +100,13 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     const white_king: types.Square = @enumFromInt(types.lsb(bb_white & pos.bb_pieces[types.PieceType.king.index()]));
     const black_king: types.Square = @enumFromInt(types.lsb(bb_black & pos.bb_pieces[types.PieceType.king.index()]));
 
-    const moveset_white_king = tables.getAttacks(types.PieceType.king, types.Color.white, white_king, bb_all) & ~bb_white;
-    const moveset_black_king = tables.getAttacks(types.PieceType.king, types.Color.black, black_king, bb_all) & ~bb_black;
-
     if (endgame) {
+        const moveset_white_king = tables.getAttacks(types.PieceType.king, types.Color.white, white_king, bb_all) & ~bb_white;
+        const moveset_black_king = tables.getAttacks(types.PieceType.king, types.Color.black, black_king, bb_all) & ~bb_black;
         score += @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
     } else {
+        const moveset_white_king = tables.getAttacks(types.PieceType.queen, types.Color.white, white_king, bb_all) & ~bb_white;
+        const moveset_black_king = tables.getAttacks(types.PieceType.queen, types.Color.black, black_king, bb_all) & ~bb_black;
         score -= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
     }
 
