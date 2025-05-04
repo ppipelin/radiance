@@ -1,4 +1,5 @@
 const interface = @import("interface.zig");
+const movepick = @import("movepick.zig");
 const position = @import("position.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
@@ -59,7 +60,8 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
     }
 
     pos.updateAttacked();
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
+    pos.generateLegalMoves(allocator, types.GenerationType.capture, pos.state.turn, &move_list, is_960);
+    pos.generateLegalMoves(allocator, types.GenerationType.quiet, pos.state.turn, &move_list, is_960);
 
     if (depth == 1) {
         if (verbose) {
@@ -95,7 +97,8 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
     }
 
     pos.updateAttacked();
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
+    pos.generateLegalMoves(allocator, types.GenerationType.capture, pos.state.turn, &move_list, is_960);
+    pos.generateLegalMoves(allocator, types.GenerationType.quiet, pos.state.turn, &move_list, is_960);
 
     if (depth == 1)
         return move_list.items.len;
@@ -325,24 +328,18 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         }
     }
 
-    var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer move_list.deinit(allocator);
+    pos.updateCheckersPinned();
+    var mp: movepick.MovePick = .{};
+    defer mp.deinit(allocator);
 
-    if (root_node) {
-        for (root_moves.items) |root_move| {
-            try move_list.append(allocator, root_move.pv.items[0]);
-        }
-    } else {
-        pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
-        var pv_move: types.Move = types.Move.none;
-        if (root_moves.items[0].pv.items.len > ss[0].ply) {
-            pv_move = root_moves.items[0].pv.items[ss[0].ply];
-        }
-        pos.orderMoves(move_list.items, pv_move);
+    var pv_move: types.Move = types.Move.none;
+    if (root_moves.items[0].pv.items.len > ss[0].ply) {
+        pv_move = root_moves.items[0].pv.items[ss[0].ply];
     }
 
     // Loop over all legal moves
-    for (move_list.items) |move| {
+    var move = mp.nextMove(allocator, pos, pv_move, is_960);
+    while (move != types.Move.none) : (move = mp.nextMove(allocator, pos, pv_move, is_960)) {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }
@@ -441,11 +438,11 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
                     // New principal variation to update for current root move
                     root_move.pv.shrinkRetainingCapacity(1);
-                    for (ss[1].pv.?) |pv_move| {
-                        if (pv_move == types.Move.none) {
+                    for (ss[1].pv.?) |current_pv_move| {
+                        if (current_pv_move == types.Move.none) {
                             break;
                         }
-                        root_move.pv.appendAssumeCapacity(pv_move);
+                        root_move.pv.appendAssumeCapacity(current_pv_move);
                     }
                 } else {
                     root_move.score = -types.value_infinite;
@@ -479,7 +476,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         }
     }
 
-    if (move_list.items.len == 0) {
+    if (best_score == -types.value_none) {
         if (pos.state.checkers != 0)
             return -types.value_mate + @as(types.Value, ss[0].ply);
         return types.value_stalemate;
