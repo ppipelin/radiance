@@ -193,7 +193,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     }
 
     // Order moves
-    pos.orderMoves(move_list.items, types.Move.none);
+    pos.orderMoves(move_list.items);
 
     try root_moves.ensureTotalCapacity(allocator, root_moves_len);
     defer root_moves.clearAndFree(allocator);
@@ -515,7 +515,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
     var move_list_capture: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list_capture.deinit(allocator);
     pos.generateLegalCaptures(allocator, pos.state.turn, &move_list_capture);
-    pos.orderMoves(move_list_capture.items, types.Move.none);
+    pos.orderMoves(move_list_capture.items);
 
     // Delta pruning
     const margin: types.Value = 200;

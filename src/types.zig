@@ -415,28 +415,10 @@ pub const Move = packed struct {
 
     pub const MoveSortContext = struct {
         pos: position.Position,
-        m1: Move,
-        m2: Move,
         attacked: Bitboard,
     };
 
     pub fn sort(context: MoveSortContext, m1: Move, m2: Move) bool {
-        if (context.m1 != Move.none) {
-            if (context.m1 == m1) {
-                return true;
-            } else if (context.m1 == m2) {
-                return false;
-            }
-        }
-
-        if (context.m2 != Move.none) {
-            if (context.m2 == m1) {
-                return true;
-            } else if (context.m2 == m2) {
-                return false;
-            }
-        }
-
         var m1_from_piece: PieceType = context.pos.board[m1.getFrom().index()].pieceToPieceType();
         var m2_from_piece: PieceType = context.pos.board[m2.getFrom().index()].pieceToPieceType();
 
