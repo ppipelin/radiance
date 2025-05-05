@@ -328,13 +328,12 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         }
     }
 
-    pos.updateCheckersPinned();
     var mp: movepick.MovePick = .{};
     defer mp.deinit(allocator);
 
     var pv_move: types.Move = types.Move.none;
-    if (root_moves.items[0].pv.items.len > ss[0].ply) {
-        pv_move = root_moves.items[0].pv.items[ss[0].ply];
+    if (root_node and root_moves.items[0].pv.items.len > 0) {
+        pv_move = root_moves.items[0].pv.items[0];
     }
 
     // Loop over all legal moves

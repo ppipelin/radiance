@@ -23,10 +23,24 @@ pub const MovePick = struct {
 
     pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, is_960: bool) types.Move {
         if (self.stage == 0) {
-            const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(pos.state.material_key);
             self.stage += 1;
+
+            if (pv_move != types.Move.none) {
+                self.tt_move = pv_move;
+                return self.tt_move;
+            }
+
+            const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(pos.state.material_key);
             if (found != null) {
-                self.tt_move = found.?[2];
+                // Guard from collisions
+                const move: types.Move = found.?[2];
+                const from_piece: types.Piece = pos.board[move.getFrom().index()];
+                const to_piece: types.Piece = pos.board[move.getTo().index()];
+
+                if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
+                    self.tt_move = move;
+                    return move;
+                }
             }
         }
 
@@ -35,13 +49,6 @@ pub const MovePick = struct {
             pos.updateAttacked();
             pos.generateLegalMoves(allocator, types.GenerationType.capture, pos.state.turn, &self.moves_capture, is_960);
             self.stage += 1;
-            if (pv_move != types.Move.none) {
-                for (self.moves_capture.items, 0..) |move, i| {
-                    if (move == pv_move) {
-                        return self.moves_capture.swapRemove(i);
-                    }
-                }
-            }
         }
 
         // Search for tt
@@ -50,13 +57,14 @@ pub const MovePick = struct {
             if (self.tt_move != types.Move.none) {
                 for (self.moves_capture.items, 0..) |move, i| {
                     if (move == self.tt_move) {
-                        return self.moves_capture.swapRemove(i);
+                        _ = self.moves_capture.swapRemove(i);
+                        break;
                     }
                 }
             }
         }
 
-        // We did not sort captures
+        // Sort captures
         // TODO: sort positive and negative captures separately
         if (self.stage == 3) {
             pos.orderMoves(self.moves_capture.items);
@@ -87,13 +95,6 @@ pub const MovePick = struct {
         if (self.stage == 5) {
             pos.generateLegalMoves(allocator, types.GenerationType.quiet, pos.state.turn, &self.moves_quiet, is_960);
             self.stage += 1;
-            if (pv_move != types.Move.none) {
-                for (self.moves_quiet.items, 0..) |move, i| {
-                    if (move == pv_move) {
-                        return self.moves_quiet.swapRemove(i);
-                    }
-                }
-            }
         }
 
         // Search for tt
@@ -102,13 +103,14 @@ pub const MovePick = struct {
             if (self.tt_move != types.Move.none) {
                 for (self.moves_quiet.items, 0..) |move, i| {
                     if (move == self.tt_move) {
-                        return self.moves_quiet.swapRemove(i);
+                        _ = self.moves_quiet.swapRemove(i);
+                        break;
                     }
                 }
             }
         }
 
-        // We did not sort quiets
+        // Sort quiets
         if (self.stage == 7) {
             pos.orderMoves(self.moves_quiet.items);
             self.stage += 1;
