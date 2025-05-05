@@ -579,6 +579,16 @@ pub const MoveFlags = enum(u4) {
     }
 };
 
+pub const GenerationType = enum(u3) {
+    capture,
+    quiet,
+    all,
+
+    pub inline fn index(self: GenerationType) u8 {
+        return @intFromEnum(self);
+    }
+};
+
 pub const Value = i16;
 
 pub const max_moves = 218;

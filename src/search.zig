@@ -58,7 +58,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
         return 1;
     }
 
-    pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
 
     if (depth == 1) {
         if (verbose) {
@@ -93,7 +93,7 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
         return 1;
     }
 
-    pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
 
     if (depth == 1)
         return move_list.items.len;
@@ -136,8 +136,9 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
 pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, is_960: bool) !types.Move {
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
+
     pos.updateAttacked();
-    pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
 
     if (move_list.items.len == 0)
         return error.MoveAfterCheckmate;
@@ -177,7 +178,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     defer move_list.deinit(allocator);
 
     pos.updateAttacked();
-    pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
 
     const root_moves_len: usize = move_list.items.len;
     if (root_moves_len == 0) {
@@ -335,7 +336,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
             try move_list.append(allocator, root_move.pv.items[0]);
         }
     } else {
-        pos.generateLegalMoves(allocator, pos.state.turn, &move_list, is_960);
+        pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
         var pv_move: types.Move = types.Move.none;
         if (root_moves.items[0].pv.items.len > ss[0].ply) {
             pv_move = root_moves.items[0].pv.items[ss[0].ply];
