@@ -20,6 +20,7 @@ test "Castle" {
     var list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer list.deinit(allocator);
 
+    pos.updateAttacked();
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, true);
 
     try expectEqual(26, list.items.len);
@@ -33,6 +34,8 @@ test "CastleIntersect" {
     var pos: position.Position = try position.Position.setFen(&s, "1qk5/8/8/8/8/8/8/R1K1R3 w KQ - 0 1");
     var list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer list.deinit(allocator);
+    
+    pos.updateAttacked();
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, true);
     try expectEqual(24, list.items.len);
 
@@ -53,6 +56,7 @@ test "CastleMixed" {
     var list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer list.deinit(allocator);
 
+    pos.updateAttacked();
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, true);
 
     try expectEqual(31, list.items.len);

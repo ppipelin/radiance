@@ -58,6 +58,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
         return 1;
     }
 
+    pos.updateAttacked();
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
 
     if (depth == 1) {
@@ -93,6 +94,7 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
         return 1;
     }
 
+    pos.updateAttacked();
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
 
     if (depth == 1)
