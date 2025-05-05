@@ -339,6 +339,8 @@ pub const Position = struct {
                 }
             }
         }
+
+        self.updateCheckersPinned();
     }
 
     pub fn unMovePiece(self: *Position, move: Move) !void {
@@ -411,6 +413,8 @@ pub const Position = struct {
             self.state.full_move += 1;
         self.state.turn = self.state.turn.invert();
         self.state.material_key ^= tables.hash_turn;
+
+        self.updateCheckersPinned();
     }
 
     pub fn unMoveNull(self: *Position) !void {
@@ -420,7 +424,6 @@ pub const Position = struct {
     pub fn updateCheckersPinned(self: *Position) void {
         const bb_us: types.Bitboard = self.bb_colors[self.state.turn.index()];
         const bb_them: types.Bitboard = self.bb_colors[self.state.turn.invert().index()];
-        const bb_all: types.Bitboard = bb_us | bb_them;
 
         const our_king: types.Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[types.PieceType.king.index()]));
 
@@ -448,6 +451,14 @@ pub const Position = struct {
                 self.state.pinned ^= bb_between;
             }
         }
+    }
+
+    pub fn updateAttacked(self: *Position) void {
+        const bb_us: types.Bitboard = self.bb_colors[self.state.turn.index()];
+        const bb_them: types.Bitboard = self.bb_colors[self.state.turn.invert().index()];
+        const bb_all: types.Bitboard = bb_us | bb_them;
+
+        const our_king: types.Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[types.PieceType.king.index()]));
 
         self.state.attacked = 0;
         // If the rook is attacked by a horizontal slider we can't caslte
@@ -476,7 +487,7 @@ pub const Position = struct {
     }
 
     pub fn generateLegalMoves(self: *Position, allocator: std.mem.Allocator, color: Color, list: *std.ArrayListUnmanaged(Move), is_960: bool) void {
-        self.updateCheckersPinned();
+        self.updateAttacked();
         const bb_us: Bitboard = self.bb_colors[color.index()];
         const bb_them: Bitboard = self.bb_colors[color.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
@@ -677,7 +688,7 @@ pub const Position = struct {
     }
 
     pub fn generateLegalCaptures(self: *Position, allocator: std.mem.Allocator, color: Color, list: *std.ArrayListUnmanaged(Move)) void {
-        self.updateCheckersPinned();
+        self.updateAttacked();
         const bb_us: Bitboard = self.bb_colors[color.index()];
         const bb_them: Bitboard = self.bb_colors[color.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
