@@ -494,7 +494,6 @@ pub const Position = struct {
     }
 
     pub fn generateLegalMoves(self: *Position, allocator: std.mem.Allocator, comptime gen_type: GenerationType, color: Color, list: *std.ArrayListUnmanaged(Move), is_960: bool) void {
-        self.updateAttacked();
         const bb_us: Bitboard = self.bb_colors[color.index()];
         const bb_them: Bitboard = self.bb_colors[color.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
