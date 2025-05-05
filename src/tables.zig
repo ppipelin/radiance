@@ -28,7 +28,8 @@ pub fn initAll(allocator: std.mem.Allocator) void {
 
 ////// Zobrist hashing //////
 
-pub const Key = u64;
+// pub const Key = u64;
+pub const Key = u128;
 
 pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, u8, Move, TableBound })) = .empty;
 
@@ -47,18 +48,18 @@ fn initZobrist() void {
         }
         var sq: Square = Square.a1;
         while (sq != Square.none) : (sq = sq.inc().*) {
-            hash_psq[p.index()][sq.index()] = prng.rand64();
+            hash_psq[p.index()][sq.index()] = (prng.rand64() << 63) | prng.rand64();
         }
     }
 
-    hash_turn = prng.rand64();
+    hash_turn = (prng.rand64() << 63) | prng.rand64();
 
     for (std.enums.values(File)) |f| {
-        hash_en_passant[f.index()] = prng.rand64();
+        hash_en_passant[f.index()] = (prng.rand64() << 63) | prng.rand64();
     }
 
     for (0..4) |i| {
-        hash_castling[i] = prng.rand64();
+        hash_castling[i] = (prng.rand64() << 63) | prng.rand64();
     }
 }
 
