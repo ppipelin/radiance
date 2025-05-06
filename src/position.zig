@@ -298,10 +298,12 @@ pub const Position = struct {
             to = Square.g1.relativeSquare(self.state.turn); // Needed for 960 UCI
             to_piece = self.board[self.rook_initial[1 + @as(usize, self.state.turn.invert().index()) * 2].index()];
             self.remove(to_piece, self.rook_initial[1 + @as(usize, self.state.turn.invert().index()) * 2]);
+            self.state.material_key ^= tables.hash_psq[to_piece.index()][to.index()];
         } else if (move.getFlags() == MoveFlags.ooo) {
             to = Square.c1.relativeSquare(self.state.turn); // Needed for 960 UCI
             to_piece = self.board[self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2].index()];
             self.remove(to_piece, self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2]);
+            self.state.material_key ^= tables.hash_psq[to_piece.index()][to.index()];
         }
 
         // Remove/Add
@@ -317,10 +319,14 @@ pub const Position = struct {
         // If castling we move the rook as well
         switch (move.getFlags()) {
             MoveFlags.oo => {
-                self.add(to_piece, Square.f1.relativeSquare(self.state.turn.invert()));
+                const sq: Square = Square.f1.relativeSquare(self.state.turn.invert());
+                self.add(to_piece, sq);
+                self.state.material_key ^= tables.hash_psq[to_piece.index()][sq.index()];
             },
             MoveFlags.ooo => {
-                self.add(to_piece, Square.d1.relativeSquare(self.state.turn.invert()));
+                const sq: Square = Square.d1.relativeSquare(self.state.turn.invert());
+                self.add(to_piece, sq);
+                self.state.material_key ^= tables.hash_psq[to_piece.index()][sq.index()];
             },
             else => {},
         }
