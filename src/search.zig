@@ -518,22 +518,12 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
 
     var move_list_capture: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list_capture.deinit(allocator);
-    pos.generateLegalCaptures(allocator, pos.state.turn, &move_list_capture);
-    pos.orderMoves(move_list_capture.items);
 
     // Delta pruning
     const margin: types.Value = 200;
 
     if (!pos.endgame(pos.state.turn)) {
-        var best_capture: types.Value = tables.material[types.PieceType.queen.index()];
-        for (move_list_capture.items) |move| {
-            if (move.isPromotion()) {
-                best_capture += tables.material[types.PieceType.queen.index()] - tables.material[types.PieceType.pawn.index()];
-                break;
-            }
-        }
-
-        // if ((if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w) +| best_capture < (alpha -| margin))
+        const best_capture: types.Value = tables.material[types.PieceType.queen.index()];
         if (stand_pat +| best_capture < (alpha -| margin))
             return alpha;
     }
@@ -544,7 +534,13 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
         return alpha;
 
     // Loop over all legal captures
-    for (move_list_capture.items) |move| {
+    var mp: movepick.MovePick = .{ .stage = 10 };
+    defer mp.deinit(allocator);
+
+    // Loop over all legal moves
+    var move = mp.nextMove(allocator, pos, types.Move.none, false);
+    while (move != types.Move.none) : (move = mp.nextMove(allocator, pos, types.Move.none, false)) {
+        // for (move_list_capture.items) |move| {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }

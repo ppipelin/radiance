@@ -5,14 +5,16 @@ const types = @import("types.zig");
 
 /// MovePick struct to allow staged move generation
 /// Stages
-/// 0. Transposition table init
-/// 1. Capture init
-/// 2. Capture sort
-/// 3. Capture return
-/// 4. Quiet init
-/// 5. Quiet sort
-/// 6. Quiet return
-/// 7. return `Move.none`
+/// 0. Transposition table init (and 10.)
+/// 1. Capture init (and 11.)
+/// 2. Remove tt from capture (and 12.)
+/// 3. Capture sort (and 13.)
+/// 4. Capture return (and 14.)
+/// 5. Quiet init
+/// 6. Remove tt from quiet
+/// 7. Quiet sort
+/// 8. Quiet return
+/// 9. return `Move.none`
 pub const MovePick = struct {
     moves_capture: std.ArrayListUnmanaged(types.Move) = .empty,
     moves_quiet: std.ArrayListUnmanaged(types.Move) = .empty,
@@ -22,7 +24,7 @@ pub const MovePick = struct {
     index_quiet: u8 = 0,
 
     pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, is_960: bool) types.Move {
-        if (self.stage == 0) {
+        if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
 
             if (pv_move != types.Move.none) {
@@ -33,31 +35,33 @@ pub const MovePick = struct {
             const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(pos.state.material_key);
             if (found != null) {
                 const move: types.Move = found.?[2];
-                const from_piece: types.Piece = pos.board[move.getFrom().index()];
-                const to_piece: types.Piece = pos.board[move.getTo().index()];
+                if (self.stage == 1 or (self.stage == 11 and move.isCapture())) {
+                    const from_piece: types.Piece = pos.board[move.getFrom().index()];
+                    const to_piece: types.Piece = pos.board[move.getTo().index()];
 
-                // Guard from collisions
-                // Uncomment for high collision rate
-                // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and ((to_piece == .none and (!move.isCapture() or move.isEnPassant())) or (to_piece != .none and move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-                if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-                    // const attacks: types.Bitboard = tables.getAttacks(from_piece.pieceToPieceType(), pos.state.turn, move.getFrom(), pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]) & ~pos.bb_colors[pos.state.turn.index()];
-                    // if (attacks & move.getTo().sqToBB() > 1) {
-                    self.tt_move = move;
-                    return move;
-                    // }
+                    // Guard from collisions
+                    // Uncomment for high collision rate
+                    // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and ((to_piece == .none and (!move.isCapture() or move.isEnPassant())) or (to_piece != .none and move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
+                    if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
+                        // const attacks: types.Bitboard = tables.getAttacks(from_piece.pieceToPieceType(), pos.state.turn, move.getFrom(), pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]) & ~pos.bb_colors[pos.state.turn.index()];
+                        // if (attacks & move.getTo().sqToBB() > 1) {
+                        self.tt_move = move;
+                        return move;
+                        // }
+                    }
                 }
             }
         }
 
-        // Capture init with pv
-        if (self.stage == 1) {
+        // Capture init
+        if (self.stage == 1 or self.stage == 11) {
             pos.updateAttacked();
             pos.generateLegalMoves(allocator, types.GenerationType.capture, pos.state.turn, &self.moves_capture, is_960);
             self.stage += 1;
         }
 
         // Search for tt
-        if (self.stage == 2) {
+        if (self.stage == 2 or self.stage == 12) {
             self.stage += 1;
             if (self.tt_move != types.Move.none) {
                 for (self.moves_capture.items, 0..) |move, i| {
@@ -71,13 +75,13 @@ pub const MovePick = struct {
 
         // Sort captures
         // TODO: sort positive and negative captures separately
-        if (self.stage == 3) {
+        if (self.stage == 3 or self.stage == 13) {
             pos.orderMoves(self.moves_capture.items);
             self.stage += 1;
         }
 
         // Explored all captures, move to next stage
-        if (self.stage == 4 and self.index_capture >= self.moves_capture.items.len) {
+        if ((self.stage == 4 or self.stage == 14) and self.index_capture >= self.moves_capture.items.len) {
             self.stage += 1;
         }
 
@@ -92,11 +96,17 @@ pub const MovePick = struct {
             }
         }
 
-        if (self.stage == 4) {
+        if (self.stage == 14) {
+            const move: types.Move = self.moves_capture.items[self.index_capture];
+            self.index_capture += 1;
+            return move;
+        }
+
+        if (self.stage == 4 or self.stage == 14) {
             self.stage += 1;
         }
 
-        // Quiet init with pv
+        // Quiet init
         if (self.stage == 5) {
             pos.generateLegalMoves(allocator, types.GenerationType.quiet, pos.state.turn, &self.moves_quiet, is_960);
             self.stage += 1;
