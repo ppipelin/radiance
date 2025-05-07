@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Mate pruning
 - Reverse Futility Pruning
 - Fancy Magic Bitboards
 - `compute` args

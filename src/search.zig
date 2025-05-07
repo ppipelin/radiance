@@ -293,6 +293,11 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     var move_count: u16 = 0;
 
     // Pruning
+    // Mate pruning
+    if (alpha < -types.value_mate) alpha = -types.value_mate;
+    if (beta > types.value_mate - 1) beta = types.value_mate - 1;
+    if (alpha >= beta) return alpha;
+
     if (@popCount(pos.state.checkers) == 0) {
         const static_eval: types.Value = eval(pos.*);
 
