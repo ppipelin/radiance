@@ -415,27 +415,10 @@ pub const Move = packed struct {
 
     pub const MoveSortContext = struct {
         pos: position.Position,
-        m1: Move,
-        m2: Move,
+        attacked: Bitboard,
     };
 
     pub fn sort(context: MoveSortContext, m1: Move, m2: Move) bool {
-        if (context.m1 != Move.none) {
-            if (context.m1 == m1) {
-                return true;
-            } else if (context.m1 == m2) {
-                return false;
-            }
-        }
-
-        if (context.m2 != Move.none) {
-            if (context.m2 == m1) {
-                return true;
-            } else if (context.m2 == m2) {
-                return false;
-            }
-        }
-
         var m1_from_piece: PieceType = context.pos.board[m1.getFrom().index()].pieceToPieceType();
         var m2_from_piece: PieceType = context.pos.board[m2.getFrom().index()].pieceToPieceType();
 
@@ -465,8 +448,8 @@ pub const Move = packed struct {
             m2_to_piece = PieceType.none;
         }
 
-        return (if (m1.isCapture() and m1.getFlags() != MoveFlags.en_passant) tables.material[m1_to_piece.index()] - tables.material[m1_from_piece.index()] else m1_caslte_bonus) >
-            (if (m2.isCapture() and m2.getFlags() != MoveFlags.en_passant) tables.material[m2_to_piece.index()] - tables.material[m2_from_piece.index()] else m2_caslte_bonus);
+        return (if (m1.isCapture() and m1.getFlags() != MoveFlags.en_passant) tables.material[m1_to_piece.index()] - tables.material[m1_from_piece.index()] else m1_caslte_bonus) + @intFromBool(m1.getFrom().sqToBB() & context.attacked != 0) - @intFromBool(m1.getTo().sqToBB() & context.attacked != 0) >
+            (if (m2.isCapture() and m2.getFlags() != MoveFlags.en_passant) tables.material[m2_to_piece.index()] - tables.material[m2_from_piece.index()] else m2_caslte_bonus) + @intFromBool(m2.getFrom().sqToBB() & context.attacked != 0) - @intFromBool(m2.getTo().sqToBB() & context.attacked != 0);
     }
 
     pub inline fn generateMove(allocator: std.mem.Allocator, comptime flag: MoveFlags, from: Square, to_: Bitboard, list: *std.ArrayListUnmanaged(Move)) void {
@@ -574,6 +557,16 @@ pub const MoveFlags = enum(u4) {
     }
 
     pub inline fn index(self: MoveFlags) u4 {
+        return @intFromEnum(self);
+    }
+};
+
+pub const GenerationType = enum(u3) {
+    capture,
+    quiet,
+    all,
+
+    pub inline fn index(self: GenerationType) u8 {
         return @intFromEnum(self);
     }
 };
