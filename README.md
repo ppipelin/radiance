@@ -14,7 +14,8 @@
 
 ## Move Generation and Ordering
 
-- Precomputed Bitboard Move Generation
+- Fancy Magic Bitboards
+- [Staged](https://www.chessprogramming.org/Move_Generation#Staged_Move_Generation) Move Generation
 - Fancy Magic Bitboards For Sliders
 - Transposition Table Move Ordering
 - Principal Variation Move Ordering
