@@ -14,6 +14,7 @@ const Piece = types.Piece;
 const PieceType = types.PieceType;
 const Rank = types.Rank;
 const Square = types.Square;
+const Value = types.Value;
 
 pub const start_fen: []const u8 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 pub const kiwi_fen: []const u8 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
@@ -57,8 +58,8 @@ pub const State = struct {
     half_move: u8 = 0,
     full_move: u32 = 1,
     en_passant: Square = Square.none,
-    checkers: types.Bitboard = 0,
-    pinned: types.Bitboard = 0,
+    checkers: Bitboard = 0,
+    pinned: Bitboard = 0,
     attacked: Bitboard = 0,
     attacked_horizontal: Bitboard = 0,
     last_captured_piece: Piece = Piece.none,
@@ -81,12 +82,12 @@ pub const Position = struct {
     zobrist: u64 = 0,
 
     // Score
-    score_mg: types.Value = 0,
-    score_eg: types.Value = 0,
-    score_king_w: types.Value = 0,
-    score_king_b: types.Value = 0,
-    score_material_w: types.Value = 0,
-    score_material_b: types.Value = 0,
+    score_mg: Value = 0,
+    score_eg: Value = 0,
+    score_king_w: Value = 0,
+    score_king_b: Value = 0,
+    score_material_w: Value = 0,
+    score_material_b: Value = 0,
 
     state: *State = undefined,
 
@@ -429,10 +430,10 @@ pub const Position = struct {
     }
 
     pub fn updateCheckersPinned(self: *Position) void {
-        const bb_us: types.Bitboard = self.bb_colors[self.state.turn.index()];
-        const bb_them: types.Bitboard = self.bb_colors[self.state.turn.invert().index()];
+        const bb_us: Bitboard = self.bb_colors[self.state.turn.index()];
+        const bb_them: Bitboard = self.bb_colors[self.state.turn.invert().index()];
 
-        const our_king: types.Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[types.PieceType.king.index()]));
+        const our_king: Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[PieceType.king.index()]));
 
         self.state.pinned = 0;
 
@@ -443,12 +444,12 @@ pub const Position = struct {
         self.state.checkers |= tables.pawn_attacks[self.state.turn.index()][our_king.index()] & bb_them & self.bb_pieces[PieceType.pawn.index()];
 
         // Compute candidate checkers from sliders and pinned pieces, transform the king into a slider
-        var candidates: types.Bitboard = tables.getAttacks(PieceType.bishop, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
+        var candidates: Bitboard = tables.getAttacks(PieceType.bishop, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
         candidates |= tables.getAttacks(PieceType.rook, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
 
         while (candidates != 0) {
             const sq: Square = types.popLsb(&candidates);
-            const bb_between: types.Bitboard = tables.squares_between[our_king.index()][sq.index()] & bb_us;
+            const bb_between: Bitboard = tables.squares_between[our_king.index()][sq.index()] & bb_us;
 
             if (bb_between == 0) {
                 // No our piece between king and slider: check
@@ -461,11 +462,11 @@ pub const Position = struct {
     }
 
     pub fn updateAttacked(self: *Position) void {
-        const bb_us: types.Bitboard = self.bb_colors[self.state.turn.index()];
-        const bb_them: types.Bitboard = self.bb_colors[self.state.turn.invert().index()];
-        const bb_all: types.Bitboard = bb_us | bb_them;
+        const bb_us: Bitboard = self.bb_colors[self.state.turn.index()];
+        const bb_them: Bitboard = self.bb_colors[self.state.turn.invert().index()];
+        const bb_all: Bitboard = bb_us | bb_them;
 
-        const our_king: types.Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[types.PieceType.king.index()]));
+        const our_king: Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[PieceType.king.index()]));
 
         self.state.attacked = 0;
         // If the rook is attacked by a horizontal slider we can't caslte
@@ -716,7 +717,7 @@ pub const Position = struct {
         // Compute score based on the endgame condition
         // Once ennemy has less pieces our king attacks the other one
         // King, seven pawns a rook and a bishop
-        return (if (col.isWhite()) self.score_material_b else self.score_material_w) <= tables.material[types.PieceType.king.index()] + 7 * tables.material[types.PieceType.pawn.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
+        return (if (col.isWhite()) self.score_material_b else self.score_material_w) <= tables.material[PieceType.king.index()] + 7 * tables.material[PieceType.pawn.index()] + tables.material[PieceType.rook.index()] + tables.material[PieceType.bishop.index()];
     }
 
     pub fn print(self: Position, writer: anytype) void {
