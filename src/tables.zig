@@ -359,6 +359,11 @@ pub const black_pawn_attacks = [64]Bitboard{
 };
 
 
+////// Evaluation //////
+
+pub const max_history = 200;
+pub var history: [types.Color.nb()][types.board_size2][types.board_size2]types.Value = std.mem.zeroes([types.Color.nb()][types.board_size2][types.board_size2]types.Value);
+
 // Start position total 14152, max 20952
 pub const material = [types.PieceType.nb()]types.Value { 0, 100, 305, 333, 563, 950, 10_000 };
 

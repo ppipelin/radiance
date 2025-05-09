@@ -718,14 +718,24 @@ pub const Position = struct {
                 from_piece = MoveFlags.promoteType(move.getFlags());
             }
 
-            // Castle (bonus and 960 specific cases)
-            var caslte_bonus: Value = 0;
-            if (move.isCastle()) {
-                caslte_bonus = 50;
-                to_piece = PieceType.none;
+            if (move.isCapture()) {
+                if (move.getFlags() != MoveFlags.en_passant) {
+                    scores[i] += tables.material[to_piece.index()] - tables.material[from_piece.index()];
+                }
+            } else {
+                // Castle (bonus and 960 specific cases)
+                var caslte_bonus: Value = 0;
+                if (move.isCastle()) {
+                    caslte_bonus = 50;
+                    to_piece = PieceType.none;
+                }
+                scores[i] += caslte_bonus;
+
+                const history: types.Value = tables.history[self.state.turn.index()][move.getFrom().index()][move.getTo().index()];
+                scores[i] += history;
             }
 
-            scores[i] = (if (move.isCapture() and move.getFlags() != MoveFlags.en_passant) tables.material[to_piece.index()] - tables.material[from_piece.index()] else caslte_bonus) + @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0) - @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0);
+            scores[i] += @as(types.Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(types.Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
         }
     }
 
