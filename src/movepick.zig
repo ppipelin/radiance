@@ -23,7 +23,7 @@ pub const MovePick = struct {
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
 
-    pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, is_960: bool) types.Move {
+    pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
 
@@ -76,7 +76,10 @@ pub const MovePick = struct {
         // Sort captures
         // TODO: sort positive and negative captures separately
         if (self.stage == 3 or self.stage == 13) {
-            pos.orderMoves(self.moves_capture.items);
+            const scores: []types.Value = try allocator.alloc(types.Value, self.moves_capture.items.len);
+            defer allocator.free(scores);
+            pos.scoreMoves(self.moves_capture.items, scores);
+            position.orderMoves(self.moves_capture.items, scores);
             self.stage += 1;
         }
 
@@ -127,7 +130,10 @@ pub const MovePick = struct {
 
         // Sort quiets
         if (self.stage == 7) {
-            pos.orderMoves(self.moves_quiet.items);
+            const scores: []types.Value = try allocator.alloc(types.Value, self.moves_quiet.items.len);
+            defer allocator.free(scores);
+            pos.scoreMoves(self.moves_quiet.items, scores);
+            position.orderMoves(self.moves_quiet.items, scores);
             self.stage += 1;
         }
 

@@ -709,8 +709,24 @@ pub const Position = struct {
         }
     }
 
-    pub fn orderMoves(self: Position, list: []Move) void {
-        std.sort.pdq(Move, list, Move.MoveSortContext{ .pos = self, .attacked = self.state.attacked }, Move.sort);
+    pub fn scoreMoves(self: Position, list: []Move, scores: []Value) void {
+        for (list, 0..) |move, i| {
+            var from_piece: PieceType = self.board[move.getFrom().index()].pieceToPieceType();
+            var to_piece: PieceType = self.board[move.getTo().index()].pieceToPieceType();
+
+            if (move.isPromotion()) {
+                from_piece = MoveFlags.promoteType(move.getFlags());
+            }
+
+            // Castle (bonus and 960 specific cases)
+            var caslte_bonus: Value = 0;
+            if (move.isCastle()) {
+                caslte_bonus = 50;
+                to_piece = PieceType.none;
+            }
+
+            scores[i] = (if (move.isCapture() and move.getFlags() != MoveFlags.en_passant) tables.material[to_piece.index()] - tables.material[from_piece.index()] else caslte_bonus) + @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0) - @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0);
+        }
     }
 
     pub fn endgame(self: Position, col: Color) bool {
@@ -985,3 +1001,10 @@ pub const Position = struct {
         return pos;
     }
 };
+
+pub fn orderMoves(moves: []Move, scores: []Value) void {
+    if (moves.len <= 1)
+        return;
+
+    std.sort.pdqContext(0, moves.len, Move.MoveSortContext{ .items = moves, .scores = scores });
+}
