@@ -472,9 +472,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 // Fail high
                 if (score >= beta) {
                     if (!move.isCapture()) {
-                        const clamped_bonus: types.Value = std.math.clamp(current_depth * current_depth, -tables.max_history, tables.max_history);
-                        const last_value: types.Value = @intCast(@abs(tables.history[pos.state.turn.index()][move.getFrom().index()][move.getTo().index()]));
-                        tables.history[pos.state.turn.index()][move.getFrom().index()][move.getTo().index()] += clamped_bonus - @divTrunc(last_value * clamped_bonus, tables.max_history);
+                        tables.updateHistory(pos.state.turn, move.getFrom(), move.getTo(), current_depth);
                     }
                     if (score != types.value_draw) {
                         const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(key);

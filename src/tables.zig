@@ -357,20 +357,28 @@ pub const black_pawn_attacks = [64]Bitboard{
     0x20000000000,      0x50000000000,      0xa0000000000,      0x140000000000,      0x280000000000,       0x500000000000,      0xa00000000000,      0x400000000000,
     0x2000000000000,    0x5000000000000,    0xa000000000000,    0x14000000000000,    0x28000000000000,     0x50000000000000,    0xa0000000000000,    0x40000000000000,
 };
-
+// zig fmt: on
 
 ////// Evaluation //////
 
 pub const max_history = 200;
 pub var history: [types.Color.nb()][types.board_size2][types.board_size2]types.Value = std.mem.zeroes([types.Color.nb()][types.board_size2][types.board_size2]types.Value);
 
-// Start position total 14152, max 20952
-pub const material = [types.PieceType.nb()]types.Value { 0, 100, 305, 333, 563, 950, 10_000 };
+pub fn updateHistory(turn: Color, from: Square, to: Square, depth: u8) void {
+    const clamped_bonus: types.Value = std.math.clamp(depth * depth, -max_history, max_history);
+    const last_value: types.Value = @intCast(@abs(history[turn.index()][from.index()][to.index()]));
+    history[turn.index()][from.index()][to.index()] += clamped_bonus - @divTrunc(last_value * clamped_bonus, max_history);
+    // history[turn.index()][from.index()][to.index()] += depth * depth;
+}
 
-pub const passed_pawn_table = [types.board_size - 1]types.Value { 0, 15, 15, 25, 40, 60, 70 };
+// Start position total 14152, max 20952
+pub const material = [types.PieceType.nb()]types.Value{ 0, 100, 305, 333, 563, 950, 10_000 };
+
+pub const passed_pawn_table = [types.board_size - 1]types.Value{ 0, 15, 15, 25, 40, 60, 70 };
 
 // Tables are displayed for white which corresponds to black order of tiles
 // https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+// zig fmt: off
 pub const psq: [types.PieceType.nb()][2][types.board_size2]types.Value = .{
     .{
         .{

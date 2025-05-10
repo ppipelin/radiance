@@ -720,7 +720,10 @@ pub const Position = struct {
 
             if (move.isCapture()) {
                 if (move.getFlags() != MoveFlags.en_passant) {
-                    scores[i] += tables.material[to_piece.index()] - tables.material[from_piece.index()];
+                    const capture_value: types.Value = tables.material[to_piece.index()] - tables.material[from_piece.index()];
+                    scores[i] += capture_value;
+                    if (capture_value > 0)
+                        scores[i] += tables.max_history + 1;
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
