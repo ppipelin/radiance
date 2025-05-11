@@ -79,7 +79,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
     defer states.deinit(allocator);
 
     states.appendAssumeCapacity(position.State{});
-    var pos: position.Position = try position.Position.setFen(&states.items[states.items.len - 1], position.start_fen);
+    var pos: position.Position = try position.Position.setFen(&states.items[0], position.start_fen);
 
     var alloc = std.heap.ArenaAllocator.init(allocator);
     defer alloc.deinit();
@@ -138,7 +138,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
 
         if (std.mem.eql(u8, "ucinewgame", primary_token)) {
             existing_command = true;
-            pos = try position.Position.setFen(&states.items[states.items.len - 1], position.start_fen);
+            pos = try position.Position.setFen(&states.items[0], position.start_fen);
         }
 
         if (std.mem.eql(u8, "position", primary_token)) {
@@ -147,7 +147,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
                 try stdout.print("Command position failed with error {}, reset to startpos\n", .{err});
                 states.clearRetainingCapacity();
                 states.appendAssumeCapacity(position.State{});
-                pos = try position.Position.setFen(&states.items[states.items.len - 1], position.start_fen);
+                pos = try position.Position.setFen(&states.items[0], position.start_fen);
             };
         }
 
@@ -168,7 +168,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
                 try stdout.print("Could not spawn thread! With error {}\n", .{err});
                 states.clearRetainingCapacity();
                 states.appendAssumeCapacity(position.State{});
-                pos = try position.Position.setFen(&states.items[states.items.len - 1], position.start_fen);
+                pos = try position.Position.setFen(&states.items[0], position.start_fen);
                 return;
             };
         }
