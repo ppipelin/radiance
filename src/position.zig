@@ -235,7 +235,7 @@ pub const Position = struct {
                 // Updates en_passant if possible next turn
                 switch (move.getFlags()) {
                     MoveFlags.double_push => {
-                        self.state.en_passant = to.add(if (self.state.turn.isWhite()) Direction.south else Direction.north);
+                        // self.state.en_passant = to.add(if (self.state.turn.isWhite()) Direction.south else Direction.north);
                         self.state.material_key ^= tables.hash_en_passant[self.state.en_passant.file().index()];
                     },
                     MoveFlags.en_passant => {
@@ -837,10 +837,18 @@ pub const Position = struct {
             fen[cnt] = '-';
             cnt += 1;
         } else {
-            const tmp_str = self.state.en_passant.str();
-            for (tmp_str) |c| {
-                fen[cnt] = c;
-                cnt += 1;
+            if (self.state.en_passant.index() > Square.none.index()) {
+                const tmp_str = std.fmt.digits2(self.state.en_passant.index());
+                for (tmp_str) |c| {
+                    fen[cnt] = c;
+                    cnt += 1;
+                }
+            } else {
+                const tmp_str = self.state.en_passant.str();
+                for (tmp_str) |c| {
+                    fen[cnt] = c;
+                    cnt += 1;
+                }
             }
         }
 
@@ -981,7 +989,8 @@ pub const Position = struct {
             for (types.square_to_str, 0..) |sq_str, i| {
                 if (std.mem.eql(u8, ep.?, sq_str)) {
                     const sq_ep: Square = @enumFromInt(i);
-                    pos.state.en_passant = sq_ep;
+                    // pos.state.en_passant = sq_ep;
+                    std.debug.print("sq_ep {}\n", .{sq_ep});
                     pos.state.material_key ^= tables.hash_en_passant[sq_ep.file().index()];
                     break;
                 }

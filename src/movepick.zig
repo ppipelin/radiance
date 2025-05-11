@@ -32,7 +32,7 @@ pub const MovePick = struct {
                 return self.tt_move;
             }
 
-            const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(pos.state.material_key);
+            const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound, position.Position }) = tables.transposition_table.get(pos.state.material_key);
             if (found != null) {
                 const move: types.Move = found.?[2];
                 if (self.stage == 1 or (self.stage == 11 and move.isCapture())) {
@@ -49,6 +49,9 @@ pub const MovePick = struct {
                         return move;
                         // }
                     }
+                    std.debug.print("collision\n", .{});
+                    found.?[4].printDebug();
+                    pos.printDebug();
                 }
             }
         }
