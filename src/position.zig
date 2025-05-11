@@ -241,7 +241,7 @@ pub const Position = struct {
 
                         // Remove
                         self.remove(self.state.last_captured_piece, en_passant_sq);
-                        self.state.material_key ^= tables.hash_psq[self.state.last_captured_piece.index()][en_passant_sq.file().index()];
+                        self.state.material_key ^= tables.hash_psq[self.state.last_captured_piece.index()][en_passant_sq.index()];
 
                         self.board[en_passant_sq.index()] = Piece.none;
                     },
@@ -297,14 +297,18 @@ pub const Position = struct {
 
         if (move.getFlags() == MoveFlags.oo) {
             to = Square.g1.relativeSquare(self.state.turn); // Needed for 960 UCI
-            to_piece = self.board[self.rook_initial[1 + @as(usize, self.state.turn.invert().index()) * 2].index()];
-            self.remove(to_piece, self.rook_initial[1 + @as(usize, self.state.turn.invert().index()) * 2]);
-            self.state.material_key ^= tables.hash_psq[to_piece.index()][to.index()];
+            // Remove rook
+            const from_rook: Square = self.rook_initial[1 + @as(usize, self.state.turn.invert().index()) * 2];
+            to_piece = self.board[from_rook.index()];
+            self.remove(to_piece, from_rook);
+            self.state.material_key ^= tables.hash_psq[to_piece.index()][from_rook.index()];
         } else if (move.getFlags() == MoveFlags.ooo) {
             to = Square.c1.relativeSquare(self.state.turn); // Needed for 960 UCI
-            to_piece = self.board[self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2].index()];
-            self.remove(to_piece, self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2]);
-            self.state.material_key ^= tables.hash_psq[to_piece.index()][to.index()];
+            // Remove rook
+            const from_rook: Square = self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2];
+            to_piece = self.board[from_rook.index()];
+            self.remove(to_piece, from_rook);
+            self.state.material_key ^= tables.hash_psq[to_piece.index()][from_rook.index()];
         }
 
         // Remove/Add
@@ -711,7 +715,7 @@ pub const Position = struct {
             scores[i] = 0;
 
             var from_piece: PieceType = self.board[move.getFrom().index()].pieceToPieceType();
-            var to_piece: PieceType = self.board[move.getTo().index()].pieceToPieceType();
+            const to_piece: PieceType = self.board[move.getTo().index()].pieceToPieceType();
 
             if (move.isPromotion()) {
                 from_piece = MoveFlags.promoteType(move.getFlags());
