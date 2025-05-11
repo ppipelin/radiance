@@ -163,7 +163,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
             search_thread = std.Thread.spawn(
                 .{ .stack_size = 64 * 1024 * 1024 },
                 cmd_go,
-                .{ allocator, stdout, &pos, &tokens, &states, options },
+                .{ allocator, stdout, &pos, &tokens, options },
             ) catch |err| {
                 try stdout.print("Could not spawn thread! With error {}\n", .{err});
                 states.clearRetainingCapacity();
@@ -334,8 +334,7 @@ fn cmd_position(pos: *position.Position, tokens: anytype, states: *StateList) !v
     }
 }
 
-fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, tokens: anytype, states: *StateList, options: std.StringArrayHashMapUnmanaged(Option)) !void {
-    _ = states;
+fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
     limits = Limits{};
     var token: ?[]const u8 = tokens.next();
     g_stop = false;
@@ -505,7 +504,7 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: anytype) anyerror!void {
         const input = "depth 10";
         var tokens = std.mem.tokenizeScalar(u8, input, ' ');
 
-        try cmd_go(allocator, stdout, &pos, &tokens, &states, options);
+        try cmd_go(allocator, stdout, &pos, &tokens, options);
     }
 
     stdout.print("Time elapsed: {}\n", .{std.fmt.fmtDuration(t.read())}) catch unreachable;
