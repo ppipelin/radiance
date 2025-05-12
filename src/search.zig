@@ -172,6 +172,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     var ss: [*]Stack = &stack;
     ss = ss + 7;
 
+    tables.history = std.mem.zeroes([types.Color.nb()][types.board_size2][types.board_size2]types.Value);
     tables.transposition_table.clearRetainingCapacity();
 
     for (0..200) |i| {
@@ -470,6 +471,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
                 // Fail high
                 if (score >= beta) {
+                    if (!move.isCapture()) {
+                        tables.updateHistory(pos.state.turn, move.getFrom(), move.getTo(), @as(types.Value, current_depth) * @as(types.Value, current_depth));
+                    }
                     if (score != types.value_draw) {
                         const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(key);
                         if (found == null or found.?[1] <= current_depth - 1) {
