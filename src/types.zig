@@ -414,43 +414,18 @@ pub const Move = packed struct {
     }
 
     pub const MoveSortContext = struct {
-        pos: position.Position,
-        attacked: Bitboard,
+        items: []Move,
+        scores: []Value,
+
+        pub fn swap(ctx: @This(), a: usize, b: usize) void {
+            std.mem.swap(Value, &ctx.scores[a], &ctx.scores[b]);
+            return std.mem.swap(Move, &ctx.items[a], &ctx.items[b]);
+        }
+
+        pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
+            return ctx.scores[a] > ctx.scores[b];
+        }
     };
-
-    pub fn sort(context: MoveSortContext, m1: Move, m2: Move) bool {
-        var m1_from_piece: PieceType = context.pos.board[m1.getFrom().index()].pieceToPieceType();
-        var m2_from_piece: PieceType = context.pos.board[m2.getFrom().index()].pieceToPieceType();
-
-        // Promotion
-        if (m1.isPromotion()) {
-            m1_from_piece = MoveFlags.promoteType(m1.getFlags());
-        }
-
-        if (m2.isPromotion()) {
-            m2_from_piece = MoveFlags.promoteType(m2.getFlags());
-        }
-
-        var m1_to_piece: PieceType = context.pos.board[m1.getTo().index()].pieceToPieceType();
-        var m2_to_piece: PieceType = context.pos.board[m2.getTo().index()].pieceToPieceType();
-
-        // Castle (bonus and 960 specific cases)
-        var m1_caslte_bonus: Value = 0;
-        var m2_caslte_bonus: Value = 0;
-
-        if (m1.isCastle()) {
-            m1_caslte_bonus = 50;
-            m1_to_piece = PieceType.none;
-        }
-
-        if (m2.isCastle()) {
-            m2_caslte_bonus = 50;
-            m2_to_piece = PieceType.none;
-        }
-
-        return (if (m1.isCapture() and m1.getFlags() != MoveFlags.en_passant) tables.material[m1_to_piece.index()] - tables.material[m1_from_piece.index()] else m1_caslte_bonus) + @intFromBool(m1.getFrom().sqToBB() & context.attacked != 0) - @intFromBool(m1.getTo().sqToBB() & context.attacked != 0) >
-            (if (m2.isCapture() and m2.getFlags() != MoveFlags.en_passant) tables.material[m2_to_piece.index()] - tables.material[m2_from_piece.index()] else m2_caslte_bonus) + @intFromBool(m2.getFrom().sqToBB() & context.attacked != 0) - @intFromBool(m2.getTo().sqToBB() & context.attacked != 0);
-    }
 
     pub inline fn generateMove(allocator: std.mem.Allocator, comptime flag: MoveFlags, from: Square, to_: Bitboard, list: *std.ArrayListUnmanaged(Move)) void {
         var to: Bitboard = to_;
