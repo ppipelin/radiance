@@ -193,7 +193,11 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     }
 
     // Order moves
-    pos.orderMoves(move_list.items);
+    const scores: []types.Value = try allocator.alloc(types.Value, move_list.items.len);
+    defer allocator.free(scores);
+    pos.scoreMoves(move_list.items, scores);
+    position.orderMoves(move_list.items, scores);
+    // pos.orderMoves(move_list.items);
 
     try root_moves.ensureTotalCapacity(allocator, root_moves_len);
     defer root_moves.clearAndFree(allocator);
@@ -342,8 +346,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     // Loop over all legal moves
-    var move = mp.nextMove(allocator, pos, pv_move, is_960);
-    while (move != types.Move.none) : (move = mp.nextMove(allocator, pos, pv_move, is_960)) {
+    var move: types.Move = try mp.nextMove(allocator, pos, pv_move, is_960);
+    while (move != types.Move.none) : (move = try mp.nextMove(allocator, pos, pv_move, is_960)) {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }
@@ -538,8 +542,8 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
     defer mp.deinit(allocator);
 
     // Loop over all legal moves
-    var move = mp.nextMove(allocator, pos, types.Move.none, false);
-    while (move != types.Move.none) : (move = mp.nextMove(allocator, pos, types.Move.none, false)) {
+    var move: types.Move = try mp.nextMove(allocator, pos, types.Move.none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(allocator, pos, types.Move.none, false)) {
         // for (move_list_capture.items) |move| {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;

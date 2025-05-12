@@ -22,8 +22,9 @@ pub const MovePick = struct {
     tt_move: types.Move = types.Move.none,
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
+    scores: []types.Value = undefined,
 
-    pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, is_960: bool) types.Move {
+    pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
 
@@ -74,9 +75,10 @@ pub const MovePick = struct {
         }
 
         // Sort captures
-        // TODO: sort positive and negative captures separately
         if (self.stage == 3 or self.stage == 13) {
-            pos.orderMoves(self.moves_capture.items);
+            self.scores = try allocator.alloc(types.Value, self.moves_capture.items.len);
+            pos.scoreMoves(self.moves_capture.items, self.scores);
+            position.orderMoves(self.moves_capture.items, self.scores);
             self.stage += 1;
         }
 
@@ -87,10 +89,8 @@ pub const MovePick = struct {
 
         // Positive captures
         if (self.stage == 4) {
-            const move: types.Move = self.moves_capture.items[self.index_capture];
-            var from_piece: types.PieceType = pos.board[move.getFrom().index()].pieceToPieceType();
-            var to_piece: types.PieceType = pos.board[move.getTo().index()].pieceToPieceType();
-            if (tables.material[to_piece.index()] > tables.material[from_piece.index()]) {
+            if (self.scores[self.index_capture] >= 0) {
+                const move: types.Move = self.moves_capture.items[self.index_capture];
                 self.index_capture += 1;
                 return move;
             }
@@ -127,7 +127,10 @@ pub const MovePick = struct {
 
         // Sort quiets
         if (self.stage == 7) {
-            pos.orderMoves(self.moves_quiet.items);
+            const scores: []types.Value = try allocator.alloc(types.Value, self.moves_quiet.items.len);
+            defer allocator.free(scores);
+            pos.scoreMoves(self.moves_quiet.items, scores);
+            position.orderMoves(self.moves_quiet.items, scores);
             self.stage += 1;
         }
 
@@ -165,5 +168,6 @@ pub const MovePick = struct {
         self.tt_move = types.Move.none;
         self.index_capture = 0;
         self.index_quiet = 0;
+        allocator.free(self.scores);
     }
 };
