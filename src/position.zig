@@ -725,6 +725,8 @@ pub const Position = struct {
                 if (move.getFlags() != MoveFlags.en_passant) {
                     const capture_value: types.Value = tables.material[to_piece.index()] - tables.material[from_piece.index()];
                     scores[i] += capture_value;
+                    if (capture_value >= 0)
+                        scores[i] += tables.max_history;
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
@@ -733,6 +735,9 @@ pub const Position = struct {
                     caslte_bonus = 50;
                 }
                 scores[i] += caslte_bonus;
+
+                const history: types.Value = tables.history[self.state.turn.index()][move.getFrom().index()][move.getTo().index()];
+                scores[i] += history;
             }
 
             scores[i] += @as(types.Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(types.Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));

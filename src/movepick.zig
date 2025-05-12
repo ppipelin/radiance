@@ -89,7 +89,7 @@ pub const MovePick = struct {
 
         // Positive captures
         if (self.stage == 4) {
-            if (self.scores[self.index_capture] >= 0) {
+            if (self.scores[self.index_capture] >= tables.max_history) {
                 const move: types.Move = self.moves_capture.items[self.index_capture];
                 self.index_capture += 1;
                 return move;
