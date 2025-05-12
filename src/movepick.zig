@@ -44,7 +44,7 @@ pub const MovePick = struct {
                     // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and ((to_piece == .none and (!move.isCapture() or move.isEnPassant())) or (to_piece != .none and move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
                     if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
                         // const attacks: types.Bitboard = tables.getAttacks(from_piece.pieceToPieceType(), pos.state.turn, move.getFrom(), pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]) & ~pos.bb_colors[pos.state.turn.index()];
-                        // if (attacks & move.getTo().sqToBB() > 1) {
+                        // if (attacks & move.getTo().sqToBB() >= 1) {
                         self.tt_move = move;
                         return move;
                         // }
