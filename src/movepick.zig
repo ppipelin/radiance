@@ -56,7 +56,11 @@ pub const MovePick = struct {
 
         // Capture init
         if (self.stage == 1 or self.stage == 11) {
-            pos.updateAttacked();
+            if (is_960) {
+                pos.updateAttacked(true);
+            } else {
+                pos.updateAttacked(false);
+            }
             pos.generateLegalMoves(allocator, types.GenerationType.capture, pos.state.turn, &self.moves_capture, is_960);
             self.stage += 1;
         }
