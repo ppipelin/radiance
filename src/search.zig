@@ -50,7 +50,7 @@ inline fn outOfTime(limits: interface.Limits) bool {
     return elapsed(limits) > remaining_computed;
 }
 
-pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, depth: u8, is_960: bool, verbose: bool) !u64 {
+pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, depth: u8, comptime is_960: bool, verbose: bool) !u64 {
     var nodes: u64 = 0;
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
@@ -59,7 +59,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
         return 1;
     }
 
-    pos.updateAttacked();
+    pos.updateAttacked(is_960);
     pos.generateLegalMoves(allocator, types.GenerationType.capture, pos.state.turn, &move_list, is_960);
     pos.generateLegalMoves(allocator, types.GenerationType.quiet, pos.state.turn, &move_list, is_960);
 
@@ -87,7 +87,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
     return nodes;
 }
 
-pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u8, is_960: bool) !u64 {
+pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u8, comptime is_960: bool) !u64 {
     var nodes: u64 = 0;
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
@@ -96,7 +96,7 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
         return 1;
     }
 
-    pos.updateAttacked();
+    pos.updateAttacked(is_960);
     pos.generateLegalMoves(allocator, types.GenerationType.capture, pos.state.turn, &move_list, is_960);
     pos.generateLegalMoves(allocator, types.GenerationType.quiet, pos.state.turn, &move_list, is_960);
 
@@ -138,11 +138,11 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
     return nodes;
 }
 
-pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, is_960: bool) !types.Move {
+pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, comptime is_960: bool) !types.Move {
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
 
-    pos.updateAttacked();
+    pos.updateAttacked(is_960);
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
 
     if (move_list.items.len == 0)
@@ -183,7 +183,11 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
 
-    pos.updateAttacked();
+    if (is_960) {
+        pos.updateAttacked(true);
+    } else {
+        pos.updateAttacked(false);
+    }
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
 
     const root_moves_len: usize = move_list.items.len;

@@ -415,7 +415,7 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position
 
     var t = try std.time.Timer.start();
     if (limits.perft > 0) {
-        const nodes = try search.perft(allocator, stdout, pos, limits.perft, is_960, true);
+        const nodes = if (is_960) try search.perft(allocator, stdout, pos, limits.perft, true, true) else try search.perft(allocator, stdout, pos, limits.perft, false, true);
         const nodes_f: f64 = @floatFromInt(nodes);
         const time_f: f64 = @floatFromInt(t.read());
         try stdout.print("info nodes {} time {} ({d:.1} Mnps)\n", .{ nodes, std.fmt.fmtDuration(t.read()), (nodes_f / (time_f / 1000.0)) });
@@ -425,7 +425,11 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position
         const search_mode: []const u8 = options.get("Search").?.current_value;
         if (std.mem.eql(u8, search_mode, "Random")) {
             try stdout.print("bestmove ", .{});
-            try (try search.searchRandom(allocator, pos, is_960)).printUCI(stdout);
+            if (is_960) {
+                try (try search.searchRandom(allocator, pos, true)).printUCI(stdout);
+            } else {
+                try (try search.searchRandom(allocator, pos, false)).printUCI(stdout);
+            }
             try stdout.print("\n", .{});
         } else if (std.mem.eql(u8, search_mode, "NegamaxAlphaBeta")) {
             var move: types.Move = .none;

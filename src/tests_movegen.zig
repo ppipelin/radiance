@@ -181,7 +181,7 @@ test "MovegenEnPassant" {
     var list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer list.deinit(allocator);
 
-    pos.updateAttacked();
+    pos.updateAttacked(false);
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
 
     try expectEqual(7, list.items.len);
@@ -197,7 +197,7 @@ test "MovegenBishop" {
     var list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer list.deinit(allocator);
 
-    pos.updateAttacked();
+    pos.updateAttacked(false);
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
 
     try expectEqual(52, list.items.len);
@@ -213,7 +213,7 @@ test "MovegenRook" {
     var list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer list.deinit(allocator);
 
-    pos.updateAttacked();
+    pos.updateAttacked(false);
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
 
     try expectEqual(84, list.items.len);
@@ -229,7 +229,7 @@ test "MovegenSliders" {
     var list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer list.deinit(allocator);
 
-    pos.updateAttacked();
+    pos.updateAttacked(false);
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
 
     try expectEqual(86, list.items.len);
@@ -245,7 +245,7 @@ test "MovegenKing" {
     var list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer list.deinit(allocator);
 
-    pos.updateAttacked();
+    pos.updateAttacked(false);
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
 
     try expectEqual(1, list.items.len);
@@ -254,7 +254,7 @@ test "MovegenKing" {
 
     pos = try position.Position.setFen(&s, "3qk3/8/8/8/8/8/8/R3K2R w KQ - 0 1");
 
-    pos.updateAttacked();
+    pos.updateAttacked(false);
     pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
 
     try expectEqual(23, list.items.len);
