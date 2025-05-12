@@ -347,11 +347,13 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     // Loop over all legal moves
+    var previous_moves: [types.max_moves]types.Move = .{types.Move.none} ** types.max_moves;
     var move: types.Move = try mp.nextMove(allocator, pos, pv_move, is_960);
     while (move != types.Move.none) : (move = try mp.nextMove(allocator, pos, pv_move, is_960)) {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }
+        previous_moves[move_count] = move;
         score = -types.value_none;
         move_count += 1;
         if (pv_node) {
@@ -472,7 +474,12 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 // Fail high
                 if (score >= beta) {
                     if (!move.isCapture()) {
-                        tables.updateHistory(pos.state.turn, move.getFrom(), move.getTo(), @as(types.Value, current_depth) * @as(types.Value, current_depth));
+                        const bonus: types.Value = @as(types.Value, current_depth);
+                        tables.updateHistory(pos.state.turn, move.getFrom(), move.getTo(), bonus);
+                        // Apply maluses to previous moves
+                        for (previous_moves[0..(move_count - 1)]) |malus_move| {
+                            tables.updateHistory(pos.state.turn, malus_move.getFrom(), malus_move.getTo(), -bonus);
+                        }
                     }
                     if (score != types.value_draw) {
                         const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(key);
