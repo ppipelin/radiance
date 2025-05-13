@@ -60,8 +60,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
     }
 
     pos.updateAttacked(is_960);
-    pos.generateLegalMoves(allocator, types.GenerationType.capture, pos.state.turn, &move_list, is_960);
-    pos.generateLegalMoves(allocator, types.GenerationType.quiet, pos.state.turn, &move_list, is_960);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
 
     if (depth == 1) {
         if (verbose) {
