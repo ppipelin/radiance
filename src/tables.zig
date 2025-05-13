@@ -362,17 +362,17 @@ pub const black_pawn_attacks = [64]Bitboard{
 ////// Evaluation //////
 
 pub const max_history = 20000;
-pub var history: [types.Color.nb()][types.board_size2][types.board_size2]types.Value = std.mem.zeroes([types.Color.nb()][types.board_size2][types.board_size2]types.Value);
+pub var history: [types.Color.nb()][types.board_size2 * types.board_size2]types.Value = std.mem.zeroes([types.Color.nb()][types.board_size2 * types.board_size2]types.Value);
 
-pub fn updateHistory(turn: Color, from: Square, to: Square, bonus: types.Value) void {
+pub fn updateHistory(turn: Color, move: Move, bonus: types.Value) void {
     const clamped_bonus: types.Value = std.math.clamp(bonus, -max_history, max_history);
     const abs_clamped_bonus: types.Value = @intCast(@abs(clamped_bonus));
-    const last_value: types.Value = history[turn.index()][from.index()][to.index()];
+    const last_value: types.Value = history[turn.index()][move.getFromTo()];
 
     const tapered: types.Value = @truncate(@divTrunc(@as(i64, last_value) * @as(i64, abs_clamped_bonus), max_history));
 
-    history[turn.index()][from.index()][to.index()] += clamped_bonus - tapered;
-    // history[turn.index()][from.index()][to.index()] += depth * depth;
+    history[turn.index()][move.getFromTo()] += clamped_bonus - tapered;
+    // history[turn.index()][move.getFromTo()] += depth * depth;
 }
 
 // Start position total 14152, max 20952

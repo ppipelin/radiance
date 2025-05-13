@@ -171,7 +171,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     var ss: [*]Stack = &stack;
     ss = ss + 7;
 
-    tables.history = std.mem.zeroes([types.Color.nb()][types.board_size2][types.board_size2]types.Value);
+    tables.history = std.mem.zeroes([types.Color.nb()][types.board_size2 * types.board_size2]types.Value);
     tables.transposition_table.clearRetainingCapacity();
 
     for (0..200) |i| {
@@ -478,10 +478,10 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 if (score >= beta) {
                     if (!move.isCapture()) {
                         const bonus: types.Value = @as(types.Value, current_depth);
-                        tables.updateHistory(pos.state.turn, move.getFrom(), move.getTo(), bonus);
+                        tables.updateHistory(pos.state.turn, move, bonus);
                         // Apply maluses to previous moves
                         for (previous_moves[0..(move_count - 1)]) |malus_move| {
-                            tables.updateHistory(pos.state.turn, malus_move.getFrom(), malus_move.getTo(), -bonus);
+                            tables.updateHistory(pos.state.turn, malus_move, -bonus);
                         }
                     }
                     if (score != types.value_draw) {

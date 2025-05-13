@@ -740,7 +740,7 @@ pub const Position = struct {
                 }
                 scores[i] += caslte_bonus;
 
-                const history: types.Value = tables.history[self.state.turn.index()][move.getFrom().index()][move.getTo().index()];
+                const history: types.Value = tables.history[self.state.turn.index()][move.getFromTo()];
                 scores[i] += history;
             }
 
