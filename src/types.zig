@@ -393,6 +393,11 @@ pub const Move = packed struct {
         return @enumFromInt(self.to);
     }
 
+    pub inline fn getFromTo(self: Move) u12 {
+        const bits: u16 = @bitCast(self);
+        return @truncate(bits);
+    }
+
     pub inline fn isCastle(self: Move) bool {
         return self.flags ^ 0x2 <= 1;
     }
