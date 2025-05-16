@@ -1,5 +1,6 @@
 const magic = @import("magic.zig");
 const position = @import("position.zig");
+const search = @import("search.zig");
 const std = @import("std");
 const types = @import("types.zig");
 const utils = @import("utils.zig");
@@ -11,6 +12,7 @@ const Move = types.Move;
 const Piece = types.Piece;
 const PieceType = types.PieceType;
 const Square = types.Square;
+const Stack = search.Stack;
 const TableBound = types.TableBound;
 const Value = types.Value;
 
@@ -33,7 +35,7 @@ pub const Key = u64;
 pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, u8, Move, TableBound })) = .empty;
 
 // pnbrqkPNBRQK
-pub var hash_psq: [types.Piece.nb()][types.board_size2]Key = std.mem.zeroes([types.Piece.nb()][types.board_size2]Key);
+pub var hash_psq: [Piece.nb()][types.board_size2]Key = std.mem.zeroes([Piece.nb()][types.board_size2]Key);
 pub var hash_en_passant: [types.board_size]Key = std.mem.zeroes([types.board_size]Key);
 // qkQK
 pub var hash_castling: [4]Key = std.mem.zeroes([4]Key);
@@ -75,7 +77,7 @@ pub var pawn_attacks: [Color.nb()][types.board_size2]Bitboard = std.mem.zeroes([
 pub var squares_between: [types.board_size2][types.board_size2]Bitboard = std.mem.zeroes([types.board_size2][types.board_size2]Bitboard);
 pub var squares_line: [types.board_size2][types.board_size2]Bitboard = std.mem.zeroes([types.board_size2][types.board_size2]Bitboard);
 
-pub var passed_pawn: [types.Color.nb()][types.board_size2]Bitboard = std.mem.zeroes([types.Color.nb()][types.board_size2]Bitboard);
+pub var passed_pawn: [Color.nb()][types.board_size2]Bitboard = std.mem.zeroes([Color.nb()][types.board_size2]Bitboard);
 
 pub inline fn filterMovesBishop(sq: Square) Bitboard {
     var b: Bitboard = 0;
@@ -262,23 +264,23 @@ fn initNonBlockable() void {
     std.mem.copyForwards(Bitboard, pseudo_legal_attacks[PieceType.king.index()][0..types.board_size2], king_attacks[0..types.board_size2]);
 }
 
-inline fn filterAdjacent(tile: types.Square) types.Bitboard {
+inline fn filterAdjacent(tile: Square) Bitboard {
     return (types.mask_file[@max(0, tile.file().index() -| 1)] | types.mask_file[@min(types.board_size - 1, @as(u4, tile.file().index()) + 1)]) & ~types.mask_file[tile.file().index()];
 }
 
-fn filterPassedPawn(tile: types.Square, col: types.Color) types.Bitboard {
-    const filter_adjacent: types.Bitboard = types.mask_file[tile.file().index()] | filterAdjacent(tile);
+fn filterPassedPawn(tile: Square, col: Color) Bitboard {
+    const filter_adjacent: Bitboard = types.mask_file[tile.file().index()] | filterAdjacent(tile);
     const row_idx: u6 = @intCast(tile.rank().index());
-    const bb_max: types.Bitboard = 0xFFFFFFFFFFFFFFFF;
-    const filter_top_bot: types.Bitboard = if (col.isWhite()) bb_max << types.board_size * (row_idx + 1) else bb_max >> types.board_size * (types.board_size - row_idx);
+    const bb_max: Bitboard = 0xFFFFFFFFFFFFFFFF;
+    const filter_top_bot: Bitboard = if (col.isWhite()) bb_max << types.board_size * (row_idx + 1) else bb_max >> types.board_size * (types.board_size - row_idx);
     return filter_adjacent & filter_top_bot;
 }
 
 fn initPassedPawn() void {
     var sq: Square = Square.a2;
     while (sq != Square.a8) : (sq = sq.inc().*) {
-        passed_pawn[types.Color.white.index()][sq.index()] = filterPassedPawn(sq, types.Color.white);
-        passed_pawn[types.Color.black.index()][sq.index()] = filterPassedPawn(sq, types.Color.black);
+        passed_pawn[Color.white.index()][sq.index()] = filterPassedPawn(sq, Color.white);
+        passed_pawn[Color.black.index()][sq.index()] = filterPassedPawn(sq, Color.black);
     }
 }
 
@@ -361,8 +363,13 @@ pub const black_pawn_attacks = [64]Bitboard{
 
 ////// Evaluation //////
 
+pub const FromToHistory = [Color.nb()][types.board_size2 * types.board_size2]Value;
+pub const PieceToHistory = [Piece.nb()][types.board_size2]Value;
+pub const ContinuationHistory = [Piece.nb()][types.board_size2]PieceToHistory;
+
 pub const max_history = 20000;
-pub var history: [types.Color.nb()][types.board_size2 * types.board_size2]types.Value = std.mem.zeroes([types.Color.nb()][types.board_size2 * types.board_size2]types.Value);
+pub var history: FromToHistory = std.mem.zeroes([Color.nb()][types.board_size2 * types.board_size2]Value);
+pub var continuation_history: ContinuationHistory = undefined;
 
 pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
     const abs_bonus: i64 = @intCast(@abs(bonus));
@@ -373,15 +380,25 @@ pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
     // history[turn.index()][move.getFromTo()] += depth * depth;
 }
 
-// Start position total 14152, max 20952
-pub const material = [types.PieceType.nb()]types.Value{ 0, 100, 305, 333, 563, 950, 10_000 };
+pub fn updateContinuationHistories(ss: *Stack, p: Piece, to: Square, bonus: Value) void {
+    const conthist_bonuses = []Value{ 1092, 631, 294, 517, 126, 445 };
+    for (conthist_bonuses, 0..) |weight, i| {
+        // Only update the first 2 continuation histories if we are in check
+        if (ss[0].in_check and i > 2)
+            break;
+        (ss - i).continuation_history[p][to] += bonus * weight / 1024;
+    }
+}
 
-pub const passed_pawn_table = [types.board_size - 1]types.Value{ 0, 15, 15, 25, 40, 60, 70 };
+// Start position total 14152, max 20952
+pub const material = [PieceType.nb()]Value{ 0, 100, 305, 333, 563, 950, 10_000 };
+
+pub const passed_pawn_table = [types.board_size - 1]Value{ 0, 15, 15, 25, 40, 60, 70 };
 
 // Tables are displayed for white which corresponds to black order of tiles
 // https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 // zig fmt: off
-pub const psq: [types.PieceType.nb()][2][types.board_size2]types.Value = .{
+pub const psq: [PieceType.nb()][2][types.board_size2]Value = .{
     .{
         .{
             0,   0,   0,   0,   0,   0,   0,  0,

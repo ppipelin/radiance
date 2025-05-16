@@ -28,11 +28,13 @@ const RootMove = struct {
     }
 };
 
-const Stack = struct {
+pub const Stack = struct {
     // pv: [200]types.Move = [_]types.Move{.none} ** 200,
     pv: ?*[200]types.Move = null,
     killers: [2]?types.Move = [_]?types.Move{ null, null },
     ply: u8 = 0,
+    in_check: bool = false,
+    continuation_history: *tables.PieceToHistory = undefined,
 };
 
 inline fn elapsed(limits: interface.Limits) types.TimePoint {
@@ -171,6 +173,23 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     var ss: [*]Stack = &stack;
     ss = ss + 7;
 
+    // for (0..7) |n| {
+    //     const i = 6 - n;
+    //     std.debug.print("{}\n", .{i});
+    // }
+    // for (0..7) |i| {
+    //     tables.continuation_history[0][0] = try allocator.create([types.Piece.nb()][types.board_size2]types.Value);
+    //     (ss - i)[0].continuation_history = tables.continuation_history[0][0];
+    // }
+
+    for (stack[0..]) |*s| {
+        s.continuation_history = try allocator.create([types.Piece.nb()][types.board_size2]types.Value);
+    }
+
+    defer for (stack[0..]) |*s| {
+        allocator.destroy(s.continuation_history);
+    };
+
     tables.history = std.mem.zeroes([types.Color.nb()][types.board_size2 * types.board_size2]types.Value);
     tables.transposition_table.clearRetainingCapacity();
 
@@ -178,6 +197,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
         ss[i].ply = @intCast(i);
     }
     ss[0].pv = &pv;
+    ss[0].in_check = pos.state.checkers != 0;
 
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
@@ -311,7 +331,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     // Prunings
     if (alpha >= beta) return alpha;
 
-    if (@popCount(pos.state.checkers) == 0) {
+    if (!ss[0].in_check) {
         const static_eval: types.Value = eval(pos.*);
 
         // Reverse Futility Pruning
@@ -375,6 +395,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
         ss[1].pv = &pv;
         ss[1].pv.?[0] = types.Move.none;
+        ss[1].in_check = pos.state.checkers != 0; // 1 or 0 ?
 
         if (pos.state.repetition < 0) {
             score = types.value_draw;
@@ -413,7 +434,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 }
 
                 // LMR before full
-                if (current_depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
+                if (current_depth >= 2 and move_count > 3 and !ss[1].in_check and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
                     // Reduced LMR
                     const d: u8 = @max(1, current_depth -| 4);
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, d - 1, is_960, false);
@@ -428,7 +449,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 }
                 // Full-depth search
                 if (pv_node and (move_count == 1 or score > alpha)) {
-                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
+                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1 + @intFromBool(ss[1].in_check), is_960, false);
                     // Let's assert we don't store draw (repetition)
                     if (score != types.value_draw) {
                         if (found == null or found.?[1] <= current_depth - 1) {
@@ -507,7 +528,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     if (best_score == -types.value_none) {
-        if (pos.state.checkers != 0)
+        if (ss[1].in_check)
             return -types.value_mate + @as(types.Value, ss[0].ply);
         return types.value_stalemate;
     }
