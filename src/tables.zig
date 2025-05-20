@@ -364,14 +364,12 @@ pub const black_pawn_attacks = [64]Bitboard{
 pub const max_history = 20000;
 pub var history: [types.Color.nb()][types.board_size2 * types.board_size2]types.Value = std.mem.zeroes([types.Color.nb()][types.board_size2 * types.board_size2]types.Value);
 
-pub fn updateHistory(turn: Color, move: Move, bonus: types.Value) void {
-    const clamped_bonus: types.Value = std.math.clamp(bonus, -max_history, max_history);
-    const abs_clamped_bonus: types.Value = @intCast(@abs(clamped_bonus));
-    const last_value: types.Value = history[turn.index()][move.getFromTo()];
+pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
+    const abs_bonus: i64 = @intCast(@abs(bonus));
+    const last_value: i64 = history[turn.index()][move.getFromTo()];
 
-    const tapered: types.Value = @truncate(@divTrunc(@as(i64, last_value) * @as(i64, abs_clamped_bonus), max_history));
-
-    history[turn.index()][move.getFromTo()] += clamped_bonus - tapered;
+    const tapered: Value = @truncate(@divTrunc(last_value * abs_bonus, max_history / 2));
+    history[turn.index()][move.getFromTo()] = @min(max_history / 2, history[turn.index()][move.getFromTo()] + bonus - tapered);
     // history[turn.index()][move.getFromTo()] += depth * depth;
 }
 
