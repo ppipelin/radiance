@@ -173,22 +173,11 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     var ss: [*]Stack = &stack;
     ss = ss + 7;
 
-    // for (0..7) |n| {
-    //     const i = 6 - n;
-    //     std.debug.print("{}\n", .{i});
-    // }
-    // for (0..7) |i| {
-    //     tables.continuation_history[0][0] = try allocator.create([types.Piece.nb()][types.board_size2]types.Value);
-    //     (ss - i)[0].continuation_history = tables.continuation_history[0][0];
-    // }
+    tables.resetContinuationHistories();
 
-    for (stack[0..]) |*s| {
-        s.continuation_history = try allocator.create([types.Piece.nb()][types.board_size2]types.Value);
+    for (stack[0..7]) |*s| {
+        s.continuation_history = &tables.continuation_history[0][0][types.Piece.none.index()][0];
     }
-
-    defer for (stack[0..]) |*s| {
-        allocator.destroy(s.continuation_history);
-    };
 
     tables.history = std.mem.zeroes([types.Color.nb()][types.board_size2 * types.board_size2]types.Value);
     tables.transposition_table.clearRetainingCapacity();
@@ -197,7 +186,6 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
         ss[i].ply = @intCast(i);
     }
     ss[0].pv = &pv;
-    ss[0].in_check = pos.state.checkers != 0;
 
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
@@ -219,7 +207,10 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     // Order moves
     const scores: []types.Value = try allocator.alloc(types.Value, move_list.items.len);
     defer allocator.free(scores);
-    pos.scoreMoves(move_list.items, scores);
+
+    var cont_hist = [_]*tables.PieceToHistory{ (ss - 1)[0].continuation_history, (ss - 2)[0].continuation_history, (ss - 3)[0].continuation_history, (ss - 4)[0].continuation_history, (ss - 5)[0].continuation_history, (ss - 6)[0].continuation_history };
+
+    pos.scoreMoves(move_list.items, &cont_hist, scores);
     position.orderMoves(move_list.items, scores);
     // pos.orderMoves(move_list.items);
 
@@ -324,9 +315,12 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     var pv: [200]types.Move = @splat(.none);
     var score: types.Value = -types.value_none;
     var best_score: types.Value = -types.value_none;
+    var best_move: types.Move = types.Move.none;
+    var best_moved: types.Piece = types.Piece.none;
 
     // Initialize node
     var move_count: u16 = 0;
+    ss[0].in_check = pos.state.checkers != 0;
 
     // Prunings
     if (alpha >= beta) return alpha;
@@ -343,6 +337,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
         // Null move pruning
         if (!is_nmr and current_depth >= 3 and !pos.endgame(pos.state.turn.invert()) and static_eval > beta) {
+            ss[0].continuation_history = &tables.continuation_history[0][0][types.Piece.none.index()][0];
             const tapered: u8 = @intCast(@min(@divTrunc(static_eval -| beta, 200), 6));
             const r: u8 = tapered + @divTrunc(current_depth, 3) + 5;
             try pos.moveNull(&s);
@@ -368,6 +363,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
     // Loop over all legal moves
     var previous_moves: [types.max_moves]types.Move = .{types.Move.none} ** types.max_moves;
+    var cont_hist = [_]*tables.PieceToHistory{ (ss - 1)[0].continuation_history, (ss - 2)[0].continuation_history, (ss - 3)[0].continuation_history, (ss - 4)[0].continuation_history, (ss - 5)[0].continuation_history, (ss - 6)[0].continuation_history };
+    mp.cont_hist = &cont_hist;
+
     var move: types.Move = try mp.nextMove(allocator, pos, pv_move, is_960);
     while (move != types.Move.none) : (move = try mp.nextMove(allocator, pos, pv_move, is_960)) {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
@@ -381,6 +379,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         }
 
         const key: tables.Key = pos.state.material_key;
+        const moved_piece: types.Piece = pos.board[move.getFrom().index()];
 
         // Mate pruning, we cannot get a better mate at this ply
         if (beta < -types.value_mate + ss[0].ply + 1) {
@@ -395,7 +394,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
         ss[1].pv = &pv;
         ss[1].pv.?[0] = types.Move.none;
-        ss[1].in_check = pos.state.checkers != 0; // 1 or 0 ?
+        ss[0].continuation_history = &tables.continuation_history[@intFromBool(ss[0].in_check)][@intFromBool(move.isCapture())][moved_piece.index()][move.getTo().index()];
 
         if (pos.state.repetition < 0) {
             score = types.value_draw;
@@ -441,6 +440,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                     // Failed so roll back to full-depth null window
                     if (score > alpha and current_depth > d) {
                         score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1, is_960, false);
+                        tables.updateContinuationHistories(ss, moved_piece, move.getTo(), 1508 / 100);
                     }
                 }
                 // In case non PV search are called without LMR, null window search at current depth
@@ -497,6 +497,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         // Update ss->pv
         if (score > best_score) {
             best_score = score;
+            best_move = move;
+            best_moved = moved_piece;
             if (score > alpha) {
                 if (pv_node and !root_node) // Update pv even in fail-high case
                 {
@@ -531,6 +533,13 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         if (ss[1].in_check)
             return -types.value_mate + @as(types.Value, ss[0].ply);
         return types.value_stalemate;
+    }
+
+    if (best_move.isCapture()) {
+        tables.updateContinuationHistories(ss, best_moved, best_move.getFrom(), 1496 / 100 * 1213 / 1024);
+    } else {
+        tables.updateContinuationHistories(ss, best_moved, best_move.getFrom(), 1496 / 100 * 1059 / 1024);
+        // Addd malus for non-best quiets
     }
 
     return best_score;

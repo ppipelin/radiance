@@ -714,7 +714,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn scoreMoves(self: Position, list: []Move, scores: []Value) void {
+    pub fn scoreMoves(self: Position, list: []Move, cont_hist: []*tables.PieceToHistory, scores: []Value) void {
         for (list, 0..) |move, i| {
             scores[i] = 0;
 
@@ -742,9 +742,16 @@ pub const Position = struct {
 
                 const history: types.Value = tables.history[self.state.turn.index()][move.getFromTo()];
                 scores[i] += history;
-            }
 
-            scores[i] += @as(types.Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(types.Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
+                const from_piece_index = from_piece.pieceTypeToPiece(self.state.turn).index();
+                const cont_hist_bonus: i64 = @divTrunc(@as(i64, cont_hist[0][from_piece_index][move.getTo().index()]) +| @as(i64, cont_hist[1][from_piece_index][move.getTo().index()]) +| @as(i64, cont_hist[2][from_piece_index][move.getTo().index()]) +| @as(i64, cont_hist[3][from_piece_index][move.getTo().index()]) +| @as(i64, cont_hist[4][from_piece_index][move.getTo().index()]) +| @as(i64, cont_hist[5][from_piece_index][move.getTo().index()]), 6);
+                // const cont_hist_bonus: i64 = @as(i64, cont_hist[0][from_piece_index][move.getTo().index()]);
+
+                scores[i] +|= std.math.lossyCast(types.Value, cont_hist_bonus);
+            }
+            // _ = cont_hist;
+
+            scores[i] +|= @as(types.Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(types.Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
         }
     }
 
