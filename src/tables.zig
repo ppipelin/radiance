@@ -26,6 +26,7 @@ pub fn initAll(allocator: std.mem.Allocator) void {
     initPassedPawn();
     initZobrist();
     magic.initMagic(allocator);
+    continuation_history = allocator.create([2][2][Piece.nb()][types.board_size2][Piece.nb()][types.board_size2]Value) catch unreachable;
 }
 
 ////// Zobrist hashing //////
@@ -291,6 +292,7 @@ pub fn deinitAll(allocator: std.mem.Allocator) void {
         moves_rook[sq].deinit(allocator);
     }
     transposition_table.clearAndFree(allocator);
+    allocator.destroy(continuation_history);
 }
 
 pub fn getAttacks(pt: PieceType, color: Color, sq: Square, blockers: Bitboard) Bitboard {
@@ -369,7 +371,7 @@ pub const ContinuationHistory = [Piece.nb()][types.board_size2]PieceToHistory;
 
 pub const max_history = 20000;
 pub var history: FromToHistory = std.mem.zeroes([Color.nb()][types.board_size2 * types.board_size2]Value);
-pub var continuation_history: ContinuationHistory = undefined;
+pub var continuation_history: *[2][2]ContinuationHistory = undefined; // [in check][is_capture]
 
 pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
     const abs_bonus: i64 = @intCast(@abs(bonus));
@@ -380,13 +382,33 @@ pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
     // history[turn.index()][move.getFromTo()] += depth * depth;
 }
 
-pub fn updateContinuationHistories(ss: *Stack, p: Piece, to: Square, bonus: Value) void {
-    const conthist_bonuses = []Value{ 1092, 631, 294, 517, 126, 445 };
-    for (conthist_bonuses, 0..) |weight, i| {
+pub fn updateContinuationHistories(ss: [*]Stack, p: Piece, to: Square, bonus: Value) void {
+    const cont_hist_bonuses = [_]i64{ 1024, 631, 294, 517, 126, 445 };
+    for (cont_hist_bonuses, 0..) |weight, i| {
         // Only update the first 2 continuation histories if we are in check
         if (ss[0].in_check and i > 2)
             break;
-        (ss - i).continuation_history[p][to] += bonus * weight / 1024;
+        const abs_bonus: i64 = @intCast(@abs(@as(i64, bonus) * weight));
+        const last_value: i64 = (ss - i)[0].continuation_history[p.index()][to.index()];
+
+        const tapered: Value = @truncate(@divTrunc(last_value * abs_bonus, 1024 * max_history / 2));
+        (ss - i)[0].continuation_history[p.index()][to.index()] = @min(max_history / 2, (ss - i)[0].continuation_history[p.index()][to.index()] + bonus - tapered);
+    }
+}
+
+pub fn resetContinuationHistories() void {
+    for (0..2) |i| {
+        for (0..2) |j| {
+            for (0..Piece.nb()) |k| {
+                for (0..types.board_size2) |l| {
+                    for (0..Piece.nb()) |m| {
+                        for (0..types.board_size2) |n| {
+                            continuation_history[i][j][k][l][m][n] = 0;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
