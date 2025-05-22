@@ -420,10 +420,10 @@ pub const Move = packed struct {
 
     pub const MoveSortContext = struct {
         items: []Move,
-        scores: []Value,
+        scores: []ValueExtended,
 
         pub fn swap(ctx: @This(), a: usize, b: usize) void {
-            std.mem.swap(Value, &ctx.scores[a], &ctx.scores[b]);
+            std.mem.swap(ValueExtended, &ctx.scores[a], &ctx.scores[b]);
             return std.mem.swap(Move, &ctx.items[a], &ctx.items[b]);
         }
 
@@ -552,6 +552,7 @@ pub const GenerationType = enum(u3) {
 };
 
 pub const Value = i16;
+pub const ValueExtended = i64;
 
 pub const max_moves = 218;
 
