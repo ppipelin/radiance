@@ -728,31 +728,27 @@ pub const Position = struct {
 
             if (move.isCapture()) {
                 if (move.getFlags() != MoveFlags.en_passant) {
-                    const capture_value: types.Value = tables.material[to_piece.index()] - tables.material[from_piece.index()];
-                    scores[i] += capture_value;
-                    if (capture_value >= 0)
-                        scores[i] += tables.max_history;
+                    const capture_value: types.ValueExtended = tables.material[to_piece.index()] - tables.material[from_piece.index()];
+                    scores[i] += 14 * capture_value;
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
-                var caslte_bonus: Value = 0;
+                var caslte_bonus: ValueExtended = 0;
                 if (move.isCastle()) {
-                    caslte_bonus = 50;
+                    caslte_bonus = 512;
                 }
                 scores[i] += caslte_bonus;
 
                 const history: ValueExtended = tables.history[self.state.turn.index()][move.getFromTo()];
                 scores[i] += 2 * history;
 
-                const from_piece_index = from_piece.pieceTypeToPiece(self.state.turn).index();
-                const cont_hist_bonus: ValueExtended = @divTrunc(@as(ValueExtended, cont_hist[0][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[1][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[2][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[3][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[4][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[5][from_piece_index][move.getTo().index()]), 6);
-                // const cont_hist_bonus: i64 = @as(i64, cont_hist[0][from_piece_index][move.getTo().index()]);
+                const from_piece_index: u8 = from_piece.pieceTypeToPiece(self.state.turn).index();
+                const cont_hist_bonus: ValueExtended = @as(ValueExtended, cont_hist[0][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[1][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[2][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[3][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[4][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[5][from_piece_index][move.getTo().index()]);
 
-                scores[i] +|= std.math.lossyCast(Value, cont_hist_bonus);
+                scores[i] +|= cont_hist_bonus;
             }
-            // _ = cont_hist;
 
-            scores[i] +|= @as(types.Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(types.Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
+            scores[i] +|= 1024 * @as(types.ValueExtended, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - 1024 * @as(types.ValueExtended, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
         }
     }
 
