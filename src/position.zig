@@ -15,6 +15,7 @@ const PieceType = types.PieceType;
 const Rank = types.Rank;
 const Square = types.Square;
 const Value = types.Value;
+const ValueExtended = types.ValueExtended;
 
 pub const start_fen: []const u8 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 pub const kiwi_fen: []const u8 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
@@ -714,7 +715,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn scoreMoves(self: Position, list: []Move, cont_hist: []*tables.PieceToHistory, scores: []Value) void {
+    pub fn scoreMoves(self: Position, list: []Move, cont_hist: []*tables.PieceToHistory, scores: []ValueExtended) void {
         for (list, 0..) |move, i| {
             scores[i] = 0;
 
@@ -740,14 +741,14 @@ pub const Position = struct {
                 }
                 scores[i] += caslte_bonus;
 
-                const history: types.Value = tables.history[self.state.turn.index()][move.getFromTo()];
-                scores[i] += history;
+                const history: ValueExtended = tables.history[self.state.turn.index()][move.getFromTo()];
+                scores[i] += 2 * history;
 
                 const from_piece_index = from_piece.pieceTypeToPiece(self.state.turn).index();
-                const cont_hist_bonus: i64 = @divTrunc(@as(i64, cont_hist[0][from_piece_index][move.getTo().index()]) +| @as(i64, cont_hist[1][from_piece_index][move.getTo().index()]) +| @as(i64, cont_hist[2][from_piece_index][move.getTo().index()]) +| @as(i64, cont_hist[3][from_piece_index][move.getTo().index()]) +| @as(i64, cont_hist[4][from_piece_index][move.getTo().index()]) +| @as(i64, cont_hist[5][from_piece_index][move.getTo().index()]), 6);
+                const cont_hist_bonus: ValueExtended = @divTrunc(@as(ValueExtended, cont_hist[0][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[1][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[2][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[3][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[4][from_piece_index][move.getTo().index()]) +| @as(ValueExtended, cont_hist[5][from_piece_index][move.getTo().index()]), 6);
                 // const cont_hist_bonus: i64 = @as(i64, cont_hist[0][from_piece_index][move.getTo().index()]);
 
-                scores[i] +|= std.math.lossyCast(types.Value, cont_hist_bonus);
+                scores[i] +|= std.math.lossyCast(Value, cont_hist_bonus);
             }
             // _ = cont_hist;
 
@@ -1028,7 +1029,7 @@ pub const Position = struct {
     }
 };
 
-pub fn orderMoves(moves: []Move, scores: []Value) void {
+pub fn orderMoves(moves: []Move, scores: []ValueExtended) void {
     if (moves.len <= 1)
         return;
 

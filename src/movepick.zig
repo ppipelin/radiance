@@ -22,7 +22,7 @@ pub const MovePick = struct {
     tt_move: types.Move = types.Move.none,
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
-    scores: []types.Value = undefined,
+    scores: []types.ValueExtended = undefined,
     cont_hist: []*tables.PieceToHistory = undefined,
 
     pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, is_960: bool) !types.Move {
@@ -81,7 +81,7 @@ pub const MovePick = struct {
 
         // Sort captures
         if (self.stage == 3 or self.stage == 13) {
-            self.scores = try allocator.alloc(types.Value, self.moves_capture.items.len);
+            self.scores = try allocator.alloc(types.ValueExtended, self.moves_capture.items.len);
             pos.scoreMoves(self.moves_capture.items, self.cont_hist, self.scores);
             position.orderMoves(self.moves_capture.items, self.scores);
             self.stage += 1;
@@ -132,7 +132,7 @@ pub const MovePick = struct {
 
         // Sort quiets
         if (self.stage == 7) {
-            const scores: []types.Value = try allocator.alloc(types.Value, self.moves_quiet.items.len);
+            const scores: []types.ValueExtended = try allocator.alloc(types.ValueExtended, self.moves_quiet.items.len);
             defer allocator.free(scores);
             pos.scoreMoves(self.moves_quiet.items, self.cont_hist, scores);
             position.orderMoves(self.moves_quiet.items, scores);
