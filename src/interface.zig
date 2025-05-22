@@ -505,7 +505,7 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: anytype) anyerror!void {
         var pos: position.Position = undefined;
         try cmd_position(&pos, &tokens_fen, &states);
 
-        const input = "depth 10";
+        const input = "depth 13";
         var tokens = std.mem.tokenizeScalar(u8, input, ' ');
 
         try cmd_go(allocator, stdout, &pos, &tokens, options);
