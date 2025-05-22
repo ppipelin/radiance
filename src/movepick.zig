@@ -94,11 +94,21 @@ pub const MovePick = struct {
 
         // Positive captures
         if (self.stage == 4) {
-            if (self.scores[self.index_capture] >= tables.max_history) {
+            var cnt: usize = 1;
+            while (self.index_capture + cnt < self.moves_capture.items.len) : (cnt += 1) {
                 const move: types.Move = self.moves_capture.items[self.index_capture];
-                self.index_capture += 1;
-                return move;
+                const from_piece: types.Piece = pos.board[move.getFrom().index()];
+                const to_piece: types.Piece = pos.board[move.getTo().index()];
+                if (tables.material[to_piece.pieceToPieceType().index()] >= tables.material[from_piece.pieceToPieceType().index()]) {
+                    self.index_capture += 1;
+                    return move;
+                } else {
+                    // Swap and stage++ if reached all positive captures
+                    // This swap preserves order as it just puts first the index_capture+cnt element
+                    std.mem.swap(types.Move, &self.moves_capture.items[self.index_capture], &self.moves_capture.items[self.index_capture + cnt]);
+                }
             }
+            self.stage += 1;
         }
 
         if (self.stage == 14) {

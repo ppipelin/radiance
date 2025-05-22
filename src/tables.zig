@@ -377,8 +377,8 @@ pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
     const abs_bonus: i64 = @intCast(@abs(bonus));
     const last_value: i64 = history[turn.index()][move.getFromTo()];
 
-    const tapered: Value = @truncate(@divTrunc(last_value * abs_bonus, max_history / 2));
-    history[turn.index()][move.getFromTo()] = @min(max_history / 2, history[turn.index()][move.getFromTo()] + bonus - tapered);
+    const tapered: Value = @truncate(@divTrunc(last_value * abs_bonus, max_history));
+    history[turn.index()][move.getFromTo()] = @min(max_history, history[turn.index()][move.getFromTo()] + bonus - tapered);
     // history[turn.index()][move.getFromTo()] += depth * depth;
 }
 
@@ -391,8 +391,8 @@ pub fn updateContinuationHistories(ss: [*]Stack, p: Piece, to: Square, bonus: Va
         const abs_bonus: i64 = @intCast(@abs(@as(i64, bonus) * weight));
         const last_value: i64 = (ss - i)[0].continuation_history[p.index()][to.index()];
 
-        const tapered: Value = @truncate(@divTrunc(last_value * abs_bonus, 1024 * max_history / 2));
-        (ss - i)[0].continuation_history[p.index()][to.index()] = @min(max_history / 2, (ss - i)[0].continuation_history[p.index()][to.index()] + bonus - tapered);
+        const tapered: Value = @truncate(@divTrunc(last_value * abs_bonus, 1024 * max_history));
+        (ss - i)[0].continuation_history[p.index()][to.index()] = @min(max_history, (ss - i)[0].continuation_history[p.index()][to.index()] + bonus - tapered);
     }
 }
 
