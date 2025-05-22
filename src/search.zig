@@ -205,7 +205,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     }
 
     // Order moves
-    const scores: []types.Value = try allocator.alloc(types.Value, move_list.items.len);
+    const scores: []types.ValueExtended = try allocator.alloc(types.ValueExtended, move_list.items.len);
     defer allocator.free(scores);
 
     var cont_hist = [_]*tables.PieceToHistory{ (ss - 1)[0].continuation_history, (ss - 2)[0].continuation_history, (ss - 3)[0].continuation_history, (ss - 4)[0].continuation_history, (ss - 5)[0].continuation_history, (ss - 6)[0].continuation_history };
