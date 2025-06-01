@@ -14,5 +14,5 @@ jobs:
     name: Build and Test
     steps:
       - uses: actions/checkout@v4
-      - uses: mlugg/setup-zig@v1
+      - uses: mlugg/setup-zig@v2
       - run: zig build test
