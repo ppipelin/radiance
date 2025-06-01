@@ -43,7 +43,7 @@ const CastleInfo = enum(u4) {
     }
 
     pub inline fn indexLsb(self: CastleInfo) u2 {
-        return @truncate(types.lsb(@intFromEnum(self)));
+        return @truncate(types.lsb(self.index()));
     }
 
     pub inline fn relativeCastle(self: CastleInfo, c: Color) CastleInfo {
@@ -763,7 +763,7 @@ pub const Position = struct {
             writer.print("{s} ", .{line}) catch unreachable;
             var j: i32 = 0;
             while (j < 8) : (j += 1) {
-                writer.print("| {c} ", .{@intFromEnum(self.board[@intCast(i + j)])}) catch unreachable;
+                writer.print("| {c} ", .{self.board[@intCast(i + j)].value()}) catch unreachable;
             }
             writer.print("| {}\n", .{@divTrunc(i, 8) + 1}) catch unreachable;
         }
@@ -950,19 +950,19 @@ pub const Position = struct {
         for (castle.?) |ch| {
             switch (ch) {
                 'K' => {
-                    pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.K));
+                    pos.state.castle_info = @enumFromInt(pos.state.castle_info.index() | CastleInfo.K.index());
                     pos.state.material_key ^= tables.hash_castling[CastleInfo.K.indexLsb()];
                 },
                 'Q' => {
-                    pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.Q));
+                    pos.state.castle_info = @enumFromInt(pos.state.castle_info.index() | CastleInfo.Q.index());
                     pos.state.material_key ^= tables.hash_castling[CastleInfo.Q.indexLsb()];
                 },
                 'k' => {
-                    pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.k));
+                    pos.state.castle_info = @enumFromInt(pos.state.castle_info.index() | CastleInfo.k.index());
                     pos.state.material_key ^= tables.hash_castling[CastleInfo.k.indexLsb()];
                 },
                 'q' => {
-                    pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.q));
+                    pos.state.castle_info = @enumFromInt(pos.state.castle_info.index() | CastleInfo.q.index());
                     pos.state.material_key ^= tables.hash_castling[CastleInfo.q.indexLsb()];
                 },
                 '-' => {
@@ -972,18 +972,18 @@ pub const Position = struct {
                     // Shredder-FEN support
                     if (ch >= 65 and ch <= 72) {
                         if (ch - 65 > passed_king_w.file().index()) {
-                            pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.K));
+                            pos.state.castle_info = @enumFromInt(pos.state.castle_info.index() | CastleInfo.K.index());
                             pos.state.material_key ^= tables.hash_castling[CastleInfo.K.indexLsb()];
                         } else {
-                            pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.Q));
+                            pos.state.castle_info = @enumFromInt(pos.state.castle_info.index() | CastleInfo.Q.index());
                             pos.state.material_key ^= tables.hash_castling[CastleInfo.Q.indexLsb()];
                         }
                     } else if (ch >= 97 and ch <= 104) {
                         if (ch - 97 > passed_king_w.file().index()) {
-                            pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.k));
+                            pos.state.castle_info = @enumFromInt(pos.state.castle_info.index() | CastleInfo.k.index());
                             pos.state.material_key ^= tables.hash_castling[CastleInfo.k.indexLsb()];
                         } else {
-                            pos.state.castle_info = @enumFromInt(@intFromEnum(pos.state.castle_info) | @intFromEnum(CastleInfo.q));
+                            pos.state.castle_info = @enumFromInt(pos.state.castle_info.index() | CastleInfo.q.index());
                             pos.state.material_key ^= tables.hash_castling[CastleInfo.q.indexLsb()];
                         }
                     } else {

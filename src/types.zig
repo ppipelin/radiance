@@ -51,24 +51,24 @@ pub const Square = enum(u8) {
     // zig fmt: on
 
     pub inline fn inc(self: *Square) *Square {
-        self.* = @enumFromInt(@intFromEnum(self.*) + 1);
+        self.* = @enumFromInt(self.index() + 1);
         return self;
     }
 
     pub inline fn add(self: Square, d: Direction) Square {
-        return @enumFromInt(@intFromEnum(self) + @intFromEnum(d));
+        return @enumFromInt(@as(i9, self.index()) + d.index());
     }
 
     pub inline fn sub(self: Square, d: Direction) Square {
-        return @enumFromInt(@intFromEnum(self) - @intFromEnum(d));
+        return @enumFromInt(@as(i9, self.index()) - d.index());
     }
 
     pub inline fn rank(self: Square) Rank {
-        return @enumFromInt(@intFromEnum(self) >> 3);
+        return @enumFromInt(self.index() >> 3);
     }
 
     pub inline fn file(self: Square) File {
-        return @enumFromInt(@intFromEnum(self) & 0b111);
+        return @enumFromInt(self.index() & 0b111);
     }
 
     pub inline fn diagonal(self: Square) u4 {
@@ -106,7 +106,7 @@ pub const Square = enum(u8) {
     }
 };
 
-pub const Direction = enum(i32) {
+pub const Direction = enum(i8) {
     north = board_size,
     south = -board_size,
     // south = -@intFromEnum(Direction.north),
@@ -223,44 +223,44 @@ pub const PieceType = enum(u3) {
 };
 
 pub const Piece = enum(u8) {
-    none = ' ',
-    b_pawn = 'p',
-    b_knight = 'n',
-    b_bishop = 'b',
-    b_rook = 'r',
-    b_queen = 'q',
-    b_king = 'k',
-    w_pawn = 'P',
-    w_knight = 'N',
-    w_bishop = 'B',
-    w_rook = 'R',
-    w_queen = 'Q',
-    w_king = 'K',
+    none,
+    b_pawn,
+    b_knight,
+    b_bishop,
+    b_rook,
+    b_queen,
+    b_king,
+    w_pawn,
+    w_knight,
+    w_bishop,
+    w_rook,
+    w_queen,
+    w_king,
 
     pub inline fn nb() comptime_int {
         return 13;
     }
 
     pub inline fn index(self: Piece) u8 {
-        return switch (self) {
-            .none => 0,
-            .b_pawn => 1,
-            .b_knight => 2,
-            .b_bishop => 3,
-            .b_rook => 4,
-            .b_queen => 5,
-            .b_king => 6,
-            .w_pawn => 7,
-            .w_knight => 8,
-            .w_bishop => 9,
-            .w_rook => 10,
-            .w_queen => 11,
-            .w_king => 12,
-        };
+        return @intFromEnum(self);
     }
 
     pub inline fn value(self: Piece) u8 {
-        return @intFromEnum(self);
+        return switch (self) {
+            .none => ' ',
+            .b_pawn => 'p',
+            .b_knight => 'n',
+            .b_bishop => 'b',
+            .b_rook => 'r',
+            .b_queen => 'q',
+            .b_king => 'k',
+            .w_pawn => 'P',
+            .w_knight => 'N',
+            .w_bishop => 'B',
+            .w_rook => 'R',
+            .w_queen => 'Q',
+            .w_king => 'K',
+        };
     }
 
     pub inline fn pieceToPieceType(self: Piece) PieceType {
@@ -304,7 +304,7 @@ pub const Color = enum(u1) {
     }
 
     pub inline fn invert(self: Color) Color {
-        return @enumFromInt(@intFromEnum(self) ^ 1);
+        return @enumFromInt(self.index() ^ 1);
     }
 
     pub inline fn isWhite(self: Color) bool {
