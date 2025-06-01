@@ -616,9 +616,10 @@ fn info(stdout: anytype, limits: interface.Limits, depth: u16, score: types.Valu
     const hash_size: u16 = try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10);
     const hashfull: u128 = @divTrunc(@as(u128, tables.transposition_table.size) * (@sizeOf(tables.Key) + @sizeOf(std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound })) + @sizeOf(u32)) * 1000, @as(u128, hash_size) * 1000000);
 
-    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hash {} hashfull {} hashused {} score cp {} pv ", .{ depth, interface.seldepth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, tables.transposition_table.size, hashfull, interface.transposition_used, score });
+    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score cp {} pv ", .{ depth, interface.seldepth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, hashfull, score });
     try pvDisplay(stdout, root_moves.items[0].pv.items);
     try stdout.print("\n", .{});
+    try stdout.print("info hash {} hashused {}\n\n", .{ tables.transposition_table.size, interface.transposition_used });
 }
 
 fn pvDisplay(stdout: anytype, pv: []types.Move) !void {
