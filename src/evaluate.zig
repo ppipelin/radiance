@@ -192,7 +192,7 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         }
     }
 
-    const tapered: i64 = @divTrunc(@as(i64, pos.score_material_w + pos.score_material_b - 2 * tables.material[types.PieceType.king.index()]) * 10_000, (4152 * 2));
+    const tapered: types.ValueExtended = @divTrunc(@as(types.ValueExtended, pos.score_material_w + pos.score_material_b - 2 * tables.material[types.PieceType.king.index()]) * 10_000, (4152 * 2));
     score += @truncate(@divTrunc(tapered * pos.score_mg, 10_000));
     score += @truncate(@divTrunc((10_000 - tapered) * pos.score_eg, 10_000));
 

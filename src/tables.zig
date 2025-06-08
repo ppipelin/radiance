@@ -15,6 +15,7 @@ const Square = types.Square;
 const Stack = search.Stack;
 const TableBound = types.TableBound;
 const Value = types.Value;
+const ValueExtended = types.ValueExtended;
 
 ////// Initialize movegen, evaluation and position hashing //////
 
@@ -374,24 +375,24 @@ pub var history: FromToHistory = std.mem.zeroes([Color.nb()][types.board_size2 *
 pub var continuation_history: *[2][2]ContinuationHistory = undefined; // [in check][is_capture]
 
 pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
-    const abs_bonus: i64 = @intCast(@abs(bonus));
-    const last_value: i64 = history[turn.index()][move.getFromTo()];
+    const abs_bonus: ValueExtended = @intCast(@abs(bonus));
+    const last_value: ValueExtended = history[turn.index()][move.getFromTo()];
 
-    const tapered: Value = @truncate(@divTrunc(last_value * abs_bonus, max_history));
+    const tapered: Value = std.math.lossyCast(Value, @divTrunc(last_value * abs_bonus, max_history));
     history[turn.index()][move.getFromTo()] = @min(max_history, history[turn.index()][move.getFromTo()] + bonus - tapered);
     // history[turn.index()][move.getFromTo()] += depth * depth;
 }
 
 pub fn updateContinuationHistories(ss: [*]Stack, p: Piece, to: Square, bonus: Value) void {
-    const cont_hist_bonuses = [_]i64{ 1024, 631, 294, 517, 126, 445 };
+    const cont_hist_bonuses = [_]ValueExtended{ 1024, 631, 294, 517, 126, 445 };
     for (cont_hist_bonuses, 0..) |weight, i| {
         // Only update the first 2 continuation histories if we are in check
         if (ss[0].in_check and i > 2)
             break;
-        const abs_bonus: i64 = @intCast(@abs(@as(i64, bonus) * weight));
-        const last_value: i64 = (ss - i)[0].continuation_history[p.index()][to.index()];
+        const abs_bonus: ValueExtended = @intCast(@abs(@as(ValueExtended, bonus) * weight));
+        const last_value: ValueExtended = (ss - i)[0].continuation_history[p.index()][to.index()];
 
-        const tapered: Value = @truncate(@divTrunc(last_value * abs_bonus, 1024 * max_history));
+        const tapered: Value = std.math.lossyCast(Value, @divTrunc(last_value * abs_bonus, 1024 * max_history));
         (ss - i)[0].continuation_history[p.index()][to.index()] = @min(max_history, (ss - i)[0].continuation_history[p.index()][to.index()] + bonus - tapered);
     }
 }
