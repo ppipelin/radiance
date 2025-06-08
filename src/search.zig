@@ -173,6 +173,8 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     var ss: [*]Stack = &stack;
     ss = ss + 7;
 
+    ss[0].in_check = pos.state.checkers != 0;
+
     tables.resetContinuationHistories();
 
     for (stack[0..7]) |*s| {
@@ -320,7 +322,6 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
     // Initialize node
     var move_count: u16 = 0;
-    ss[0].in_check = pos.state.checkers != 0;
 
     // Prunings
     if (alpha >= beta) return alpha;
@@ -394,7 +395,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
         ss[1].pv = &pv;
         ss[1].pv.?[0] = types.Move.none;
-        ss[0].continuation_history = &tables.continuation_history[@intFromBool(ss[0].in_check)][@intFromBool(move.isCapture())][moved_piece.index()][move.getTo().index()];
+        ss[1].in_check = pos.state.checkers != 0;
+        ss[1].continuation_history = &tables.continuation_history[@intFromBool(ss[1].in_check)][@intFromBool(move.isCapture())][moved_piece.index()][move.getTo().index()];
 
         if (pos.state.repetition < 0) {
             score = types.value_draw;
@@ -530,7 +532,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     if (best_score == -types.value_none) {
-        if (ss[1].in_check)
+        if (ss[0].in_check)
             return -types.value_mate + @as(types.Value, ss[0].ply);
         return types.value_stalemate;
     }
