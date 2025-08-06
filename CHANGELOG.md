@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1] - 2025-08-06
+
 ### Added
 
 - Staged move generation
@@ -288,7 +290,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - UCI `position` command
 - `Random` search
 
-[Unreleased]: https://github.com/ppipelin/radiance/compare/4.0.1...HEAD
+[Unreleased]: https://github.com/ppipelin/radiance/compare/4.1...HEAD
+[4.1]: https://github.com/ppipelin/radiance/compare/4.0.1...4.1
 [4.0.1]: https://github.com/ppipelin/radiance/compare/4.0...4.0.1
 [4.0]: https://github.com/ppipelin/radiance/tag/4.0
 [3.5]: https://github.com/ppipelin/radiance_archived/compare/3.4...3.5

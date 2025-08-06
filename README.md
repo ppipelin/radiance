@@ -50,31 +50,38 @@ Time control: 120+1
 
 CCRL [blitz benchmark](https://computerchess.org.uk/ccrl/404/cgi/compare_engines.cgi?family=Radiance&print=Rating+list&print=Score+with+common+opponents).
 
-| Rank | Name             | CCRL  | Elo  | +/- | Games | Score | Draw  |
-| ---- | ---------------- | ----- | ---- | --- | ----- | ----- | ----- |
-| 1    | [radiance_4.0]   |       |  323 |  28 |  1056 | 86.5% |  7.7% |
-| 2    | [radiance_3.5]   |       |   88 |  20 |  1060 | 62.5% | 15.3% |
-| 3    | [radiance_3.4]   |  1302 |   85 |  20 |  1058 | 62.1% | 14.8% |
-| 4    | [radiance_3.2]   |       |   14 |  19 |  1056 | 52.1% | 16.3% |
-| 5    | [radiance_3.3]   |       |   13 |  19 |  1056 | 51.8% | 15.2% |
-| 6    | [radiance_3.1.1] |  1118 | -151 |  22 |  1058 | 29.5% |  7.8% |
-| 7    | [radiance_3.0.1] |       | -489 |  40 |  1060 |  5.7% |  5.5% |
-|      | [radiance_2.3]   |   866 |      |     |       |       |       |
+| Rank | Name             | CCRL  |  Elo |  + |  - | games | score | oppo. | draws |
+| ---- | ---------------- | ----- | ---- | -- | -- | ----- | ----- | ----- | ----- |
+|    1 | [radiance_4.1]   |       | 1733 | 47 | 43 |   322 |   88% |  1343 |   10% |
+|    2 | [radiance_4.0.1] |       | 1591 | 10 | 10 |  9618 |   91% |  1059 |    6% |
+|    3 | [radiance_3.5]   |  1326 | 1326 |  8 |  8 |  9616 |   70% |  1092 |   11% |
+|    4 | [radiance_3.4]   |  1300 | 1302 |  8 |  8 |  9616 |   68% |  1095 |   11% |
+|    5 | [radiance_3.3]   |       | 1250 |  8 |  7 |  9615 |   63% |  1101 |   11% |
+|    6 | [radiance_3.2]   |       | 1239 |  8 |  7 |  9615 |   62% |  1103 |   12% |
+|    7 | [radiance_3.1.1] |  1116 | 1070 |  8 |  8 |  9552 |   45% |  1120 |    9% |
+|    8 | [radiance_3.0.1] |       |  793 |  9 |  9 |  9552 |   20% |  1155 |    9% |
+|    9 | [radiance_2.4]   |   866 |  751 |  9 |  9 |  9552 |   16% |  1160 |   10% |
+|   10 | [radiance_2.3]   |   865 |  707 |  9 |  9 |  9552 |   13% |  1166 |    9% |
+
 
 ## Getting started
 
-### Compilation
+### Compile and run
 
 ```
-export CXX=g++-12
-export CC=gcc-12
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make
-./radiance
-go
-stop
+zig build run -relase=fast
+```
+
+### Deploy
+
+```
+zig build deploy
+```
+
+### Test
+
+```
+zig build test --release=safe
 ```
 
 ### UCI options
@@ -113,7 +120,8 @@ This project was originaly written in C++ before 4.0 version and archived under 
 
 _I'm radiant!_
 
-[radiance_4.0]: https://github.com/ppipelin/radiance/releases/tag/4.0
+[radiance_4.1]: https://github.com/ppipelin/radiance/releases/tag/4.1
+[radiance_4.0.1]: https://github.com/ppipelin/radiance/releases/tag/4.0.1
 [radiance_3.5]: https://github.com/ppipelin/radiance_archived/releases/tag/3.5
 [radiance_3.4]: https://github.com/ppipelin/radiance_archived/releases/tag/3.4
 [radiance_3.3]: https://github.com/ppipelin/radiance_archived/releases/tag/3.3
@@ -122,9 +130,3 @@ _I'm radiant!_
 [radiance_3.0.1]: https://github.com/ppipelin/radiance_archived/releases/tag/3.0.1
 [radiance_2.4]: https://github.com/ppipelin/radiance_archived/releases/tag/2.4
 [radiance_2.3]: https://github.com/ppipelin/radiance_archived/releases/tag/2.3
-[radiance_2.2]: https://github.com/ppipelin/radiance_archived/releases/tag/2.2
-[radiance_2.1]: https://github.com/ppipelin/radiance_archived/releases/tag/2.1
-[radiance_2.0]: https://github.com/ppipelin/radiance_archived/releases/tag/2.0
-[radiance_2.4]: https://github.com/ppipelin/radiance_archived/releases/tag/2.4
-[radiance_1.5]: https://github.com/ppipelin/radiance_archived/releases/tag/1.5
-[radiance_1.4]: https://github.com/ppipelin/radiance_archived/releases/tag/1.4
