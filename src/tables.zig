@@ -389,8 +389,9 @@ pub fn updateContinuationHistories(ss: [*]Stack, p: Piece, to: Square, bonus: Va
         // Only update the first 2 continuation histories if we are in check
         if (ss[0].in_check and i > 2)
             break;
+        // History gravity formula
         const abs_bonus: ValueExtended = @intCast(@abs(@as(ValueExtended, bonus) * weight));
-        const last_value: ValueExtended = (ss - i)[0].continuation_history[p.index()][to.index()];
+        const last_value: ValueExtended = @as(ValueExtended, (ss - i)[0].continuation_history[p.index()][to.index()]) * 1024;
 
         const tapered: Value = std.math.lossyCast(Value, @divTrunc(last_value * abs_bonus, 1024 * max_history));
         (ss - i)[0].continuation_history[p.index()][to.index()] = @min(max_history, (ss - i)[0].continuation_history[p.index()][to.index()] + bonus - tapered);

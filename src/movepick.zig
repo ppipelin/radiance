@@ -99,7 +99,8 @@ pub const MovePick = struct {
                 const move: types.Move = self.moves_capture.items[self.index_capture];
                 const from_piece: types.Piece = pos.board[move.getFrom().index()];
                 const to_piece: types.Piece = pos.board[move.getTo().index()];
-                if (tables.material[to_piece.pieceToPieceType().index()] >= tables.material[from_piece.pieceToPieceType().index()]) {
+                // if (tables.material[to_piece.pieceToPieceType().index()] >= tables.material[from_piece.pieceToPieceType().index()]) {
+                if (to_piece.pieceToPieceType().index() >= from_piece.pieceToPieceType().index()) {
                     self.index_capture += 1;
                     return move;
                 } else {

@@ -729,13 +729,13 @@ pub const Position = struct {
             if (move.isCapture()) {
                 if (move.getFlags() != MoveFlags.en_passant) {
                     const capture_value: types.ValueExtended = tables.material[to_piece.index()] - tables.material[from_piece.index()];
-                    scores[i] += 14 * capture_value;
+                    scores[i] += capture_value;
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
                 var caslte_bonus: ValueExtended = 0;
                 if (move.isCastle()) {
-                    caslte_bonus = 512;
+                    caslte_bonus = 50;
                 }
                 scores[i] += caslte_bonus;
 
@@ -748,7 +748,7 @@ pub const Position = struct {
                 scores[i] +|= cont_hist_bonus;
             }
 
-            scores[i] +|= 1024 * @as(types.ValueExtended, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - 1024 * @as(types.ValueExtended, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
+            // scores[i] +|= 50 * @as(types.ValueExtended, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - 50 * @as(types.ValueExtended, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
         }
     }
 

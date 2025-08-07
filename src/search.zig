@@ -177,7 +177,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
 
     tables.resetContinuationHistories();
 
-    for (stack[0..7]) |*s| {
+    for (stack[0..8]) |*s| {
         s.continuation_history = &tables.continuation_history[0][0][types.Piece.none.index()][0];
     }
 
@@ -214,7 +214,6 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
 
     pos.scoreMoves(move_list.items, &cont_hist, scores);
     position.orderMoves(move_list.items, scores);
-    // pos.orderMoves(move_list.items);
 
     try root_moves.ensureTotalCapacity(allocator, root_moves_len);
     defer root_moves.clearAndFree(allocator);
