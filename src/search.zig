@@ -308,10 +308,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     // Initialize node
     var move_count: u16 = 0;
 
-    // Pruning
-    // Mate pruning
-    if (alpha < -types.value_mate) alpha = -types.value_mate;
-    if (beta > types.value_mate - 1) beta = types.value_mate - 1;
+    // Prunings
     if (alpha >= beta) return alpha;
 
     if (@popCount(pos.state.checkers) == 0) {
@@ -326,7 +323,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
         // Null move pruning
         if (!is_nmr and current_depth >= 3 and !pos.endgame(pos.state.turn.invert()) and static_eval > beta) {
-            const tapered: u8 = @intCast(@min(@divTrunc(static_eval - beta, 200), 6));
+            const tapered: u8 = @intCast(@min(@divTrunc(static_eval -| beta, 200), 6));
             const r: u8 = tapered + @divTrunc(current_depth, 3) + 5;
             try pos.moveNull(&s);
             const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, current_depth -| r, is_960, true);
@@ -365,6 +362,15 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
         const key: tables.Key = pos.state.material_key;
 
+        // Mate pruning, we cannot get a better mate at this ply
+        if (beta < -types.value_mate + ss[0].ply + 1) {
+            continue;
+        }
+
+        if (alpha > types.value_mate - ss[0].ply - 1) {
+            continue;
+        }
+
         try pos.movePiece(move, &s);
 
         ss[1].pv = &pv;
@@ -376,6 +382,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
             const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(key);
             if (found != null) {
                 var tt_eval = found.?[0];
+                // Update the mate score retrieved from the table to consider the current ply
                 if (score > types.value_mate_in_max_depth) {
                     tt_eval -= ss[0].ply;
                 } else if (score < types.value_mated_in_max_depth) {
@@ -385,11 +392,12 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 if (!is_nmr and !pv_node and found.?[1] > current_depth - 1) {
                     switch (found.?[3]) {
                         .exact => score = tt_eval,
-                        .lowerbound => alpha = @max(alpha, score),
-                        .upperbound => beta = @min(beta, score),
+                        .lowerbound => alpha = @max(alpha, tt_eval),
+                        .upperbound => beta = @min(beta, tt_eval),
                     }
                     if (alpha >= beta) {
-                        score = tt_eval;
+                        try pos.unMovePiece(move);
+                        return alpha;
                     }
                 }
                 interface.transposition_used += 1;
