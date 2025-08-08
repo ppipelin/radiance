@@ -27,7 +27,7 @@ pub fn initAll(allocator: std.mem.Allocator) void {
     initPassedPawn();
     initZobrist();
     magic.initMagic(allocator);
-    continuation_history = allocator.create([2][2][Piece.nb()][types.board_size2][Piece.nb()][types.board_size2]Value) catch unreachable;
+    continuation_history = allocator.create([2][2][Piece.nb()][types.board_size2][Piece.nb()][types.board_size2]ValueExtended) catch unreachable;
 }
 
 ////// Zobrist hashing //////
@@ -367,11 +367,12 @@ pub const black_pawn_attacks = [64]Bitboard{
 ////// Evaluation //////
 
 pub const FromToHistory = [Color.nb()][types.board_size2 * types.board_size2]Value;
-pub const PieceToHistory = [Piece.nb()][types.board_size2]Value;
+pub const PieceToHistory = [Piece.nb()][types.board_size2]ValueExtended;
 pub const ContinuationHistory = [Piece.nb()][types.board_size2]PieceToHistory;
 
 pub const max_history = 20000;
 pub var history: FromToHistory = std.mem.zeroes([Color.nb()][types.board_size2 * types.board_size2]Value);
+pub const max_continuation_history = max_history * 100;
 pub var continuation_history: *[2][2]ContinuationHistory = undefined; // [in check][is_capture]
 
 pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
@@ -391,10 +392,10 @@ pub fn updateContinuationHistories(ss: [*]Stack, p: Piece, to: Square, bonus: Va
             break;
         // History gravity formula
         const abs_bonus: ValueExtended = @intCast(@abs(@as(ValueExtended, bonus) * weight));
-        const last_value: ValueExtended = @as(ValueExtended, (ss - i)[0].continuation_history[p.index()][to.index()]) * 1024;
+        const last_value: ValueExtended = @as(ValueExtended, (ss - i)[0].continuation_history[p.index()][to.index()]);
 
-        const tapered: Value = std.math.lossyCast(Value, @divTrunc(last_value * abs_bonus, 1024 * max_history));
-        (ss - i)[0].continuation_history[p.index()][to.index()] = @min(max_history, (ss - i)[0].continuation_history[p.index()][to.index()] + bonus - tapered);
+        const tapered: Value = std.math.lossyCast(Value, @divTrunc(last_value * abs_bonus, 1024 * max_continuation_history));
+        (ss - i)[0].continuation_history[p.index()][to.index()] = @min(max_continuation_history, (ss - i)[0].continuation_history[p.index()][to.index()] + bonus - tapered);
     }
 }
 

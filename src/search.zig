@@ -362,7 +362,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     // Loop over all legal moves
-    var previous_moves: [types.max_moves]types.Move = @splat(.none);
+    var previous_moves: [types.max_moves]std.meta.Tuple(&[_]type{ types.Move, types.Piece }) = @splat(.{ .none, .none });
     var cont_hist = [_]*tables.PieceToHistory{ (ss - 1)[0].continuation_history, (ss - 2)[0].continuation_history, (ss - 3)[0].continuation_history, (ss - 4)[0].continuation_history, (ss - 5)[0].continuation_history, (ss - 6)[0].continuation_history };
     mp.cont_hist = &cont_hist;
 
@@ -371,7 +371,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }
-        previous_moves[move_count] = move;
+        previous_moves[move_count] = .{ move, pos.board[move.getFrom().index()] };
         score = -types.value_none;
         move_count += 1;
         if (pv_node) {
@@ -441,7 +441,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                     // Failed so roll back to full-depth null window
                     if (score > alpha and current_depth > d) {
                         score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1, is_960, false);
-                        tables.updateContinuationHistories(ss, moved_piece, move.getTo(), 1508);
+                        tables.updateContinuationHistories(ss, moved_piece, move.getTo(), 10);
                     }
                 }
                 // In case non PV search are called without LMR, null window search at current depth
@@ -512,8 +512,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                         const bonus: types.Value = @as(types.Value, current_depth);
                         tables.updateHistory(pos.state.turn, move, bonus);
                         // Apply maluses to previous moves
-                        for (previous_moves[0..(move_count - 1)]) |malus_move| {
-                            tables.updateHistory(pos.state.turn, malus_move, -bonus);
+                        for (previous_moves[0..(move_count - 1)]) |move_piece| {
+                            tables.updateHistory(pos.state.turn, move_piece[0], -bonus);
+                            tables.updateContinuationHistories(ss, move_piece[1], move_piece[0].getTo(), -10);
                         }
                     }
                     if (score != types.value_draw) {
@@ -537,9 +538,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     if (best_move.isCapture()) {
-        tables.updateContinuationHistories(ss, best_moved, best_move.getFrom(), 1496 * 1213 / 1024);
+        // tables.updateContinuationHistories(ss, best_moved, best_move.getFrom(), 10);
     } else {
-        tables.updateContinuationHistories(ss, best_moved, best_move.getFrom(), 1496 * 1059 / 1024);
+        tables.updateContinuationHistories(ss, best_moved, best_move.getFrom(), 10);
         // Addd malus for non-best quiets
     }
 
