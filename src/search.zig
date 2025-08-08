@@ -29,7 +29,7 @@ const RootMove = struct {
 };
 
 const Stack = struct {
-    // pv: [200]types.Move = [_]types.Move{.none} ** 200,
+    // pv: [200]types.Move = @splat(.none),
     pv: ?*[200]types.Move = null,
     killers: [2]?types.Move = [_]?types.Move{ null, null },
     ply: u8 = 0,
@@ -166,8 +166,8 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
         interface.increment = if (pos.state.turn.isWhite()) limits.inc[types.Color.white.index()] else limits.inc[types.Color.black.index()];
     }
 
-    var stack: [200 + 10]Stack = [_]Stack{.{}} ** (200 + 10);
-    var pv: [200]types.Move = [_]types.Move{.none} ** 200; // useless
+    var stack: [200 + 10]Stack = @splat(Stack{});
+    var pv: [200]types.Move = @splat(.none); // useless
     var ss: [*]Stack = &stack;
     ss = ss + 7;
 
@@ -301,7 +301,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
     // Initialize data
     var s: position.State = position.State{};
-    var pv: [200]types.Move = [_]types.Move{.none} ** 200;
+    var pv: [200]types.Move = @splat(.none);
     var score: types.Value = -types.value_none;
     var best_score: types.Value = -types.value_none;
 
@@ -347,7 +347,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     // Loop over all legal moves
-    var previous_moves: [types.max_moves]types.Move = .{types.Move.none} ** types.max_moves;
+    var previous_moves: [types.max_moves]types.Move = @splat(.none);
     var move: types.Move = try mp.nextMove(allocator, pos, pv_move, is_960);
     while (move != types.Move.none) : (move = try mp.nextMove(allocator, pos, pv_move, is_960)) {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
@@ -533,7 +533,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
 
     // Initialize data
     var s: position.State = position.State{};
-    var pv: [200]types.Move = [_]types.Move{.none} ** 200;
+    var pv: [200]types.Move = @splat(.none);
     var score: types.Value = -types.value_none;
 
     // Initialize node
