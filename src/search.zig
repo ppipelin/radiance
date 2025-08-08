@@ -362,7 +362,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     // Loop over all legal moves
-    var previous_moves: [types.max_moves]types.Move = .{types.Move.none} ** types.max_moves;
+    var previous_moves: [types.max_moves]types.Move = @splat(.none);
     var cont_hist = [_]*tables.PieceToHistory{ (ss - 1)[0].continuation_history, (ss - 2)[0].continuation_history, (ss - 3)[0].continuation_history, (ss - 4)[0].continuation_history, (ss - 5)[0].continuation_history, (ss - 6)[0].continuation_history };
     mp.cont_hist = &cont_hist;
 
