@@ -22,8 +22,8 @@ pub const Limits = struct {
     perft: u8 = 0,
     infinite: bool = false,
     nodes: u32 = 0,
-    time: [types.Color.nb()]types.TimePoint = [_]types.TimePoint{0} ** types.Color.nb(),
-    inc: [types.Color.nb()]types.TimePoint = [_]types.TimePoint{0} ** types.Color.nb(),
+    time: [types.Color.nb()]types.TimePoint = @splat(0),
+    inc: [types.Color.nb()]types.TimePoint = @splat(0),
     start: types.TimePoint = 0,
     movetime: types.TimePoint = 0,
 };

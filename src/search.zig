@@ -166,8 +166,8 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
         interface.increment = if (pos.state.turn.isWhite()) limits.inc[types.Color.white.index()] else limits.inc[types.Color.black.index()];
     }
 
-    var stack: [200 + 10]Stack = [_]Stack{.{}} ** (200 + 10);
-    var pv: [200]types.Move = [_]types.Move{.none} ** 200; // useless
+    var stack: [200 + 10]Stack = @splat(Stack{});
+    var pv: [200]types.Move = @splat(.none); // useless
     var ss: [*]Stack = &stack;
     ss = ss + 7;
 
@@ -301,7 +301,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
     // Initialize data
     var s: position.State = position.State{};
-    var pv: [200]types.Move = [_]types.Move{.none} ** 200;
+    var pv: [200]types.Move = @splat(.none);
     var score: types.Value = -types.value_none;
     var best_score: types.Value = -types.value_none;
 
@@ -533,7 +533,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
 
     // Initialize data
     var s: position.State = position.State{};
-    var pv: [200]types.Move = [_]types.Move{.none} ** 200;
+    var pv: [200]types.Move = @splat(.none);
     var score: types.Value = -types.value_none;
 
     // Initialize node
