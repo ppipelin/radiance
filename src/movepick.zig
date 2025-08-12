@@ -94,7 +94,12 @@ pub const MovePick = struct {
 
         // Positive captures
         if (self.stage == 4) {
-            var cnt: usize = 1;
+            var cnt: usize = 0;
+            // Negative captures should be put at the very end otherwise we risk to have to shuffle them every moves
+            // 1 2 -3 5 -4 6 7
+            // 1 2 5 -3 -4 6 7
+            // 1 2 5 -4 -3 6 7 -- 1 2 5 -3 -4 6 7
+            // 1 2 5 6 -4 -3 7 -- 1 2 5 6 7 -3 -4
             while (self.index_capture + cnt < self.moves_capture.items.len) : (cnt += 1) {
                 const move: types.Move = self.moves_capture.items[self.index_capture];
                 const from_piece: types.Piece = pos.board[move.getFrom().index()];
@@ -112,6 +117,7 @@ pub const MovePick = struct {
             self.stage += 1;
         }
 
+        // Stage 14 returns all captures
         if (self.stage == 14) {
             const move: types.Move = self.moves_capture.items[self.index_capture];
             self.index_capture += 1;
