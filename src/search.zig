@@ -538,10 +538,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     if (best_move.isCapture()) {
-        // tables.updateContinuationHistories(ss, best_moved, best_move.getFrom(), 1496 * 1213 / 1024);
+        tables.updateContinuationHistories(ss, best_moved, best_move.getFrom(), 1496 * 1213 / 1024);
     } else {
         tables.updateContinuationHistories(ss, best_moved, best_move.getFrom(), 1496 * 1059 / 1024);
-        // Addd malus for non-best quiets
     }
 
     return best_score;
