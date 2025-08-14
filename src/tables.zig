@@ -372,8 +372,8 @@ pub const ContinuationHistory = [Piece.nb()][types.board_size2]PieceToHistory;
 
 pub const max_history = 20000;
 pub var history: FromToHistory = std.mem.zeroes([Color.nb()][types.board_size2 * types.board_size2]Value);
-pub const max_continuation_history = max_history * 100;
-pub var continuation_history: *[2][2]ContinuationHistory = undefined; // [in check][is_capture]
+pub const max_continuation_history = 300000;
+pub var continuation_history: *[2][2]ContinuationHistory = undefined; // [in_check][is_capture]
 
 pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
     const abs_bonus: ValueExtended = @intCast(@abs(bonus));
@@ -385,7 +385,7 @@ pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
 }
 
 pub fn updateContinuationHistories(ss: [*]Stack, p: Piece, to: Square, bonus: Value) void {
-    const cont_hist_bonuses = [_]ValueExtended{ 1024, 631, 294, 517, 126, 445 };
+    const cont_hist_bonuses = [_]ValueExtended{ 1108, 652, 273, 572, 126, 449 };
     for (cont_hist_bonuses, 0..) |weight, i| {
         // Only update the first 2 continuation histories if we are in check
         if (ss[0].in_check and i > 2)
@@ -396,6 +396,12 @@ pub fn updateContinuationHistories(ss: [*]Stack, p: Piece, to: Square, bonus: Va
 
         const tapered: Value = std.math.lossyCast(Value, @divTrunc(last_value * abs_bonus, 1024 * max_continuation_history));
         (ss - i)[0].continuation_history[p.index()][to.index()] = @min(max_continuation_history, (ss - i)[0].continuation_history[p.index()][to.index()] + bonus - tapered);
+
+        // const bonus = @divTrunc(bonus_ * weight, 1024) + 80 * @as(ValueExtended, @intFromBool(i < 2));
+        // const clamped_bonus: ValueExtended = std.math.clamp(bonus, -max_continuation_history, max_continuation_history);
+        // (ss - i)[0].continuation_history[p.index()][to.index()] = clamped_bonus - (ss - i)[0].continuation_history[p.index()][to.index()] * @divTrunc(@as(ValueExtended, @intCast(@abs(clamped_bonus))), max_continuation_history);
+
+        std.debug.assert(@abs((ss - i)[0].continuation_history[p.index()][to.index()]) <= max_continuation_history);
     }
 }
 

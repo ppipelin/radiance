@@ -441,7 +441,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                     // Failed so roll back to full-depth null window
                     if (score > alpha and current_depth > d) {
                         score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1, is_960, false);
-                        tables.updateContinuationHistories(ss, moved_piece, move.getTo(), 1508);
+                        tables.updateContinuationHistories(ss, moved_piece, move.getTo(), 1412);
                     }
                 }
                 // In case non PV search are called without LMR, null window search at current depth
@@ -514,7 +514,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                         // Apply maluses to previous moves
                         for (previous_moves[0..(move_count - 1)]) |move_piece| {
                             tables.updateHistory(pos.state.turn, move_piece[0], -bonus);
-                            tables.updateContinuationHistories(ss, move_piece[1], move_piece[0].getTo(), -1500);
+                            tables.updateContinuationHistories(ss, move_piece[1], move_piece[0].getTo(), -2128);
                         }
                     }
                     if (score != types.value_draw) {
