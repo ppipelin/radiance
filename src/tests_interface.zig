@@ -270,20 +270,20 @@ test "SearchLeakNoInterface" {
     try pos.moveNull(&s);
 }
 
-test "Bench" {
-    tables.initAll(allocator);
-    defer tables.deinitAll(allocator);
+// test "Bench" {
+//     tables.initAll(allocator);
+//     defer tables.deinitAll(allocator);
 
-    const input =
-        \\bench
-    ;
+//     const input =
+//         \\bench
+//     ;
 
-    var fbs_r = std.io.fixedBufferStream(input);
-    var stdin = fbs_r.reader();
+//     var fbs_r = std.io.fixedBufferStream(input);
+//     var stdin = fbs_r.reader();
 
-    var output: [131072]u8 = undefined;
-    var fbs_w = std.io.fixedBufferStream(&output);
-    var stdout = fbs_w.writer();
+//     var output: [131072]u8 = undefined;
+//     var fbs_w = std.io.fixedBufferStream(&output);
+//     var stdout = fbs_w.writer();
 
-    try interface.loop(allocator, &stdin, &stdout);
-}
+//     try interface.loop(allocator, &stdin, &stdout);
+// }

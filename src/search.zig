@@ -622,7 +622,10 @@ fn info(stdout: anytype, limits: interface.Limits, depth: u16, score: types.Valu
     const time: u64 = @intCast(elapsed(limits));
 
     const hash_size: u16 = try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10);
-    const hashfull: u128 = @divTrunc(@as(u128, tables.transposition_table.size) * (@sizeOf(tables.Key) + @sizeOf(std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound })) + @sizeOf(u32)) * 1000, @as(u128, hash_size) * 1000000);
+    var hashfull: u128 = 0;
+    if (hash_size > 1) {
+        hashfull = @divTrunc(@as(u128, tables.transposition_table.size) * (@sizeOf(tables.Key) + @sizeOf(std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound })) + @sizeOf(u32)) * 1000, @as(u128, hash_size) * 1000000);
+    }
 
     try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, interface.seldepth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, hashfull });
 
