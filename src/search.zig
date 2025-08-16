@@ -187,7 +187,11 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     } else {
         pos.updateAttacked(false);
     }
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
+    if (is_960) {
+        pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, true);
+    } else {
+        pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, false);
+    }
 
     const root_moves_len: usize = move_list.items.len;
     if (root_moves_len == 0) {
@@ -239,7 +243,12 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
         // Disable by alpha = -types.value_infinite; beta = types.value_infinite;
         // alpha = -types.value_infinite; beta = types.value_infinite;
         while (true) {
-            const score: types.Value = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, current_depth, is_960, false);
+            var score: types.Value = 0;
+            if (is_960) {
+                score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, current_depth, true, false);
+            } else {
+                score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, current_depth, false, false);
+            }
             if (current_depth > 1 and outOfTime(limits))
                 break;
 
@@ -281,7 +290,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
     return move;
 }
 
-fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Stack, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, current_depth: u8, is_960: bool, is_nmr: bool) !types.Value {
+fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Stack, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, current_depth: u8, comptime is_960: bool, is_nmr: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
