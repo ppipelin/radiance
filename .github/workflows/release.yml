@@ -17,7 +17,7 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
 
-      - run: zig build test
+      - run: zig build test --release=safe
 
       - run: zig build deploy
 

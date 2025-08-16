@@ -62,7 +62,7 @@ pub fn printOptions(writer: anytype, options: std.StringArrayHashMapUnmanaged(Op
     for (keys) |key| {
         const option: Option = options.get(key).?;
         writer.print("option name {s} type {s} default {s} ", .{ key, option.type, option.default_value }) catch unreachable;
-        if (std.mem.eql(u8, key, "spin")) {
+        if (std.mem.eql(u8, option.type, "spin")) {
             writer.print("min {} max {}", .{ option.min, option.max }) catch unreachable;
         }
         writer.print("\n", .{}) catch unreachable;
@@ -283,6 +283,14 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
     if (options.contains(name)) {
         var option = options.get(name).?;
         option.current_value = value;
+        if (std.mem.eql(u8, option.type, "spin")) {
+            const value_parsed = try std.fmt.parseInt(i64, value, 10);
+            if (value_parsed > option.max) {
+                return error.UpperBoundBreached;
+            } else if (value_parsed < option.min) {
+                return error.LowerBoundBreached;
+            }
+        }
         try options.put(allocator, name, option);
     } else {
         return error.UnknownOption;
