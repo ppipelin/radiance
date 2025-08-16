@@ -24,7 +24,7 @@ pub const MovePick = struct {
     index_quiet: u8 = 0,
     scores: []types.Value = undefined,
 
-    pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, is_960: bool) !types.Move {
+    pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
 
