@@ -12,7 +12,7 @@ pub inline fn computeDoubledPawns(bb_pawn: types.Bitboard) types.Value {
     return doubled_pawns;
 }
 
-pub inline fn computeBlockedPawns(bb_pawn: types.Bitboard, col: types.Color, blockers: types.Bitboard) types.Value {
+pub inline fn computeBlockedPawns(bb_pawn: types.Bitboard, comptime col: types.Color, blockers: types.Bitboard) types.Value {
     if (col.isWhite()) {
         return @popCount((bb_pawn <<| types.board_size) & blockers);
     } else {
@@ -43,7 +43,7 @@ inline fn distanceKings(pos: position.Position) types.Value {
     return @intCast(@max(@abs(@as(types.Value, k1.rank().index()) - @as(types.Value, k2.rank().index())), @abs(@as(types.Value, k1.file().index()) - @as(types.Value, k2.file().index()))));
 }
 
-fn evaluateShannonColor(pos: position.Position, col: types.Color) types.Value {
+fn evaluateShannonColor(pos: position.Position, comptime col: types.Color) types.Value {
     const bb_us: types.Bitboard = pos.bb_colors[col.index()];
     const bb_them: types.Bitboard = pos.bb_colors[col.invert().index()];
 
@@ -83,7 +83,9 @@ pub fn evaluateMaterialist(pos: position.Position) types.Value {
 }
 
 pub fn evaluateShannon(pos: position.Position) types.Value {
-    return evaluateShannonColor(pos, pos.state.turn) - evaluateShannonColor(pos, pos.state.turn.invert());
+    switch (pos.state.turn) {
+        inline else => |turn| return evaluateShannonColor(pos, turn) - evaluateShannonColor(pos, turn.invert()),
+    }
 }
 
 pub fn evaluateTable(pos: position.Position) types.Value {

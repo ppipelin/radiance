@@ -83,12 +83,12 @@ pub const Square = enum(u8) {
         return @intFromEnum(self);
     }
 
-    pub inline fn relativeSquare(self: Square, c: Color) Square {
+    pub inline fn relativeSquare(self: Square, col: Color) Square {
         std.debug.assert(self != Square.none);
-        if (c.isWhite()) {
+        if (col.isWhite()) {
             return self;
         } else {
-            return @enumFromInt(@as(u8, self.rank().relativeRank(c).index()) * board_size + @as(u8, self.file().index()));
+            return @enumFromInt(@as(u8, self.rank().relativeRank(col).index()) * board_size + @as(u8, self.file().index()));
         }
     }
 
@@ -134,8 +134,8 @@ pub const Direction = enum(i8) {
         return @intFromEnum(self);
     }
 
-    pub inline fn relativeDir(self: Direction, c: Color) Direction {
-        return if (c.isWhite()) self else @enumFromInt(-self.index());
+    pub inline fn relativeDir(self: Direction, col: Color) Direction {
+        return if (col.isWhite()) self else @enumFromInt(-self.index());
     }
 };
 
@@ -168,8 +168,8 @@ pub const Rank = enum(u3) {
         return @intFromEnum(self);
     }
 
-    pub inline fn relativeRank(self: Rank, c: Color) Rank {
-        return if (c.isWhite()) self else @enumFromInt(Rank.r8.index() - self.index());
+    pub inline fn relativeRank(self: Rank, col: Color) Rank {
+        return if (col.isWhite()) self else @enumFromInt(Rank.r8.index() - self.index());
     }
 };
 
