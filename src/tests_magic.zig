@@ -16,23 +16,13 @@ test "MovegenAccessions" {
     for (0..iterations) |_| {
         var sq: types.Square = types.Square.a1;
         while (sq != types.Square.none) : (sq = sq.inc().*) {
-            var moves_bishop_blockers: std.ArrayListUnmanaged(types.Bitboard) = .empty;
-            defer moves_bishop_blockers.deinit(allocator);
-
-            moves_bishop_blockers.append(allocator, 0) catch unreachable;
-            tables.computeBlockers(tables.moves_bishop_mask[sq.index()], &moves_bishop_blockers, allocator);
-
-            for (moves_bishop_blockers.items) |blockers| {
+            const moves_bishop_blockers = tables.computeBlockersComptime(tables.moves_bishop_mask[sq.index()]);
+            for (moves_bishop_blockers) |blockers| {
                 _ = tables.moves_bishop[sq.index()].get(tables.moves_bishop_mask[sq.index()] & blockers) orelse unreachable;
             }
 
-            var moves_rook_blockers: std.ArrayListUnmanaged(types.Bitboard) = .empty;
-            defer moves_rook_blockers.deinit(allocator);
-
-            moves_rook_blockers.append(allocator, 0) catch unreachable;
-            tables.computeBlockers(tables.moves_rook_mask[sq.index()], &moves_rook_blockers, allocator);
-
-            for (moves_rook_blockers.items) |blockers| {
+            const moves_rook_blockers = tables.computeBlockersComptime(tables.moves_rook_mask[sq.index()]);
+            for (moves_rook_blockers) |blockers| {
                 _ = tables.moves_rook[sq.index()].get(tables.moves_rook_mask[sq.index()] & blockers) orelse unreachable;
             }
         }
@@ -45,23 +35,13 @@ test "MovegenAccessions" {
     for (0..iterations) |_| {
         sq = types.Square.a1;
         while (sq != types.Square.none) : (sq = sq.inc().*) {
-            var moves_bishop_blockers: std.ArrayListUnmanaged(types.Bitboard) = .empty;
-            defer moves_bishop_blockers.deinit(allocator);
-
-            moves_bishop_blockers.append(allocator, 0) catch unreachable;
-            tables.computeBlockers(tables.moves_bishop_mask[sq.index()], &moves_bishop_blockers, allocator);
-
-            for (moves_bishop_blockers.items) |blockers| {
+            const moves_bishop_blockers = tables.computeBlockersComptime(tables.moves_bishop_mask[sq.index()]);
+            for (moves_bishop_blockers) |blockers| {
                 _ = magic.magics_bishop[sq.index()].computeValue(blockers);
             }
 
-            var moves_rook_blockers: std.ArrayListUnmanaged(types.Bitboard) = .empty;
-            defer moves_rook_blockers.deinit(allocator);
-
-            moves_rook_blockers.append(allocator, 0) catch unreachable;
-            tables.computeBlockers(tables.moves_rook_mask[sq.index()], &moves_rook_blockers, allocator);
-
-            for (moves_rook_blockers.items) |blockers| {
+            const moves_rook_blockers = tables.computeBlockersComptime(tables.moves_rook_mask[sq.index()]);
+            for (moves_rook_blockers) |blockers| {
                 _ = magic.magics_rook[sq.index()].computeValue(blockers);
             }
         }
