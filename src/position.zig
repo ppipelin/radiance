@@ -46,8 +46,8 @@ const CastleInfo = enum(u4) {
         return @truncate(types.lsb(self.index()));
     }
 
-    pub inline fn relativeCastle(self: CastleInfo, c: Color) CastleInfo {
-        return if (c.isWhite()) self else @enumFromInt(self.index() >> 2);
+    pub inline fn relativeCastle(self: CastleInfo, col: Color) CastleInfo {
+        return if (col.isWhite()) self else @enumFromInt(self.index() >> 2);
     }
 };
 
