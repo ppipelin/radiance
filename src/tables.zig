@@ -143,21 +143,33 @@ pub inline fn filterMovesRook(sq: Square) Bitboard {
     return b;
 }
 
+pub fn computeBlockers(mask_: Bitboard, v: *std.ArrayListUnmanaged(Bitboard), allocator: std.mem.Allocator) void {
+    const bit_indices_size: u4 = @truncate(@popCount(mask_)); // Max is (types.board_size)*2-3
+    for (0..std.math.pow(u64, 2, bit_indices_size)) |blocker_configuration| {
+        var mask: Bitboard = mask_;
+        var currentBlockerBB: Bitboard = 0;
+        var cnt: u6 = 0;
+        while (mask != 0) : (cnt += 1) {
+            const bit_idx: u6 = @truncate(types.popLsb(&mask).index());
+
+            const current_bit: Bitboard = (@as(u64, blocker_configuration) >> cnt) & 1; // Is the shifted bit in blocker_configuration activated
+            currentBlockerBB |= current_bit << bit_idx; // Shift it back to its position
+        }
+        v.append(allocator, currentBlockerBB) catch unreachable;
+    }
+}
+
 pub fn computeBlockersComptime(mask_: Bitboard) []const Bitboard {
     const bit_indices_size: u4 = @truncate(@popCount(mask_)); // Max is (types.board_size)*2-3
-    const max: Bitboard = std.math.pow(u64, 2, bit_indices_size);
-
-    var list: [1 << 12]Bitboard = undefined;
-    list[0] = 0;
-    var count: usize = 1;
-
-    for (1..max) |blocker_configuration| {
+    var list: [1 << 12]Bitboard = @splat(0);
+    var count: usize = 0;
+    for (0..std.math.pow(u64, 2, bit_indices_size)) |blocker_configuration| {
         var mask: Bitboard = mask_;
         var current_blocker_bb: Bitboard = 0;
         var cnt: u6 = 0;
-
         while (mask != 0) : (cnt += 1) {
             const bit_idx: u6 = @truncate(types.popLsb(&mask).index());
+
             const current_bit: Bitboard = (@as(u64, blocker_configuration) >> cnt) & 1; // Is the shifted bit in blocker_configuration activated
             current_blocker_bb |= current_bit << bit_idx; // Shift it back to its position
         }
@@ -197,22 +209,47 @@ pub fn getRookAttacks(sq: Square, blockers: Bitboard) Bitboard {
 fn initSlidersAttacks(allocator: std.mem.Allocator) void {
     // Compute blockers
     var sq = Square.a1;
-    while (sq != Square.none) : (sq = sq.inc().*) {
+    while (sq != Square.b1) : (sq = sq.inc().*) {
         // Bishop
         moves_bishop[sq.index()] = .empty;
-        const moves_bishop_blockers = computeBlockersComptime(moves_bishop_mask[sq.index()]);
+        var moves_bishop_blockers: std.ArrayListUnmanaged(Bitboard) = .empty;
+        defer moves_bishop_blockers.deinit(allocator);
 
-        for (moves_bishop_blockers) |blockers| {
+        // moves_bishop_blockers.append(allocator, 0) catch unreachable;
+        computeBlockers(moves_bishop_mask[sq.index()], &moves_bishop_blockers, allocator);
+
+        for (moves_bishop_blockers.items) |blockers| {
             moves_bishop[sq.index()].put(allocator, blockers, getBishopAttacks(sq, blockers)) catch unreachable;
         }
 
         // Rook
         moves_rook[sq.index()] = .empty;
-        const moves_rook_blockers = computeBlockersComptime(moves_rook_mask[sq.index()]);
+        var moves_rook_blockers: std.ArrayListUnmanaged(Bitboard) = .empty;
+        defer moves_rook_blockers.deinit(allocator);
 
-        for (moves_rook_blockers) |blockers| {
+        // moves_rook_blockers.append(allocator, 0) catch unreachable;
+        computeBlockers(moves_rook_mask[sq.index()], &moves_rook_blockers, allocator);
+
+        const blk = computeBlockersComptime(moves_rook_mask[sq.index()]);
+
+        for (moves_rook_blockers.items) |blockers| {
             moves_rook[sq.index()].put(allocator, blockers, getRookAttacks(sq, blockers)) catch unreachable;
         }
+        // std.debug.print("size block {}\n", .{moves_rook_blockers.items.len});
+        // std.debug.print("size block {}\n", .{blk.len});
+        std.debug.print("{}\n", .{sq});
+        var cnt1: u16 = 0;
+        var cnt2: u16 = 0;
+        for (moves_rook_blockers.items, 0..) |block, i| {
+            if (block != blk[i]) {
+                std.debug.print("diff : {}, {}\n", .{ block, blk[i] });
+                cnt1 += 1;
+            } else {
+                // std.debug.print("same\n", .{});
+                cnt2 += 1;
+            }
+        }
+        std.debug.print("cnt1 {} cnt2 {}\n", .{ cnt1, cnt2 });
     }
 }
 
