@@ -163,16 +163,20 @@ pub fn computeBlockersComptime(mask_: Bitboard) []const Bitboard {
     const bit_indices_size: u4 = @truncate(@popCount(mask_)); // Max is (types.board_size)*2-3
     var list: [1 << 12]Bitboard = @splat(0);
     var count: usize = 0;
-    for (0..std.math.pow(u64, 2, bit_indices_size)) |blocker_configuration| {
+    // for (0..std.math.pow(u64, 2, bit_indices_size)) |blocker_configuration| {
+    for (1..std.math.pow(u64, 2, bit_indices_size)) |blocker_configuration| {
         var mask: Bitboard = mask_;
         var current_blocker_bb: Bitboard = 0;
         var cnt: u6 = 0;
         while (mask != 0) : (cnt += 1) {
             const bit_idx: u6 = @truncate(types.popLsb(&mask).index());
 
+            std.debug.assert(bit_idx < @bitSizeOf(Bitboard));
+
             const current_bit: Bitboard = (@as(u64, blocker_configuration) >> cnt) & 1; // Is the shifted bit in blocker_configuration activated
             current_blocker_bb |= current_bit << bit_idx; // Shift it back to its position
         }
+        std.debug.assert(count < list.len);
         list[count] = current_blocker_bb;
         count += 1;
     }
