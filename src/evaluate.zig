@@ -103,12 +103,12 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     const black_king: types.Square = @enumFromInt(types.lsb(bb_black & pos.bb_pieces[types.PieceType.king.index()]));
 
     if (endgame) {
-        const moveset_white_king = tables.getAttacks(types.PieceType.king, types.Color.white, white_king, bb_all) & ~bb_white;
-        const moveset_black_king = tables.getAttacks(types.PieceType.king, types.Color.black, black_king, bb_all) & ~bb_black;
+        const moveset_white_king = tables.getAttacks(.king, .white, white_king, bb_all) & ~bb_white;
+        const moveset_black_king = tables.getAttacks(.king, .black, black_king, bb_all) & ~bb_black;
         score += @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
     } else {
-        const moveset_white_king = tables.getAttacks(types.PieceType.queen, types.Color.white, white_king, bb_all) & ~bb_white;
-        const moveset_black_king = tables.getAttacks(types.PieceType.queen, types.Color.black, black_king, bb_all) & ~bb_black;
+        const moveset_white_king = tables.getAttacks(.queen, .white, white_king, bb_all) & ~bb_white;
+        const moveset_black_king = tables.getAttacks(.queen, .black, black_king, bb_all) & ~bb_black;
         score -= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
     }
 
@@ -126,22 +126,22 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     var moveset_black_orth: types.Bitboard = 0;
     while (white_sliders_diag != 0) {
         const sq: types.Square = types.popLsb(&white_sliders_diag);
-        moveset_white_diag |= tables.getAttacks(types.PieceType.bishop, types.Color.white, sq, bb_all) & ~bb_white;
+        moveset_white_diag |= tables.getAttacks(.bishop, .white, sq, bb_all) & ~bb_white;
     }
 
     while (white_sliders_orth != 0) {
         const sq: types.Square = types.popLsb(&white_sliders_orth);
-        moveset_white_orth |= tables.getAttacks(types.PieceType.rook, types.Color.white, sq, bb_all) & ~bb_white;
+        moveset_white_orth |= tables.getAttacks(.rook, .white, sq, bb_all) & ~bb_white;
     }
 
     while (black_sliders_diag != 0) {
         const sq: types.Square = types.popLsb(&black_sliders_diag);
-        moveset_black_diag |= tables.getAttacks(types.PieceType.bishop, types.Color.black, sq, bb_all) & ~bb_black;
+        moveset_black_diag |= tables.getAttacks(.bishop, .black, sq, bb_all) & ~bb_black;
     }
 
     while (black_sliders_orth != 0) {
         const sq: types.Square = types.popLsb(&black_sliders_orth);
-        moveset_black_orth |= tables.getAttacks(types.PieceType.rook, types.Color.black, sq, bb_all) & ~bb_black;
+        moveset_black_orth |= tables.getAttacks(.rook, .black, sq, bb_all) & ~bb_black;
     }
 
     score += 5 * (@as(types.Value, @popCount(moveset_white_diag)) + @as(types.Value, @popCount(moveset_white_orth)));
