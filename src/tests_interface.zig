@@ -17,16 +17,14 @@ test "start_fen" {
         \\d
     ;
 
-    var fbs_r = std.io.fixedBufferStream(input);
-    var stdin = fbs_r.reader();
+    var stdin = std.Io.Reader.fixed(input);
 
     var output: [4096]u8 = undefined;
-    var fbs_w = std.io.fixedBufferStream(&output);
-    var stdout = fbs_w.writer();
+    var stdout = std.Io.Writer.fixed(&output);
 
     try interface.loop(allocator, &stdin, &stdout);
 
-    try std.testing.expectStringStartsWith(fbs_w.getWritten(),
+    try std.testing.expectStringStartsWith(stdout.buffer,
         \\ +---+---+---+---+---+---+---+---+
         \\ | r | n | b | q | k | b | n | r | 8
         \\ +---+---+---+---+---+---+---+---+
@@ -60,16 +58,14 @@ test "kiwipete" {
         \\d
     ;
 
-    var fbs_r = std.io.fixedBufferStream(input);
-    var stdin = fbs_r.reader();
+    var stdin = std.Io.Reader.fixed(input);
 
     var output: [4096]u8 = undefined;
-    var fbs_w = std.io.fixedBufferStream(&output);
-    var stdout = fbs_w.writer();
+    var stdout = std.Io.Writer.fixed(&output);
 
     try interface.loop(allocator, &stdin, &stdout);
 
-    try std.testing.expectStringStartsWith(fbs_w.getWritten(),
+    try std.testing.expectStringStartsWith(stdout.buffer,
         \\ +---+---+---+---+---+---+---+---+
         \\ | r |   |   |   | k |   |   | r | 8
         \\ +---+---+---+---+---+---+---+---+
@@ -103,16 +99,14 @@ test "start_fenWithSpaces" {
         \\d
     ;
 
-    var fbs_r = std.io.fixedBufferStream(input);
-    var stdin = fbs_r.reader();
+    var stdin = std.Io.Reader.fixed(input);
 
     var output: [4096]u8 = undefined;
-    var fbs_w = std.io.fixedBufferStream(&output);
-    var stdout = fbs_w.writer();
+    var stdout = std.Io.Writer.fixed(&output);
 
     try interface.loop(allocator, &stdin, &stdout);
 
-    try std.testing.expectStringStartsWith(fbs_w.getWritten(),
+    try std.testing.expectStringStartsWith(stdout.buffer,
         \\ +---+---+---+---+---+---+---+---+
         \\ | r | n | b | q | k | b | n | r | 8
         \\ +---+---+---+---+---+---+---+---+
@@ -146,16 +140,14 @@ test "ErrorFenPosition" {
         \\d
     ;
 
-    var fbs_r = std.io.fixedBufferStream(input);
-    var stdin = fbs_r.reader();
+    var stdin = std.Io.Reader.fixed(input);
 
     var output: [4096]u8 = undefined;
-    var fbs_w = std.io.fixedBufferStream(&output);
-    var stdout = fbs_w.writer();
+    var stdout = std.Io.Writer.fixed(&output);
 
     try interface.loop(allocator, &stdin, &stdout);
 
-    try std.testing.expectStringStartsWith(fbs_w.getWritten(),
+    try std.testing.expectStringStartsWith(stdout.buffer,
         \\Command position failed with error error.UnknownPiece, reset to startpos
         \\ +---+---+---+---+---+---+---+---+
         \\ | r | n | b | q | k | b | n | r | 8
@@ -190,16 +182,14 @@ test "ErrorUnknownPosition" {
         \\d
     ;
 
-    var fbs_r = std.io.fixedBufferStream(input);
-    var stdin = fbs_r.reader();
+    var stdin = std.Io.Reader.fixed(input);
 
     var output: [4096]u8 = undefined;
-    var fbs_w = std.io.fixedBufferStream(&output);
-    var stdout = fbs_w.writer();
+    var stdout = std.Io.Writer.fixed(&output);
 
     try interface.loop(allocator, &stdin, &stdout);
 
-    try std.testing.expectStringStartsWith(fbs_w.getWritten(),
+    try std.testing.expectStringStartsWith(stdout.buffer,
         \\Command position failed with error error.UnknownPositionArgument, reset to startpos
         \\ +---+---+---+---+---+---+---+---+
         \\ | r | n | b | q | k | b | n | r | 8
@@ -235,20 +225,17 @@ test "SearchLeak" {
         \\go depth 8
     ;
 
-    var fbs_r = std.io.fixedBufferStream(input);
-    var stdin = fbs_r.reader();
+    var stdin = std.Io.Reader.fixed(input);
 
     var output: [4096]u8 = undefined;
-    var fbs_w = std.io.fixedBufferStream(&output);
-    var stdout = fbs_w.writer();
+    var stdout = std.Io.Writer.fixed(&output);
 
     try interface.loop(allocator, &stdin, &stdout);
 }
 
 test "SearchLeakNoInterface" {
     var output: [4096]u8 = undefined;
-    var fbs_w = std.io.fixedBufferStream(&output);
-    var stdout = fbs_w.writer();
+    var stdout = std.Io.Writer.fixed(&output);
 
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
@@ -262,10 +249,10 @@ test "SearchLeakNoInterface" {
     var move: types.Move = .none;
     var limits = interface.limits;
     limits.depth = 8;
-    move = try search.iterativeDeepening(allocator, stdout, &pos, limits, evaluate.evaluateShannon, options);
-    move = try search.iterativeDeepening(allocator, stdout, &pos, limits, evaluate.evaluateTable, options);
+    move = try search.iterativeDeepening(allocator, &stdout, &pos, limits, evaluate.evaluateShannon, options);
+    move = try search.iterativeDeepening(allocator, &stdout, &pos, limits, evaluate.evaluateTable, options);
     try stdout.print("bestmove ", .{});
-    try move.printUCI(stdout);
+    try move.printUCI(&stdout);
     try stdout.print("\n", .{});
     try pos.moveNull(&s);
 }
@@ -278,12 +265,10 @@ test "SearchLeakNoInterface" {
 //         \\bench
 //     ;
 
-//     var fbs_r = std.io.fixedBufferStream(input);
-//     var stdin = fbs_r.reader();
+//     var stdin = std.Io.Reader.fixed(input);
 
 //     var output: [131072]u8 = undefined;
-//     var fbs_w = std.io.fixedBufferStream(&output);
-//     var stdout = fbs_w.writer();
+//     var stdout = std.Io.Writer.fixed(&output);
 
 //     try interface.loop(allocator, &stdin, &stdout);
 // }
