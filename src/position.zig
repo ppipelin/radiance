@@ -755,7 +755,7 @@ pub const Position = struct {
         return (if (col.isWhite()) self.score_material_b else self.score_material_w) <= tables.material[PieceType.king.index()] + 7 * tables.material[PieceType.pawn.index()] + tables.material[PieceType.rook.index()] + tables.material[PieceType.bishop.index()];
     }
 
-    pub fn print(self: Position, writer: anytype) void {
+    pub fn print(self: Position, writer: *std.Io.Writer) void {
         const line = " +---+---+---+---+---+---+---+---+\n";
         const letters = "   A   B   C   D   E   F   G   H\n";
         var i: i32 = 56;
@@ -781,13 +781,16 @@ pub const Position = struct {
     }
 
     pub fn printDebug(self: Position) void {
-        const writer = std.io.getStdErr().writer();
+        var buffer: [512]u8 = undefined;
+        const writer = std.debug.lockStderrWriter(&buffer);
+        defer std.debug.unlockStderrWriter();
         self.print(writer);
     }
 
     pub fn printFenDebug(self: Position) void {
-        const writer = std.io.getStdErr().writer();
         var buffer: [90]u8 = undefined;
+        const writer = std.debug.lockStderrWriter(&buffer);
+        defer std.debug.unlockStderrWriter();
         const fen = self.getFen(&buffer);
         writer.print("fen: {s}\n", .{fen}) catch unreachable;
     }
@@ -866,21 +869,18 @@ pub const Position = struct {
         fen[cnt] = ' ';
         cnt += 1;
         var buffer: [4]u8 = undefined;
-        var buf = buffer[0..];
-        var tmp_str: []u8 = std.fmt.bufPrintIntToSlice(buf, self.state.half_move, 10, .lower, std.fmt.FormatOptions{});
+        const buffer_size_half: usize = std.fmt.printInt(&buffer, self.state.half_move, 10, .lower, .{});
 
-        @memcpy(fen[cnt..(cnt + tmp_str.len)], tmp_str);
-        cnt += tmp_str.len;
+        @memmove(fen[cnt..(cnt + buffer_size_half)], buffer[0..buffer_size_half]); // maybe not needed [0..buffer_size_half]
+        cnt += buffer_size_half;
 
         fen[cnt] = ' ';
         cnt += 1;
         buffer = undefined;
-        buf = buffer[0..];
-        tmp_str = std.fmt.bufPrintIntToSlice(buf, self.state.full_move, 10, .lower, std.fmt.FormatOptions{});
+        const buffer_size_full: usize = std.fmt.printInt(&buffer, self.state.full_move, 10, .lower, .{});
 
-        std.mem.copyForwards(u8, fen[cnt..(cnt + tmp_str.len)], tmp_str);
-        @memcpy(fen[cnt..(cnt + tmp_str.len)], tmp_str);
-        cnt += tmp_str.len;
+        @memcpy(fen[cnt..(cnt + buffer_size_full)], buffer[0..buffer_size_full]);
+        cnt += buffer_size_full;
 
         return fen[0..cnt];
     }
@@ -891,10 +891,9 @@ pub const Position = struct {
         var pos: Position = Position.init(state);
         var sq: i32 = Square.a8.index();
         var tokens = std.mem.tokenizeScalar(u8, fen, ' ');
-        const token = tokens.next();
-        if (token == null)
-            return error.MissingFen;
-        const bd: []const u8 = token.?;
+        const token = tokens.next() orelse return error.MissingFen;
+
+        const bd: []const u8 = token;
 
         // Behavior is : take the farthest rook to king for castling
         var passed_king_w: Square = .none;
@@ -944,10 +943,8 @@ pub const Position = struct {
 
         pos.updateCheckersPinned();
 
-        const castle: ?[]const u8 = tokens.next();
-        if (castle == null)
-            return pos;
-        for (castle.?) |ch| {
+        const castle: []const u8 = tokens.next() orelse return pos;
+        for (castle) |ch| {
             switch (ch) {
                 'K' => {
                     pos.state.castle_info = @enumFromInt(pos.state.castle_info.index() | CastleInfo.K.index());
@@ -993,12 +990,10 @@ pub const Position = struct {
             }
         }
 
-        const ep: ?[]const u8 = tokens.next();
-        if (ep == null)
-            return pos;
-        if (ep.?.len == 2) {
+        const ep: []const u8 = tokens.next() orelse return pos;
+        if (ep.len == 2) {
             for (types.square_to_str, 0..) |sq_str, i| {
-                if (std.mem.eql(u8, ep.?, sq_str)) {
+                if (std.mem.eql(u8, ep, sq_str)) {
                     const sq_ep: Square = @enumFromInt(i);
                     pos.state.en_passant = sq_ep;
                     pos.state.material_key ^= tables.hash_en_passant[sq_ep.file().index()];
@@ -1007,15 +1002,11 @@ pub const Position = struct {
             }
         }
 
-        const half_move: ?[]const u8 = tokens.next();
-        if (half_move == null)
-            return pos;
-        pos.state.half_move = try std.fmt.parseInt(u8, half_move.?, 10);
+        const half_move: []const u8 = tokens.next() orelse return pos;
+        pos.state.half_move = try std.fmt.parseInt(u8, half_move, 10);
 
-        const full_move: ?[]const u8 = tokens.next();
-        if (full_move == null)
-            return pos;
-        pos.state.full_move = try std.fmt.parseInt(u32, full_move.?, 10);
+        const full_move: []const u8 = tokens.next() orelse return pos;
+        pos.state.full_move = try std.fmt.parseInt(u32, full_move, 10);
 
         return pos;
     }
