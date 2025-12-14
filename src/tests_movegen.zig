@@ -182,7 +182,7 @@ test "MovegenEnPassant" {
     defer list.deinit(allocator);
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
 
     try expectEqual(7, list.items.len);
 }
@@ -198,7 +198,7 @@ test "MovegenBishop" {
     defer list.deinit(allocator);
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
 
     try expectEqual(52, list.items.len);
 }
@@ -214,7 +214,7 @@ test "MovegenRook" {
     defer list.deinit(allocator);
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
 
     try expectEqual(84, list.items.len);
 }
@@ -230,7 +230,7 @@ test "MovegenSliders" {
     defer list.deinit(allocator);
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
 
     try expectEqual(86, list.items.len);
 }
@@ -246,7 +246,7 @@ test "MovegenKing" {
     defer list.deinit(allocator);
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
 
     try expectEqual(1, list.items.len);
 
@@ -255,7 +255,7 @@ test "MovegenKing" {
     pos = try position.Position.setFen(&s, "3qk3/8/8/8/8/8/8/R3K2R w KQ - 0 1");
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &list, false);
+    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
 
     try expectEqual(23, list.items.len);
 }
