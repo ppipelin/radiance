@@ -57,7 +57,7 @@ pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMa
     try options.put(allocator, "UCI_Chess960", Option.initCheck("false", "false"));
 }
 
-pub fn printOptions(writer: anytype, options: std.StringArrayHashMapUnmanaged(Option)) void {
+pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnmanaged(Option)) void {
     const keys = options.keys();
     for (keys) |key| {
         const option: Option = options.get(key).?;
@@ -69,7 +69,7 @@ pub fn printOptions(writer: anytype, options: std.StringArrayHashMapUnmanaged(Op
     }
 }
 
-pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void {
+pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io.Writer) !void {
     var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
     defer options.deinit(allocator);
     try initOptions(allocator, &options);
@@ -84,18 +84,14 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
     var alloc = std.heap.ArenaAllocator.init(allocator);
     defer alloc.deinit();
     while (true) {
-        const line = try stdin.readUntilDelimiterOrEofAlloc(alloc.allocator(), '\n', 4096);
-        if (line == null) {
-            break;
-        }
-        const tline: []const u8 = std.mem.trim(u8, line.?, " \r");
+        const line: []u8 = try stdin.takeDelimiter('\n') orelse break;
+
+        const tline: []const u8 = std.mem.trim(u8, line, " \r");
 
         var tokens = std.mem.tokenizeScalar(u8, tline, ' ');
-        const token: ?[]const u8 = tokens.next();
-        if (token == null) {
-            break;
-        }
-        const primary_token: []const u8 = token.?;
+        const token: []const u8 = tokens.next() orelse break;
+
+        const primary_token: []const u8 = token;
 
         var existing_command: bool = false;
 
@@ -232,6 +228,8 @@ pub fn loop(allocator: std.mem.Allocator, stdin: anytype, stdout: anytype) !void
                 \\
             , .{});
         }
+
+        try stdout.flush();
     }
     if (search_thread != null) {
         g_stop = true;
@@ -342,7 +340,7 @@ fn cmd_position(pos: *position.Position, tokens: anytype, states: *StateList) !v
     }
 }
 
-fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
+fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *position.Position, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
     limits = Limits{};
     var token: ?[]const u8 = tokens.next();
     g_stop = false;
@@ -426,7 +424,8 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position
         const nodes = if (is_960) try search.perft(allocator, stdout, pos, limits.perft, true, true) else try search.perft(allocator, stdout, pos, limits.perft, false, true);
         const nodes_f: f64 = @floatFromInt(nodes);
         const time_f: f64 = @floatFromInt(t.read());
-        try stdout.print("info nodes {} time {} ({d:.1} Mnps)\n", .{ nodes, std.fmt.fmtDuration(t.read()), (nodes_f / (time_f / 1000.0)) });
+        try stdout.print("info nodes {} time {D} ({d:.1} Mnps)\n", .{ nodes, t.read(), (nodes_f / (time_f / 1000.0)) });
+        try stdout.flush();
     } else {
         const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
 
@@ -454,10 +453,12 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position
         } else {
             try stdout.print("Search mode {s} not implemented\n", .{search_mode});
         }
+
+        try stdout.flush();
     }
 }
 
-pub fn cmd_bench(allocator: std.mem.Allocator, stdout: anytype) anyerror!void {
+pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer) anyerror!void {
     var t = std.time.Timer.start() catch unreachable;
 
     var list: std.ArrayListUnmanaged([]const u8) = .empty;
@@ -519,5 +520,5 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: anytype) anyerror!void {
         try cmd_go(allocator, stdout, &pos, &tokens, options);
     }
 
-    stdout.print("Time elapsed: {}\n", .{std.fmt.fmtDuration(t.read())}) catch unreachable;
+    stdout.print("Time elapsed: {D}\n", .{t.read()}) catch unreachable;
 }

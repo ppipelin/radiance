@@ -428,6 +428,9 @@ pub const Move = packed struct {
         }
 
         pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
+            // Assert there were no undefined value
+            std.debug.assert(ctx.scores[a] < 20_000);
+            std.debug.assert(ctx.scores[b] < 20_000);
             return ctx.scores[a] > ctx.scores[b];
         }
     };
@@ -486,7 +489,7 @@ pub const Move = packed struct {
         }
     }
 
-    pub inline fn displayMoves(writer: anytype, list: std.ArrayListUnmanaged(Move)) !void {
+    pub inline fn displayMoves(writer: *std.Io.Writer, list: std.ArrayListUnmanaged(Move)) !void {
         writer.print("Number of moves: {d}\n", .{list.items.len}) catch unreachable;
         for (list.items) |item| {
             try item.printUCI(writer);
@@ -494,7 +497,7 @@ pub const Move = packed struct {
         }
     }
 
-    pub fn printUCI(self: Move, writer: anytype) !void {
+    pub fn printUCI(self: Move, writer: *std.Io.Writer) !void {
         try writer.print("{s}{s}", .{ self.getFrom().str(), self.getTo().str() });
         if (self.isPromotion()) {
             try writer.print("{c}", .{prom_move_type_string[self.flags][0]});
@@ -502,7 +505,9 @@ pub const Move = packed struct {
     }
 
     pub fn printUCIDebug(self: Move) void {
-        const writer = std.io.getStdErr().writer();
+        var buffer: [64]u8 = undefined;
+        const writer = std.debug.lockStderrWriter(&buffer);
+        defer std.debug.unlockStderrWriter();
         self.printUCI(writer) catch unreachable;
     }
 };
