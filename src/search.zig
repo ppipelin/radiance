@@ -50,7 +50,7 @@ inline fn outOfTime(limits: interface.Limits) bool {
     return elapsed(limits) > remaining_computed;
 }
 
-pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, depth: u8, comptime is_960: bool, verbose: bool) !u64 {
+pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *position.Position, depth: u8, comptime is_960: bool, verbose: bool) !u64 {
     var nodes: u64 = 0;
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
@@ -65,6 +65,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
     if (depth == 1) {
         if (verbose) {
             try types.Move.displayMoves(stdout, move_list);
+            try stdout.flush();
         }
         return move_list.items.len;
     }
@@ -79,6 +80,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Posit
         if (verbose) {
             try move.printUCI(stdout);
             try stdout.print(", {} : {}\n", .{ move.getFlags(), nodes_number });
+            try stdout.flush();
         }
 
         try pos.unMovePiece(move);
@@ -156,7 +158,7 @@ pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, compt
     return move_list.items[rand.intRangeAtMost(u8, 0, len - 1)];
 }
 
-pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !types.Move {
+pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !types.Move {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
     if (limits.movetime > 0) {
@@ -278,6 +280,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: anytype, pos: *p
 
         try stdout.print("info failedHighCnt {} alpha {} beta {}\n", .{ failed_high_cnt, alpha, beta });
         try info(stdout, limits, current_depth, root_moves.items[0].score, options);
+        try stdout.flush();
     }
 
     // Even if outofTime we keep a better move if there is one
@@ -627,7 +630,7 @@ fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
     }
 }
 
-fn info(stdout: anytype, limits: interface.Limits, depth: u16, score: types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
+fn info(stdout: *std.Io.Writer, limits: interface.Limits, depth: u16, score: types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const time: u64 = @intCast(elapsed(limits));
 
     const hash_size: u16 = try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10);
@@ -651,10 +654,11 @@ fn info(stdout: anytype, limits: interface.Limits, depth: u16, score: types.Valu
     try stdout.print("info hash {} hashused {}\n", .{ tables.transposition_table.size, interface.transposition_used });
 }
 
-fn pvDisplay(stdout: anytype, pv: []types.Move) !void {
+fn pvDisplay(stdout: *std.Io.Writer, pv: []types.Move) !void {
     var cnt: usize = 0;
     while (cnt < pv.len and pv[cnt] != types.Move.none) : (cnt += 1) {
         try pv[cnt].printUCI(stdout);
         try stdout.print(" ", .{});
     }
+    try stdout.flush();
 }

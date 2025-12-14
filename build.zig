@@ -17,10 +17,12 @@ pub fn build(b: *std.Build) void {
 
     const exe = b.addExecutable(.{
         .name = "radiance",
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
     });
 
     // This declares intent for the executable to be installed into the
@@ -54,39 +56,51 @@ pub fn build(b: *std.Build) void {
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
     const exe_tests = b.addTest(.{
-        .root_source_file = b.path("src/tests.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     const exe_tests_movegen = b.addTest(.{
-        .root_source_file = b.path("src/tests_movegen.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests_movegen.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     const exe_tests_960 = b.addTest(.{
-        .root_source_file = b.path("src/tests_960.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests_960.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     const exe_tests_interface = b.addTest(.{
-        .root_source_file = b.path("src/tests_interface.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests_interface.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     const exe_tests_evaluate = b.addTest(.{
-        .root_source_file = b.path("src/tests_evaluate.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests_evaluate.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     const exe_tests_magic = b.addTest(.{
-        .root_source_file = b.path("src/tests_magic.zig"),
-        .target = target,
-        .optimize = .ReleaseSafe,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests_magic.zig"),
+            .target = target,
+            .optimize = .ReleaseSafe,
+        }),
     });
 
     const run_exe_tests = b.addRunArtifact(exe_tests);
@@ -137,10 +151,12 @@ pub fn build(b: *std.Build) void {
     for (targets) |t| {
         const deploy_exe = b.addExecutable(.{
             .name = t.name,
-            .root_source_file = b.path("src/main.zig"),
-            .target = b.resolveTargetQuery(t.query),
-            .optimize = .ReleaseFast,
-            .link_libc = true,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/main.zig"),
+                .target = b.resolveTargetQuery(t.query),
+                .optimize = .ReleaseFast,
+                .link_libc = true,
+            }),
         });
 
         const deploy_cmd = b.addInstallArtifact(deploy_exe, .{});

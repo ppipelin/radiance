@@ -11,10 +11,16 @@ pub fn main() !void {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
-    const stdout = std.io.getStdOut().writer();
-    try stdout.print("Radiance {s} by Paul-Elie Pipelin (ppipelin)\n", .{types.computeVersion()});
+    var stdout_buffer: [16 * 1024]u8 = undefined;
+    var stdout_writer: std.fs.File.Writer = std.fs.File.stdout().writerStreaming(&stdout_buffer); // Can use &.{} for no buffer
+    const stdout: *std.Io.Writer = &stdout_writer.interface;
 
-    var stdin = std.io.getStdIn().reader();
+    try stdout.print("Radiance {s} by Paul-Elie Pipelin (ppipelin)\n", .{types.computeVersion()});
+    try stdout.flush();
+
+    var stdin_buffer: [16 * 1024]u8 = undefined;
+    var stdin_reader: std.fs.File.Reader = std.fs.File.stdin().reader(&stdin_buffer); // Can use &.{} for no buffer
+    const stdin: *std.Io.Reader = &stdin_reader.interface;
 
     const args = try std.process.argsAlloc(allocator);
 
@@ -25,8 +31,10 @@ pub fn main() !void {
         }
         magic.compute(allocator, iterations);
     } else if (args.len > 1 and std.mem.eql(u8, args[1], "bench")) {
-        try interface.cmd_bench(allocator, &stdout);
+        try interface.cmd_bench(allocator, stdout);
     } else {
-        try interface.loop(allocator, &stdin, &stdout);
+        try interface.loop(allocator, stdin, stdout);
     }
+
+    try stdout.flush();
 }
