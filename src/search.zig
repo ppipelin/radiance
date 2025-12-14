@@ -60,7 +60,10 @@ pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *positio
     }
 
     pos.updateAttacked(is_960);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
+    switch (pos.state.turn) {
+        .white => pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &move_list, is_960),
+        .black => pos.generateLegalMoves(allocator, types.GenerationType.all, .black, &move_list, is_960),
+    }
 
     if (depth == 1) {
         if (verbose) {
@@ -98,8 +101,16 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
     }
 
     pos.updateAttacked(is_960);
-    pos.generateLegalMoves(allocator, types.GenerationType.capture, pos.state.turn, &move_list, is_960);
-    pos.generateLegalMoves(allocator, types.GenerationType.quiet, pos.state.turn, &move_list, is_960);
+    switch (pos.state.turn) {
+        .white => {
+            pos.generateLegalMoves(allocator, .capture, .white, &move_list, is_960);
+            pos.generateLegalMoves(allocator, .quiet, .white, &move_list, is_960);
+        },
+        .black => {
+            pos.generateLegalMoves(allocator, .capture, .black, &move_list, is_960);
+            pos.generateLegalMoves(allocator, .quiet, .black, &move_list, is_960);
+        },
+    }
 
     if (depth == 1)
         return move_list.items.len;
@@ -144,7 +155,10 @@ pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, compt
     defer move_list.deinit(allocator);
 
     pos.updateAttacked(is_960);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, is_960);
+    switch (pos.state.turn) {
+        .white => pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &move_list, is_960),
+        .black => pos.generateLegalMoves(allocator, types.GenerationType.all, .black, &move_list, is_960),
+    }
 
     if (move_list.items.len == 0)
         return error.MoveAfterCheckmate;
@@ -189,10 +203,15 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     } else {
         pos.updateAttacked(false);
     }
-    if (is_960) {
-        pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, true);
-    } else {
-        pos.generateLegalMoves(allocator, types.GenerationType.all, pos.state.turn, &move_list, false);
+    switch (is_960) {
+        true => switch (pos.state.turn) {
+            .white => pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &move_list, true),
+            .black => pos.generateLegalMoves(allocator, types.GenerationType.all, .black, &move_list, true),
+        },
+        false => switch (pos.state.turn) {
+            .white => pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &move_list, false),
+            .black => pos.generateLegalMoves(allocator, types.GenerationType.all, .black, &move_list, false),
+        },
     }
 
     const root_moves_len: usize = move_list.items.len;
