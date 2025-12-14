@@ -291,7 +291,7 @@ pub fn deinitAll(allocator: std.mem.Allocator) void {
     transposition_table.clearAndFree(allocator);
 }
 
-pub fn getAttacks(pt: PieceType, color: Color, sq: Square, blockers: Bitboard) Bitboard {
+pub fn getAttacks(pt: PieceType, comptime color: Color, sq: Square, blockers: Bitboard) Bitboard {
     std.debug.assert(sq.index() < 64);
     return switch (pt) {
         PieceType.pawn => pawn_attacks[color.index()][sq.index()],
@@ -305,7 +305,7 @@ pub fn getAttacks(pt: PieceType, color: Color, sq: Square, blockers: Bitboard) B
     };
 }
 
-pub inline fn getAttackers(pos: position.Position, color: Color, sq: Square, blockers: Bitboard) Bitboard {
+pub inline fn getAttackers(pos: position.Position, comptime color: Color, sq: Square, blockers: Bitboard) Bitboard {
     const p = getAttacks(PieceType.pawn, color.invert(), sq, blockers) & pos.bb_pieces[PieceType.pawn.index()];
     const n = getAttacks(PieceType.knight, color, sq, blockers) & pos.bb_pieces[PieceType.knight.index()];
     const b = getAttacks(PieceType.bishop, color, sq, blockers) & (pos.bb_pieces[PieceType.bishop.index()] | pos.bb_pieces[PieceType.queen.index()]);

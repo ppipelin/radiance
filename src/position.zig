@@ -440,13 +440,16 @@ pub const Position = struct {
 
         // Compute checkers from non blockables piece types
         // All knights can attack the king the same way a knight would attack form the king's square
-        self.state.checkers = tables.getAttacks(PieceType.knight, self.state.turn.invert(), our_king, 0) & bb_them & self.bb_pieces[PieceType.knight.index()];
+        self.state.checkers = switch (self.state.turn) {
+            .white => tables.getAttacks(.knight, .black, our_king, 0) & bb_them & self.bb_pieces[PieceType.knight.index()],
+            .black => tables.getAttacks(.knight, .white, our_king, 0) & bb_them & self.bb_pieces[PieceType.knight.index()],
+        };
         // Same method for pawn, transform the king into a pawn
         self.state.checkers |= tables.pawn_attacks[self.state.turn.index()][our_king.index()] & bb_them & self.bb_pieces[PieceType.pawn.index()];
 
         // Compute candidate checkers from sliders and pinned pieces, transform the king into a slider
-        var candidates: Bitboard = tables.getAttacks(PieceType.bishop, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
-        candidates |= tables.getAttacks(PieceType.rook, Color.white, our_king, bb_them) & ((self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
+        var candidates: Bitboard = tables.getAttacks(.bishop, .white, our_king, bb_them) & ((self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
+        candidates |= tables.getAttacks(.rook, .white, our_king, bb_them) & ((self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
 
         while (candidates != 0) {
             const sq: Square = types.popLsb(&candidates);
@@ -482,18 +485,33 @@ pub const Position = struct {
                 // Extract the king as it can't move to a place that it covers
                 if (is_960) {
                     if (pt == PieceType.queen and from.rank() == our_king.rank()) {
-                        const tmp: Bitboard = tables.getAttacks(PieceType.rook, self.state.turn.invert(), from, bb_all ^ our_king.sqToBB());
+                        const tmp: Bitboard = switch (self.state.turn) {
+                            .white => tables.getAttacks(.rook, .black, from, bb_all ^ our_king.sqToBB()),
+                            .black => tables.getAttacks(.rook, .white, from, bb_all ^ our_king.sqToBB()),
+                        };
                         self.state.attacked_horizontal |= tmp;
-                        self.state.attacked |= tmp | tables.getAttacks(PieceType.bishop, self.state.turn.invert(), from, bb_all ^ our_king.sqToBB());
+                        self.state.attacked |= switch (self.state.turn) {
+                            .white => tmp | tables.getAttacks(.bishop, .black, from, bb_all ^ our_king.sqToBB()),
+                            .black => tmp | tables.getAttacks(.bishop, .white, from, bb_all ^ our_king.sqToBB()),
+                        };
                     } else if (pt == PieceType.rook and from.rank() == our_king.rank()) {
-                        const tmp: Bitboard = tables.getAttacks(pt, self.state.turn.invert(), from, bb_all ^ our_king.sqToBB());
+                        const tmp: Bitboard = switch (self.state.turn) {
+                            .white => tables.getAttacks(pt, .black, from, bb_all ^ our_king.sqToBB()),
+                            .black => tables.getAttacks(pt, .white, from, bb_all ^ our_king.sqToBB()),
+                        };
                         self.state.attacked_horizontal |= tmp;
                         self.state.attacked |= tmp;
                     } else {
-                        self.state.attacked |= tables.getAttacks(pt, self.state.turn.invert(), from, bb_all ^ our_king.sqToBB());
+                        self.state.attacked |= switch (self.state.turn) {
+                            .white => tables.getAttacks(pt, .black, from, bb_all ^ our_king.sqToBB()),
+                            .black => tables.getAttacks(pt, .white, from, bb_all ^ our_king.sqToBB()),
+                        };
                     }
                 } else {
-                    self.state.attacked |= tables.getAttacks(pt, self.state.turn.invert(), from, bb_all ^ our_king.sqToBB());
+                    self.state.attacked |= switch (self.state.turn) {
+                        .white => tables.getAttacks(pt, .black, from, bb_all ^ our_king.sqToBB()),
+                        .black => tables.getAttacks(pt, .white, from, bb_all ^ our_king.sqToBB()),
+                    };
                 }
             }
         }
