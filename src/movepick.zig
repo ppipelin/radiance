@@ -61,7 +61,10 @@ pub const MovePick = struct {
             } else {
                 pos.updateAttacked(false);
             }
-            pos.generateLegalMoves(allocator, types.GenerationType.capture, pos.state.turn, &self.moves_capture, is_960);
+            switch (pos.state.turn) {
+                .white => pos.generateLegalMoves(allocator, .capture, .white, &self.moves_capture, is_960),
+                .black => pos.generateLegalMoves(allocator, .capture, .black, &self.moves_capture, is_960),
+            }
             self.stage += 1;
         }
 
@@ -112,7 +115,10 @@ pub const MovePick = struct {
 
         // Quiet init
         if (self.stage == 5) {
-            pos.generateLegalMoves(allocator, types.GenerationType.quiet, pos.state.turn, &self.moves_quiet, is_960);
+            switch (pos.state.turn) {
+                .white => pos.generateLegalMoves(allocator, .quiet, .white, &self.moves_quiet, is_960),
+                .black => pos.generateLegalMoves(allocator, .quiet, .black, &self.moves_quiet, is_960),
+            }
             self.stage += 1;
         }
 
