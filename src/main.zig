@@ -29,7 +29,7 @@ pub fn main() !void {
         if (args.len > 2) {
             iterations = try std.fmt.parseInt(u64, args[2], 10);
         }
-        magic.compute(allocator, iterations);
+        magic.compute(iterations);
     } else if (args.len > 1 and std.mem.eql(u8, args[1], "bench")) {
         try interface.cmd_bench(allocator, stdout);
     } else {

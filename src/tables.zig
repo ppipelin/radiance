@@ -23,7 +23,7 @@ pub fn initAll(allocator: std.mem.Allocator) void {
     initNonBlockable();
     initPassedPawn();
     initZobrist();
-    magic.initMagic(allocator);
+    magic.initMagic();
 }
 
 ////// Zobrist hashing //////
@@ -131,9 +131,10 @@ pub inline fn filterMovesRook(sq: Square) Bitboard {
     return b;
 }
 
-pub fn computeBlockers(mask_: Bitboard, v: *std.ArrayListUnmanaged(Bitboard), allocator: std.mem.Allocator) void {
+pub fn computeBlockers(mask_: Bitboard, list: []Bitboard) usize {
     const bit_indices_size: u4 = @truncate(@popCount(mask_)); // Max is (types.board_size)*2-3
-    for (1..std.math.pow(u64, 2, bit_indices_size)) |blocker_configuration| {
+    var count: usize = 1;
+    for (1..(@as(u16, 1) << bit_indices_size)) |blocker_configuration| {
         var mask: Bitboard = mask_;
         var currentBlockerBB: Bitboard = 0;
         var cnt: u6 = 0;
@@ -143,8 +144,10 @@ pub fn computeBlockers(mask_: Bitboard, v: *std.ArrayListUnmanaged(Bitboard), al
             const current_bit: Bitboard = (@as(u64, blocker_configuration) >> cnt) & 1; // Is the shifted bit in blocker_configuration activated
             currentBlockerBB |= current_bit << bit_idx; // Shift it back to its position
         }
-        v.append(allocator, currentBlockerBB) catch unreachable;
+        list[count] = currentBlockerBB;
+        count = count + 1;
     }
+    return count;
 }
 
 // Hyperbola Quintessence Algorithm
@@ -187,25 +190,19 @@ fn initSlidersAttacks(allocator: std.mem.Allocator) void {
     while (sq != Square.none) : (sq = sq.inc().*) {
         // Bishop
         moves_bishop[sq.index()] = .empty;
-        var moves_bishop_blockers: std.ArrayListUnmanaged(Bitboard) = .empty;
-        defer moves_bishop_blockers.deinit(allocator);
+        var moves_bishop_blockers: [1 << 12]Bitboard = @splat(0);
+        const moves_bishop_blockers_size: usize = computeBlockers(moves_bishop_mask[sq.index()], &moves_bishop_blockers);
 
-        moves_bishop_blockers.append(allocator, 0) catch unreachable;
-        computeBlockers(moves_bishop_mask[sq.index()], &moves_bishop_blockers, allocator);
-
-        for (moves_bishop_blockers.items) |blockers| {
+        for (moves_bishop_blockers[0..moves_bishop_blockers_size]) |blockers| {
             moves_bishop[sq.index()].put(allocator, blockers, getBishopAttacks(sq, blockers)) catch unreachable;
         }
 
         // Rook
         moves_rook[sq.index()] = .empty;
-        var moves_rook_blockers: std.ArrayListUnmanaged(Bitboard) = .empty;
-        defer moves_rook_blockers.deinit(allocator);
+        var moves_rook_blockers: [1 << 12]Bitboard = @splat(0);
+        const moves_rook_blockers_size: usize = computeBlockers(moves_rook_mask[sq.index()], &moves_rook_blockers);
 
-        moves_rook_blockers.append(allocator, 0) catch unreachable;
-        computeBlockers(moves_rook_mask[sq.index()], &moves_rook_blockers, allocator);
-
-        for (moves_rook_blockers.items) |blockers| {
+        for (moves_rook_blockers[0..moves_rook_blockers_size]) |blockers| {
             moves_rook[sq.index()].put(allocator, blockers, getRookAttacks(sq, blockers)) catch unreachable;
         }
     }
