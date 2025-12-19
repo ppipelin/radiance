@@ -84,7 +84,7 @@ pub const MovePick = struct {
         // Sort captures
         if (self.stage == 3 or self.stage == 13) {
             self.scores = try allocator.alloc(types.Value, self.moves_capture.items.len);
-            pos.scoreMoves(self.moves_capture.items, self.scores);
+            pos.scoreMoves(self.moves_capture.items, .capture, self.scores);
             position.orderMoves(self.moves_capture.items, self.scores);
             self.stage += 1;
         }
@@ -139,7 +139,7 @@ pub const MovePick = struct {
         if (self.stage == 7) {
             const scores: []types.Value = try allocator.alloc(types.Value, self.moves_quiet.items.len);
             defer allocator.free(scores);
-            pos.scoreMoves(self.moves_quiet.items, scores);
+            pos.scoreMoves(self.moves_quiet.items, .quiet, scores);
             position.orderMoves(self.moves_quiet.items, scores);
             self.stage += 1;
         }
