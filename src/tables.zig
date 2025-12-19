@@ -33,10 +33,10 @@ pub const Key = u64;
 pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, u8, Move, TableBound })) = .empty;
 
 // pnbrqkPNBRQK
-pub var hash_psq: [types.Piece.nb()][types.board_size2]Key = std.mem.zeroes([types.Piece.nb()][types.board_size2]Key);
-pub var hash_en_passant: [types.board_size]Key = std.mem.zeroes([types.board_size]Key);
+pub var hash_psq: [types.Piece.nb()][types.board_size2]Key = @splat(@splat(0));
+pub var hash_en_passant: [types.board_size]Key = @splat(0);
 // qkQK
-pub var hash_castling: [4]Key = std.mem.zeroes([4]Key);
+pub var hash_castling: [4]Key = @splat(0);
 pub var hash_turn: Key = 0;
 
 fn initZobrist() void {
@@ -64,18 +64,18 @@ fn initZobrist() void {
 
 ////// Movegen //////
 
-pub var moves_bishop_mask: [types.board_size2]Bitboard = std.mem.zeroes([types.board_size2]Bitboard);
-pub var moves_rook_mask: [types.board_size2]Bitboard = std.mem.zeroes([types.board_size2]Bitboard);
+pub var moves_bishop_mask: [types.board_size2]Bitboard = @splat(0);
+pub var moves_rook_mask: [types.board_size2]Bitboard = @splat(0);
 pub var moves_bishop: [types.board_size2]std.AutoHashMapUnmanaged(Bitboard, Bitboard) = undefined;
 pub var moves_rook: [types.board_size2]std.AutoHashMapUnmanaged(Bitboard, Bitboard) = undefined;
 
-pub var pseudo_legal_attacks: [PieceType.nb()][types.board_size2]Bitboard = std.mem.zeroes([PieceType.nb()][types.board_size2]Bitboard);
-pub var pawn_attacks: [Color.nb()][types.board_size2]Bitboard = std.mem.zeroes([Color.nb()][types.board_size2]Bitboard);
+pub var pseudo_legal_attacks: [PieceType.nb()][types.board_size2]Bitboard = @splat(@splat(0));
+pub var pawn_attacks: [Color.nb()][types.board_size2]Bitboard = @splat(@splat(0));
 
-pub var squares_between: [types.board_size2][types.board_size2]Bitboard = std.mem.zeroes([types.board_size2][types.board_size2]Bitboard);
-pub var squares_line: [types.board_size2][types.board_size2]Bitboard = std.mem.zeroes([types.board_size2][types.board_size2]Bitboard);
+pub var squares_between: [types.board_size2][types.board_size2]Bitboard = @splat(@splat(0));
+pub var squares_line: [types.board_size2][types.board_size2]Bitboard = @splat(@splat(0));
 
-pub var passed_pawn: [types.Color.nb()][types.board_size2]Bitboard = std.mem.zeroes([types.Color.nb()][types.board_size2]Bitboard);
+pub var passed_pawn: [types.Color.nb()][types.board_size2]Bitboard = @splat(@splat(0));
 
 pub inline fn filterMovesBishop(sq: Square) Bitboard {
     var b: Bitboard = 0;
@@ -359,7 +359,7 @@ pub const black_pawn_attacks = [64]Bitboard{
 ////// Evaluation //////
 
 pub const max_history = 20000;
-pub var history: [types.Color.nb()][types.board_size2 * types.board_size2]types.Value = std.mem.zeroes([types.Color.nb()][types.board_size2 * types.board_size2]types.Value);
+pub var history: [types.Color.nb()][types.board_size2 * types.board_size2]types.Value = @splat(@splat(0));
 
 pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
     const abs_bonus: i64 = @intCast(@abs(bonus));
