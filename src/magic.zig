@@ -4,7 +4,7 @@ const types = @import("types.zig");
 
 const Bitboard = types.Bitboard;
 
-var magic_holder: [107648]Bitboard = std.mem.zeroes([107648]Bitboard);
+var magic_holder: [107648]Bitboard = @splat(0);
 
 const Magic = struct {
     ptr: ?[*]Bitboard, // pointer to magic_holder for each particular square
@@ -42,10 +42,8 @@ const Magic = struct {
     };
 };
 
-pub var magics_bishop: [types.board_size2]Magic = std.mem.zeroes([types.board_size2]Magic);
-pub var magics_rook: [types.board_size2]Magic = std.mem.zeroes([types.board_size2]Magic);
-pub var collisions_found_bishop: [types.board_size2]u12 = std.mem.zeroes([types.board_size2]u12);
-pub var collisions_found_rook: [types.board_size2]u12 = std.mem.zeroes([types.board_size2]u12);
+pub var magics_bishop: [types.board_size2]Magic = undefined;
+pub var magics_rook: [types.board_size2]Magic = undefined;
 
 const bishop_bits = [types.board_size2]u8{
     6, 5, 5, 5, 5, 5, 5, 6,
