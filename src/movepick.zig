@@ -16,13 +16,14 @@ const types = @import("types.zig");
 /// 8. Quiet return
 /// 9. return `Move.none`
 pub const MovePick = struct {
+    // TODO: Avoid using allocations with types.max_moves and two lengths for slicing
     moves_capture: std.ArrayListUnmanaged(types.Move) = .empty,
     moves_quiet: std.ArrayListUnmanaged(types.Move) = .empty,
     stage: u8 = 0,
     tt_move: types.Move = types.Move.none,
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
-    scores: []types.Value = &[_]types.Value{},
+    last_positive_capture: usize = 0,
 
     pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
@@ -37,19 +38,18 @@ pub const MovePick = struct {
             if (found != null) {
                 const move: types.Move = found.?[2];
                 if (self.stage == 1 or (self.stage == 11 and move.isCapture())) {
-                    const from_piece: types.Piece = pos.board[move.getFrom().index()];
-                    const to_piece: types.Piece = pos.board[move.getTo().index()];
-
                     // Guard from collisions
                     // Uncomment for high collision rate
+                    // const from_piece: types.Piece = pos.board[move.getFrom().index()];
+                    // const to_piece: types.Piece = pos.board[move.getTo().index()];
                     // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and ((to_piece == .none and (!move.isCapture() or move.isEnPassant())) or (to_piece != .none and move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-                    if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-                        // const attacks: types.Bitboard = tables.getAttacks(from_piece.pieceToPieceType(), pos.state.turn, move.getFrom(), pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]) & ~pos.bb_colors[pos.state.turn.index()];
-                        // if (attacks & move.getTo().sqToBB() >= 1) {
-                        self.tt_move = move;
-                        return move;
-                        // }
-                    }
+                    // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
+                    // const attacks: types.Bitboard = tables.getAttacks(from_piece.pieceToPieceType(), pos.state.turn, move.getFrom(), pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]) & ~pos.bb_colors[pos.state.turn.index()];
+                    // if (attacks & move.getTo().sqToBB() >= 1) {
+                    self.tt_move = move;
+                    return move;
+                    // }
+                    // }
                 }
             }
         }
@@ -68,7 +68,7 @@ pub const MovePick = struct {
             self.stage += 1;
         }
 
-        // Search for tt
+        // Search for tt to remove
         if (self.stage == 2 or self.stage == 12) {
             self.stage += 1;
             if (self.tt_move != types.Move.none) {
@@ -83,20 +83,26 @@ pub const MovePick = struct {
 
         // Sort captures
         if (self.stage == 3 or self.stage == 13) {
-            self.scores = try allocator.alloc(types.Value, self.moves_capture.items.len);
-            pos.scoreMoves(self.moves_capture.items, .capture, self.scores);
-            position.orderMoves(self.moves_capture.items, self.scores);
+            var scores: [types.max_moves]types.Value = undefined;
+            pos.scoreMoves(self.moves_capture.items, .capture, &scores);
+            position.orderMoves(self.moves_capture.items, &scores);
+            for (scores, 0..) |score, i| {
+                if (score < tables.max_history) {
+                    self.last_positive_capture = i;
+                    break;
+                }
+            }
             self.stage += 1;
         }
 
-        // Explored all captures, move to next stage
+        // Explored all positive captures, go to next stage
         if ((self.stage == 4 or self.stage == 14) and self.index_capture >= self.moves_capture.items.len) {
             self.stage += 1;
         }
 
         // Positive captures
         if (self.stage == 4) {
-            if (self.scores[self.index_capture] >= tables.max_history) {
+            if (self.index_capture <= self.last_positive_capture) {
                 const move: types.Move = self.moves_capture.items[self.index_capture];
                 self.index_capture += 1;
                 return move;
@@ -109,6 +115,7 @@ pub const MovePick = struct {
             return move;
         }
 
+        // No satifying move was found, go to next stage
         if (self.stage == 4 or self.stage == 14) {
             self.stage += 1;
         }
@@ -122,7 +129,7 @@ pub const MovePick = struct {
             self.stage += 1;
         }
 
-        // Search for tt
+        // Search for tt to remove
         if (self.stage == 6) {
             self.stage += 1;
             if (self.tt_move != types.Move.none) {
@@ -137,14 +144,13 @@ pub const MovePick = struct {
 
         // Sort quiets
         if (self.stage == 7) {
-            const scores: []types.Value = try allocator.alloc(types.Value, self.moves_quiet.items.len);
-            defer allocator.free(scores);
-            pos.scoreMoves(self.moves_quiet.items, .quiet, scores);
-            position.orderMoves(self.moves_quiet.items, scores);
+            var scores: [types.max_moves]types.Value = undefined;
+            pos.scoreMoves(self.moves_quiet.items, .quiet, &scores);
+            position.orderMoves(self.moves_quiet.items, &scores);
             self.stage += 1;
         }
 
-        // Explored all quiets, move to next stage
+        // Explored all quiets, go to next stage
         if (self.stage == 8 and self.index_quiet >= self.moves_quiet.items.len) {
             self.stage += 1;
         }
@@ -156,7 +162,7 @@ pub const MovePick = struct {
             return move;
         }
 
-        // Explored all captures, move to next stage
+        // Explored all negative captures, go to next stage
         if (self.stage == 9 and self.index_capture >= self.moves_capture.items.len) {
             self.stage += 1;
         }
@@ -178,6 +184,6 @@ pub const MovePick = struct {
         self.tt_move = types.Move.none;
         self.index_capture = 0;
         self.index_quiet = 0;
-        allocator.free(self.scores);
+        self.last_positive_capture = 0;
     }
 };
