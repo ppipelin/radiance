@@ -187,7 +187,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     var ss: [*]Stack = &stack;
     ss = ss + 7;
 
-    tables.history = std.mem.zeroes([types.Color.nb()][types.board_size2 * types.board_size2]types.Value);
+    tables.history = @splat(@splat(0));
     tables.transposition_table.clearRetainingCapacity();
 
     for (0..200) |i| {
