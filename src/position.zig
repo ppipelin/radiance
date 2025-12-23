@@ -747,6 +747,10 @@ pub const Position = struct {
             if (flag == .capture or flag == .prc_queen and move.isCapture()) {
                 if (move.getFlags() != MoveFlags.en_passant) {
                     scores[i] += tables.material[to_piece.index()] - tables.material[from_piece.index()];
+                    // scores[i] += tables.material[to_piece.index()] - tables.material[from_piece.index()] + tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()];
+                    // scores[i] += tables.material[to_piece.index()] - tables.material[from_piece.index()] + tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()];
+                    // std.debug.print("{}\n", .{5 * tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()]});
+                    // std.debug.print("move {} history {}\n", .{ move, tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()] });
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
