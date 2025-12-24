@@ -99,7 +99,7 @@ pub const MovePick = struct {
 
         // Positive captures
         if (self.stage == 4) {
-            if (self.index_capture < self.first_negative_capture) {
+            if (self.index_capture <= self.first_negative_capture) {
                 const move: types.Move = self.moves_capture.items[self.index_capture];
                 self.index_capture += 1;
                 return move;
