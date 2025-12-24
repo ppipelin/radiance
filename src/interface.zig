@@ -499,6 +499,17 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer) anyerror!
     try list.append(allocator, "fen r3k2r/3nnpbp/q2pp1p1/p7/Pp1PPPP1/4BNN1/1P5P/R2Q1RK1 w kq - 0 16");
     try list.append(allocator, "fen 3Qb1k1/1r2ppb1/pN1n2q1/Pp1Pp1Pr/4P2p/4BP2/4B1R1/1R5K b - - 11 40");
     try list.append(allocator, "fen 4k3/3q1r2/1N2r1b1/3ppN2/2nPP3/1B1R2n1/2R1Q3/3K4 w - - 5 1");
+    try list.append(allocator, "fen 3r4/4bpk1/5Np1/1p2Pp2/1P3P2/2PpKP2/7P/3R4 b - - 5 38");
+    try list.append(allocator, "fen r1b2rk1/pp2nppp/8/8/3q4/1P6/P2NBPPP/R2QK2R b KQ - 0 14");
+    try list.append(allocator, "fen r3r1k1/1ppb1p1p/p2p2p1/4nN1q/PP2P3/2P1P1R1/2BQ2PP/5RK1 w - - 0 25");
+    try list.append(allocator, "fen r1b1k2r/5ppp/1b2pn2/2Bpq3/8/P3P3/3N1PPP/R1Q1KB1R b KQkq - 0 16");
+    try list.append(allocator, "fen 1k1r3r/3n2pp/p2P1p2/1p2n3/P1pB4/6PP/1PK3B1/3R3R w - - 0 27");
+    try list.append(allocator, "fen r5k1/2q2ppp/1np2p2/1p6/1P1P1B2/1BP2b1P/4RPP1/3Q2K1 b - - 0 20");
+    try list.append(allocator, "fen r1bqkbnr/pp1ppppp/2n5/1B6/3pP3/5N2/PPP2PPP/RNBQK2R b KQkq - 1 4");
+    try list.append(allocator, "fen r1bq1r2/p6k/Pp1p3n/2pnpp1Q/4N2N/3B3P/1PP3P1/R4RK1 w - - 0 23");
+    try list.append(allocator, "fen r1b2rk1/4pp1p/6pb/p1N5/2QN4/2P4P/Pq3PP1/R2R2K1 w - - 0 19");
+    try list.append(allocator, "fen r1r3k1/pb3pbp/1q1Bp1p1/3pP3/2p2P2/Q1P5/PP4PP/2KR1B1R b - - 0 19");
+    try list.append(allocator, "fen 4k3/6R1/8/4B1P1/5PK1/8/6r1/8 w - - 3 62");
 
     for (list.items) |fen| {
         var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
