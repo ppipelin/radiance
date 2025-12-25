@@ -359,15 +359,14 @@ pub const black_pawn_attacks = [64]Bitboard{
 ////// Evaluation //////
 
 pub const max_history = 20000;
-pub var history: [types.Color.nb()][types.board_size2 * types.board_size2]types.Value = @splat(@splat(0));
+pub var history: [Color.nb()][types.board_size2 * types.board_size2]types.Value = @splat(@splat(0));
+pub var history_capture: [PieceType.nb()][types.board_size2][PieceType.nb()]types.Value = @splat(@splat(@splat(0)));
 
-pub fn updateHistory(turn: Color, move: Move, bonus: Value) void {
+pub fn updateHistory(history_value: *Value, bonus: Value) void {
     const abs_bonus: i64 = @intCast(@abs(bonus));
-    const last_value: i64 = history[turn.index()][move.getFromTo()];
 
-    const tapered: Value = @truncate(@divTrunc(last_value * abs_bonus, max_history / 2));
-    history[turn.index()][move.getFromTo()] = @min(max_history / 2, history[turn.index()][move.getFromTo()] + bonus - tapered);
-    // history[turn.index()][move.getFromTo()] += depth * depth;
+    const tapered: Value = @truncate(@divTrunc(@as(i64, history_value.*) * abs_bonus, max_history / 2));
+    history_value.* = @min(max_history / 2, @as(Value, @truncate(history_value.*)) + bonus - tapered);
 }
 
 // Start position total 14152, max 20952
