@@ -746,10 +746,7 @@ pub const Position = struct {
 
             if (flag == .capture or flag == .prc_queen and move.isCapture()) {
                 if (move.getFlags() != MoveFlags.en_passant) {
-                    const capture_value: Value = tables.material[to_piece.index()] - tables.material[from_piece.index()];
-                    scores[i] += capture_value;
-                    if (capture_value >= 0)
-                        scores[i] += tables.max_history;
+                    scores[i] += tables.material[to_piece.index()] - tables.material[from_piece.index()];
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
@@ -759,8 +756,7 @@ pub const Position = struct {
                 }
                 scores[i] += caslte_bonus;
 
-                const history: Value = tables.history[self.state.turn.index()][move.getFromTo()];
-                scores[i] += history;
+                scores[i] += tables.history[self.state.turn.index()][move.getFromTo()];
             }
 
             scores[i] += @as(Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
