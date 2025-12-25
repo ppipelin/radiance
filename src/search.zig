@@ -338,6 +338,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
     // Initialize node
     var move_count: u16 = 0;
+    var move_count_quiets: u16 = 0;
+    var move_count_captures: u16 = 0;
 
     // Prunings
     if (alpha >= beta) return alpha;
@@ -378,15 +380,20 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     }
 
     // Loop over all legal moves
-    var previous_moves: [types.max_moves]types.Move = @splat(.none);
+    var previous_quiets: [types.max_moves]types.Move = @splat(.none);
+    var previous_captures: [types.max_moves]types.Move = @splat(.none);
     var move: types.Move = try mp.nextMove(allocator, pos, pv_move, is_960);
     while (move != types.Move.none) : (move = try mp.nextMove(allocator, pos, pv_move, is_960)) {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }
-        previous_moves[move_count] = move;
         score = -types.value_none;
         move_count += 1;
+        if (move.isCapture()) {
+            move_count_captures += 1;
+        } else {
+            move_count_quiets += 1;
+        }
         if (pv_node) {
             ss[1].pv = null;
         }
@@ -515,12 +522,13 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
 
                 // Fail high
                 if (score >= beta) {
+                    const bonus: types.Value = @as(types.Value, current_depth);
+
                     if (!move.isCapture()) {
-                        const bonus: types.Value = @as(types.Value, current_depth);
-                        tables.updateHistory(pos.state.turn, move, bonus);
+                        tables.updateHistory(&tables.history[pos.state.turn.index()][move.getFromTo()], bonus);
                         // Apply maluses to previous moves
-                        for (previous_moves[0..(move_count - 1)]) |malus_move| {
-                            tables.updateHistory(pos.state.turn, malus_move, -bonus);
+                        for (previous_quiets[0..(move_count_quiets - 1)]) |malus_move| {
+                            tables.updateHistory(&tables.history[pos.state.turn.index()][malus_move.getFromTo()], -bonus);
                         }
                     }
                     if (score != types.value_draw) {
@@ -534,6 +542,11 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                     alpha = score; // Update alpha! Always alpha < beta
                 }
             }
+        }
+        if (move.isCapture()) {
+            previous_captures[move_count_captures - 1] = move;
+        } else {
+            previous_quiets[move_count_quiets - 1] = move;
         }
     }
 
