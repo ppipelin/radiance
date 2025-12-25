@@ -335,6 +335,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     var pv: [200]types.Move = @splat(.none);
     var score: types.Value = -types.value_none;
     var best_score: types.Value = -types.value_none;
+    var best_move: types.Move = types.Move.none;
 
     // Initialize node
     var move_count: u16 = 0;
@@ -515,6 +516,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
         if (score > best_score) {
             best_score = score;
             if (score > alpha) {
+                best_move = move;
                 if (pv_node and !root_node) // Update pv even in fail-high case
                 {
                     update_pv(ss[0].pv.?, move, ss[1].pv.?);
@@ -543,10 +545,12 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                 }
             }
         }
-        if (move.isCapture()) {
-            previous_captures[move_count_captures - 1] = move;
-        } else {
-            previous_quiets[move_count_quiets - 1] = move;
+        if (move != best_move) {
+            if (move.isCapture()) {
+                previous_captures[move_count_captures - 1] = move;
+            } else {
+                previous_quiets[move_count_quiets - 1] = move;
+            }
         }
     }
 
