@@ -83,8 +83,8 @@ pub const MovePick = struct {
             var scores: [types.max_moves]types.Value = undefined;
             pos.scoreMoves(self.moves_capture.items, .capture, &scores);
             position.orderMoves(self.moves_capture.items, &scores);
-            for (scores, 0..) |score, i| {
-                if (score < tables.max_history) {
+            for (self.moves_capture.items, 0..) |move, i| {
+                if (pos.board[move.getFrom().index()].pieceToPieceType().index() > pos.board[move.getTo().index()].pieceToPieceType().index() or move.isEnPassant()) {
                     self.last_positive_capture = i;
                     break;
                 }
