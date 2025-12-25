@@ -23,7 +23,6 @@ pub const MovePick = struct {
     tt_move: types.Move = types.Move.none,
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
-    first_negative_capture: usize = 0,
 
     pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
@@ -83,12 +82,6 @@ pub const MovePick = struct {
             var scores: [types.max_moves]types.Value = undefined;
             pos.scoreMoves(self.moves_capture.items, .capture, &scores);
             position.orderMoves(self.moves_capture.items, &scores);
-            for (self.moves_capture.items, 0..) |move, i| {
-                if (pos.board[move.getFrom().index()].pieceToPieceType().index() > pos.board[move.getTo().index()].pieceToPieceType().index() or move.isEnPassant()) {
-                    self.first_negative_capture = i;
-                    break;
-                }
-            }
             self.stage += 1;
         }
 
@@ -99,8 +92,8 @@ pub const MovePick = struct {
 
         // Positive captures
         if (self.stage == 4) {
-            if (self.index_capture <= self.first_negative_capture) {
-                const move: types.Move = self.moves_capture.items[self.index_capture];
+            const move: types.Move = self.moves_capture.items[self.index_capture];
+            if (pos.board[move.getFrom().index()].pieceToPieceType().index() <= pos.board[move.getTo().index()].pieceToPieceType().index() or move.isEnPassant()) {
                 self.index_capture += 1;
                 return move;
             }
@@ -181,6 +174,5 @@ pub const MovePick = struct {
         self.tt_move = types.Move.none;
         self.index_capture = 0;
         self.index_quiet = 0;
-        self.first_negative_capture = 0;
     }
 };
