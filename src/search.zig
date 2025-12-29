@@ -560,15 +560,15 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                             tables.updateHistory(&tables.history[pos.state.turn.index()][malus_move.getFromTo()], -bonus);
                         }
                     } else {
-                        // var from_piece: types.PieceType = pos.board[move.getFrom().index()].pieceToPieceType();
-                        // var to_piece: types.PieceType = pos.board[move.getTo().index()].pieceToPieceType();
-                        // tables.updateHistory(&tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()], bonus);
-                        // // Apply maluses to previous moves
-                        // for (previous_captures[0..(move_count_captures - 1)]) |malus_move| {
-                        //     from_piece = pos.board[malus_move.getFrom().index()].pieceToPieceType();
-                        //     to_piece = pos.board[malus_move.getTo().index()].pieceToPieceType();
-                        //     tables.updateHistory(&tables.history_capture[from_piece.index()][malus_move.getTo().index()][to_piece.index()], -bonus);
-                        // }
+                        var from_piece: types.PieceType = pos.board[move.getFrom().index()].pieceToPieceType();
+                        var to_piece: types.PieceType = pos.board[move.getTo().index()].pieceToPieceType();
+                        tables.updateHistory(&tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()], bonus);
+                        // Apply maluses to previous moves
+                        for (previous_captures[0..(move_count_captures - 1)]) |malus_move| {
+                            from_piece = pos.board[malus_move.getFrom().index()].pieceToPieceType();
+                            to_piece = pos.board[malus_move.getTo().index()].pieceToPieceType();
+                            tables.updateHistory(&tables.history_capture[from_piece.index()][malus_move.getTo().index()][to_piece.index()], -bonus);
+                        }
                     }
                     if (score != types.value_draw) {
                         if (found == null or tt_depth <= depth -| 1) {
