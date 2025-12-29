@@ -822,6 +822,10 @@ pub const Position = struct {
                     if (first_negative_capture == 0 and capture_delta < 0)
                         first_negative_capture = i;
                     scores[i] += capture_delta;
+                    // scores[i] += tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()];
+                    // scores[i] += tables.material[to_piece.index()] - tables.material[from_piece.index()] + tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()];
+                    // std.debug.print("{}\n", .{5 * tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()]});
+                    // std.debug.print("move {} history {}\n", .{ move, tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()] });
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
