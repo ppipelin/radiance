@@ -733,7 +733,8 @@ pub const Position = struct {
     }
 
     // Use .prc_queen if flag is not comptime known
-    pub fn scoreMoves(self: Position, list: []Move, comptime flag: MoveFlags, scores: []Value) void {
+    pub fn scoreMoves(self: Position, list: []Move, comptime flag: MoveFlags, scores: []Value) usize {
+        var first_negative_capture: usize = types.max_moves + 1;
         for (list, 0..) |move, i| {
             scores[i] = 0;
 
@@ -746,7 +747,10 @@ pub const Position = struct {
 
             if (flag == .capture or flag == .prc_queen and move.isCapture()) {
                 if (move.getFlags() != MoveFlags.en_passant) {
-                    scores[i] += tables.material[to_piece.index()] - tables.material[from_piece.index()];
+                    const capture_delta: Value = tables.material[to_piece.index()] - tables.material[from_piece.index()];
+                    if (first_negative_capture == 0 and capture_delta < 0)
+                        first_negative_capture = i;
+                    scores[i] += capture_delta;
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
@@ -761,6 +765,7 @@ pub const Position = struct {
 
             scores[i] += @as(Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
         }
+        return first_negative_capture;
     }
 
     pub fn endgame(self: Position, col: Color) bool {
@@ -1027,9 +1032,9 @@ pub const Position = struct {
     }
 };
 
-pub fn orderMoves(moves: []Move, scores: []Value) void {
+pub fn orderMoves(moves: []Move, scores: []Value, first_negative_capture: *usize) void {
     if (moves.len <= 1)
         return;
 
-    std.sort.pdqContext(0, moves.len, Move.MoveSortContext{ .items = moves, .scores = scores });
+    std.sort.pdqContext(0, moves.len, Move.MoveSortContext{ .items = moves, .scores = scores, .first_negative_capture = first_negative_capture });
 }

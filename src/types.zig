@@ -421,8 +421,13 @@ pub const Move = packed struct {
     pub const MoveSortContext = struct {
         items: []Move,
         scores: []Value,
+        first_negative_capture: *usize,
 
         pub fn swap(ctx: @This(), a: usize, b: usize) void {
+            if (a == ctx.first_negative_capture.*)
+                ctx.first_negative_capture.* = b;
+            if (b == ctx.first_negative_capture.*)
+                ctx.first_negative_capture.* = a;
             std.mem.swap(Value, &ctx.scores[a], &ctx.scores[b]);
             return std.mem.swap(Move, &ctx.items[a], &ctx.items[b]);
         }
