@@ -224,8 +224,8 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     // Order moves
     const scores: []types.Value = try allocator.alloc(types.Value, move_list.items.len);
     defer allocator.free(scores);
-    pos.scoreMoves(move_list.items, .prc_queen, scores);
-    position.orderMoves(move_list.items, scores);
+    var first_negative_capture: usize = pos.scoreMoves(move_list.items, .prc_queen, scores);
+    position.orderMoves(move_list.items, scores, &first_negative_capture);
     // pos.orderMoves(move_list.items);
 
     try root_moves.ensureTotalCapacity(allocator, root_moves_len);
