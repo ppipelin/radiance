@@ -288,7 +288,7 @@ pub fn deinitAll(allocator: std.mem.Allocator) void {
     transposition_table.clearAndFree(allocator);
 }
 
-pub fn getAttacks(pt: PieceType, comptime color: Color, sq: Square, blockers: Bitboard) Bitboard {
+pub fn getAttacks(comptime pt: PieceType, comptime color: Color, sq: Square, blockers: Bitboard) Bitboard {
     std.debug.assert(sq.index() < 64);
     return switch (pt) {
         PieceType.pawn => pawn_attacks[color.index()][sq.index()],
