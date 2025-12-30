@@ -345,7 +345,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     // Prunings
     if (alpha >= beta) return alpha;
 
-    if (@popCount(pos.state.checkers) == 0) {
+    if (pos.state.checkers == 0) {
         const static_eval: types.Value = eval(pos.*);
 
         // Reverse Futility Pruning
@@ -389,18 +389,21 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
             return -types.value_mate;
         }
         score = -types.value_none;
+
         move_count += 1;
         if (move.isCapture()) {
             move_count_captures += 1;
         } else {
             move_count_quiets += 1;
         }
+
         if (pv_node) {
             ss[1].pv = null;
         }
 
         const key: tables.Key = pos.state.material_key;
 
+        // Prunings per move
         // Mate pruning, we cannot get a better mate at this ply
         if (beta < -types.value_mate + ss[0].ply + 1) {
             continue;
