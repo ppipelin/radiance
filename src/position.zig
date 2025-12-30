@@ -69,11 +69,11 @@ pub const State = struct {
 
 pub const Position = struct {
     // Board
-    board: [types.board_size2]Piece = undefined,
+    board: [types.board_size2]Piece = @splat(.none),
 
     // Bitboards
-    bb_pieces: [PieceType.nb()]Bitboard = undefined,
-    bb_colors: [Color.nb()]Bitboard = undefined,
+    bb_pieces: [PieceType.nb()]Bitboard = @splat(0),
+    bb_colors: [Color.nb()]Bitboard = @splat(0),
 
     // Rook initial positions are recorded for 960
     rook_initial: [4]Square = [_]Square{ Square.none, Square.none, Square.none, Square.none },
@@ -92,9 +92,6 @@ pub const Position = struct {
         state.* = State{};
         var pos: Position = Position{};
 
-        @memset(pos.board[0..types.board_size2], Piece.none);
-        @memset(pos.bb_pieces[0..PieceType.nb()], 0);
-        @memset(pos.bb_colors[0..Color.nb()], 0);
         pos.state = state;
 
         return pos;
@@ -473,7 +470,7 @@ pub const Position = struct {
         const our_king: Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[PieceType.king.index()]));
 
         self.state.attacked = 0;
-        // If the rook is attacked by a horizontal slider we can't caslte
+        // If the rook is attacked by a horizontal slider we cannot castle, this can only happen in chess 960
         self.state.attacked_horizontal = 0;
 
         for (PieceType.list()) |pt| {
@@ -496,8 +493,8 @@ pub const Position = struct {
                         };
                     } else if (pt == PieceType.rook and from.rank() == our_king.rank()) {
                         const tmp: Bitboard = switch (self.state.turn) {
-                            .white => tables.getAttacks(pt, .black, from, bb_all ^ our_king.sqToBB()),
-                            .black => tables.getAttacks(pt, .white, from, bb_all ^ our_king.sqToBB()),
+                            .white => tables.getAttacks(.rook, .black, from, bb_all ^ our_king.sqToBB()),
+                            .black => tables.getAttacks(.rook, .white, from, bb_all ^ our_king.sqToBB()),
                         };
                         self.state.attacked_horizontal |= tmp;
                         self.state.attacked |= tmp;
@@ -551,6 +548,7 @@ pub const Position = struct {
                             // Can be a double_push check
                             if (self.state.en_passant != Square.none) {
                                 // Double push check pinned has to be aligned vertically only, so cannot take this checker
+                                // e.g. 8/8/8/5k2/4Pp2/8/8/4KR2 b - e3
                                 const from_en_passant: Bitboard = tables.pawn_attacks[color.invert().index()][self.state.en_passant.index()];
                                 Move.generateMoveFrom(allocator, MoveFlags.en_passant, from_en_passant & bb_us & self.bb_pieces[PieceType.pawn.index()] & ~self.state.pinned, self.state.en_passant, list);
                             }
@@ -567,6 +565,7 @@ pub const Position = struct {
                     },
                     PieceType.knight => {
                         if (gen_type == .all or gen_type == .capture) {
+                            // Pinned knight cannot move
                             var attackers: Bitboard = tables.getAttackers(self.*, color, checker_sq, bb_all) & ~self.state.pinned;
                             // Can be a promotion
                             if (checker_sq.rank() == Rank.r8.relativeRank(color)) {
@@ -641,6 +640,8 @@ pub const Position = struct {
                     }
 
                     // En passant pinned
+                    // If the king is aligned with the en passant tile, they are only aligned diagonally if pinned
+                    // e.g. 8/8/8/6k1/4Pp2/8/8/2B1K3 b - e3
                     Move.generateMoveFrom(allocator, MoveFlags.en_passant, from_en_passant_ & self.state.pinned & tables.squares_line[our_king.index()][self.state.en_passant.index()], self.state.en_passant, list);
                 }
 
@@ -650,7 +651,7 @@ pub const Position = struct {
                     const pt: PieceType = self.board[from.index()].pieceToPieceType();
 
                     var to: Bitboard = tables.getAttacks(pt, color, from, bb_all); // Careful: bb_us not excluded
-                    // Keep moves aligned with king
+                    // Only keep moves aligned with king
                     const line: Bitboard = tables.squares_line[from.index()][our_king.index()];
                     to &= line;
 
@@ -754,11 +755,11 @@ pub const Position = struct {
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
-                var caslte_bonus: Value = 0;
+                var castle_bonus: Value = 0;
                 if (move.isCastle()) {
-                    caslte_bonus = 50;
+                    castle_bonus = 50;
                 }
-                scores[i] += caslte_bonus;
+                scores[i] += castle_bonus;
 
                 scores[i] += tables.history[self.state.turn.index()][move.getFromTo()];
             }
@@ -1004,7 +1005,7 @@ pub const Position = struct {
                             pos.state.material_key ^= tables.hash_castling[CastleInfo.q.indexLsb()];
                         }
                     } else {
-                        return error.UnknownCaslte;
+                        return error.UnknownCastle;
                     }
                 },
             }

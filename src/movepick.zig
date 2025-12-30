@@ -29,6 +29,7 @@ pub const MovePick = struct {
         if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
 
+            // PV move replaces transposition table move
             if (pv_move != types.Move.none) {
                 self.tt_move = pv_move;
                 return self.tt_move;
