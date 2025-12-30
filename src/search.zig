@@ -345,7 +345,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     // Prunings
     if (alpha >= beta) return alpha;
 
-    if (@popCount(pos.state.checkers) == 0) {
+    if (pos.state.checkers == 0) {
         const static_eval: types.Value = eval(pos.*);
 
         // Reverse Futility Pruning
@@ -389,18 +389,21 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
             return -types.value_mate;
         }
         score = -types.value_none;
+
         move_count += 1;
         if (move.isCapture()) {
             move_count_captures += 1;
         } else {
             move_count_quiets += 1;
         }
+
         if (pv_node) {
             ss[1].pv = null;
         }
 
         const key: tables.Key = pos.state.material_key;
 
+        // Prunings per move
         // Mate pruning, we cannot get a better mate at this ply
         if (beta < -types.value_mate + ss[0].ply + 1) {
             continue;
@@ -466,6 +469,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1, is_960, false);
                 }
                 // Full-depth search
+                // Only for first move (PVS) or after a fail high
                 if (pv_node and (move_count == 1 or score > alpha)) {
                     score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
                     // Let's assert we don't store draw (repetition)
@@ -593,12 +597,12 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
     var move_list_capture: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list_capture.deinit(allocator);
 
-    // Delta pruning
+    // Delta pruning margin
     const margin: types.Value = 200;
 
     if (!pos.endgame(pos.state.turn)) {
         const best_capture: types.Value = tables.material[types.PieceType.queen.index()];
-        if (stand_pat +| best_capture < (alpha -| margin))
+        if (stand_pat + best_capture < (alpha - margin))
             return alpha;
     }
 
