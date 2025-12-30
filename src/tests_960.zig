@@ -62,7 +62,7 @@ test "CastleMixed" {
     try expectEqual(31, list.items.len);
 }
 
-test "CaslteCheck" {
+test "CastleCheck" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 

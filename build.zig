@@ -57,7 +57,7 @@ pub fn build(b: *std.Build) void {
     // but does not run it.
     const exe_tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/tests.zig"),
+            .root_source_file = b.path("src/tests_position.zig"),
             .target = target,
             .optimize = optimize,
         }),

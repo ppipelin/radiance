@@ -192,7 +192,7 @@ test "MovegenBishop" {
     defer tables.deinitAll(allocator);
 
     var s: position.State = position.State{};
-    var pos: position.Position = try position.Position.setFen(&s, "3k4/8/8/B5BB/8/1B4B1/5B2/2BKB3 w - - 0 1");
+    var pos: position.Position = try position.Position.setFen(&s, "2k5/8/8/B5BB/8/1B4B1/5B2/2BKB3 w - - 0 1");
 
     var list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer list.deinit(allocator);
