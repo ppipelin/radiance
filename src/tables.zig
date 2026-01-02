@@ -310,6 +310,15 @@ pub inline fn getAttackers(pos: position.Position, comptime color: Color, sq: Sq
     return (p | n | b | r) & pos.bb_colors[color.index()];
 }
 
+pub inline fn getAttackersAll(pos: position.Position, sq: Square, blockers: Bitboard) Bitboard {
+    const p_white = getAttacks(PieceType.pawn, .white, sq, blockers) & pos.bb_pieces[PieceType.pawn.index()];
+    const p_black = getAttacks(PieceType.pawn, .black, sq, blockers) & pos.bb_pieces[PieceType.pawn.index()];
+    const n = getAttacks(PieceType.knight, .white, sq, blockers) & pos.bb_pieces[PieceType.knight.index()];
+    const b = getAttacks(PieceType.bishop, .white, sq, blockers) & (pos.bb_pieces[PieceType.bishop.index()] | pos.bb_pieces[PieceType.queen.index()]);
+    const r = getAttacks(PieceType.rook, .white, sq, blockers) & (pos.bb_pieces[PieceType.rook.index()] | pos.bb_pieces[PieceType.queen.index()]);
+    return p_white | p_black | n | b | r;
+}
+
 // zig fmt: off
 pub const king_attacks = [64]Bitboard{
     0x302,              0x705,              0xe0a,               0x1c14,              0x3828,              0x7050,              0xe0a0,              0xc040,
