@@ -413,6 +413,19 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
             continue;
         }
 
+        if (!root_node and pos.state.checkers == 0) {
+            // SEE pruning
+            if (move.isCapture()) {
+                // TODO: avoid pruning sacrifices of last piece for stalemate
+                if (alpha >= types.value_draw and !seeGreaterEqual(pos.*, move, -100)) {
+                    continue;
+                }
+            } else {
+                if (!seeGreaterEqual(pos.*, move, std.math.pow(types.Value, current_depth, 2) * -25))
+                    continue;
+            }
+        }
+
         try pos.movePiece(move, &s);
 
         ss[1].pv = &pv;
