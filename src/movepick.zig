@@ -1,4 +1,5 @@
 const position = @import("position.zig");
+const search = @import("search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -94,10 +95,9 @@ pub const MovePick = struct {
 
         // Positive captures
         if (self.stage == 4) {
-            const move: types.Move = self.moves_capture.items[self.index_capture];
-            if (self.index_capture <= self.first_negative_capture) {
+            if (extractMove(pos.*, self.moves_capture.items[self.index_capture..], 0)) {
                 self.index_capture += 1;
-                return move;
+                return self.moves_capture.items[self.index_capture - 1];
             }
         }
 
@@ -178,5 +178,18 @@ pub const MovePick = struct {
         self.index_capture = 0;
         self.index_quiet = 0;
         self.first_negative_capture = 0;
+    }
+
+    // Find first move that satisfies threshold and put it first
+    // Return false otherwise
+    fn extractMove(pos: position.Position, moves: []types.Move, threshold: types.Value) bool {
+        for (moves, 1..) |_, i| {
+            if (search.seeGreaterEqual(pos, moves[0], threshold)) {
+                return true;
+            } else if (i < moves.len) {
+                std.mem.swap(types.Move, &moves[0], &moves[i]);
+            }
+        }
+        return false;
     }
 };
