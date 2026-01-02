@@ -32,6 +32,20 @@ pub fn main() !void {
         magic.compute(iterations);
     } else if (args.len > 1 and std.mem.eql(u8, args[1], "bench")) {
         try interface.cmd_bench(allocator, stdout);
+    } else if (args.len > 1 and std.mem.eql(u8, args[1], "see")) {
+        var state = position.State{};
+        // const pos: position.Position = try position.Position.setFen(&state, "1k1r4/1pp4p/p7/4q3/8/P5P1/1PP4P/2K1R3 w - - 0 1"); // early exit
+        // const pos: position.Position = try position.Position.setFen(&state, "1k1r4/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w");
+        // const pos: position.Position = try position.Position.setFen(&state, "3k4/8/6rn/8/6p1/5P1P/4Q3/3K2R1 w"); // gain knight with second pawn
+        // const pos: position.Position = try position.Position.setFen(&state, "3k4/8/6rn/8/6p1/5P1P/8/3K2R1 w"); // gain knight with second pawn (no queen)
+        const pos: position.Position = try position.Position.setFen(&state, "3k4/8/6rn/8/6p1/5P2/4Q3/3K2R1 w");
+        // const pos: position.Position = try position.Position.setFen(&state, "3k4/8/6rn/8/6p1/5P2/8/3K2R1 w"); // no queen lose
+        pos.printDebug();
+        // const see = search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e1e5"), 0);
+        // const see = search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), 1000);
+        // const see = search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g1g4"), 0);
+        const see = search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g1g4"), -158);
+        std.debug.print("see {}\n", .{see});
     } else {
         try interface.loop(allocator, stdin, stdout);
     }
