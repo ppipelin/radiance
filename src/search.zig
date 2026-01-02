@@ -657,6 +657,100 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
     return alpha;
 }
 
+// Static exchange evaluation greater or equal
+// Greater or equal is useful for move-ordering and allows faster return than evaluating full SEE
+// threshold corresponds to the value we have to gain
+pub fn seeGreaterEqual(pos: position.Position, move: types.Move, threshold: types.Value) bool {
+    // std.debug.assert(move.isCapture());
+
+    if (move.isEnPassant())
+        return threshold >= types.value_zero;
+
+    const from: types.Square = move.getFrom();
+    const to: types.Square = move.getTo();
+    const from_piece: types.Piece = pos.board[from.index()];
+    const to_piece: types.Piece = pos.board[to.index()];
+
+    std.debug.assert(from_piece.pieceToColor() == pos.state.turn);
+
+    var see = tables.material[to_piece.pieceToPieceType().index()] - threshold;
+    if (see < 0)
+        return false;
+
+    see = tables.material[from_piece.pieceToPieceType().index()] - see;
+
+    // If we took a valuable piece from a least valuable piece with a difference above threshold we exit
+    if (see <= 0) {
+        return true;
+    }
+
+    var blockers: types.Bitboard = (pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]) ^ from.sqToBB() ^ to.sqToBB();
+
+    var col = pos.state.turn;
+    var attackers: types.Bitboard = tables.getAttackersAll(pos, to, blockers);
+    var current_attackers: types.Bitboard = 0;
+
+    var result = true;
+
+    while (true) {
+        col = col.invert();
+        // Update attackers if some blockers were removed
+        attackers &= blockers;
+
+        current_attackers = attackers & pos.bb_colors[col.index()];
+        // Current color loses if no attackers
+        if (current_attackers == 0)
+            break;
+
+        // TODO: Deal with pinned
+
+        result = !result;
+
+        // Search for least valuable attacker type
+        // Remove it, add new attackers and change turn
+        for (std.enums.values(types.PieceType)) |pt| {
+            if (pt == types.PieceType.none)
+                continue;
+
+            // If capture with king but opponent still has attackers we lose
+            if (pt == .king)
+                return if ((attackers & pos.bb_colors[col.invert().index()]) > 0) !result else result;
+
+            const bb: types.Bitboard = current_attackers & pos.bb_pieces[pt.index()];
+            if (bb == 0)
+                continue;
+
+            see = tables.material[pt.index()] - see;
+
+            if (see < @intFromBool(result)) {
+                std.debug.assert(pt != .queen);
+                break;
+            }
+
+            // Update blockers, remove consumed piece
+            blockers ^= bb & -%bb;
+
+            // Update atackers, can be any color
+            pt: switch (pt) {
+                .pawn, .bishop => attackers |= tables.getAttacks(.bishop, .white, to, blockers) & (pos.bb_pieces[types.PieceType.bishop.index()] | pos.bb_pieces[types.PieceType.queen.index()]),
+                .rook => attackers |= tables.getAttacks(.rook, .white, to, blockers) & (pos.bb_pieces[types.PieceType.rook.index()] | pos.bb_pieces[types.PieceType.queen.index()]),
+                .queen => {
+                    attackers |= tables.getAttacks(.bishop, .white, to, blockers) & (pos.bb_pieces[types.PieceType.bishop.index()] | pos.bb_pieces[types.PieceType.queen.index()]);
+                    continue :pt .pawn;
+                },
+                .knight, .king => break :pt,
+                .none => unreachable,
+            }
+            break;
+        }
+
+        // Early break because retaking was not worth it from current
+        if (see < @intFromBool(result))
+            break;
+    }
+    return result;
+}
+
 fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
     pv[0] = move;
     for (childPv, 1..) |new_move, i| {
