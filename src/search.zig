@@ -619,14 +619,17 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Sta
             return -types.value_mate;
         }
 
-        // Delta pruning inside
-        // if (!pos.endgame(pos.state.turn)) {
-        //     var capture_value: types.Value = pos.board[move.getTo().index()].pieceToPieceType().index();
-        //     if (move.isPromotion())
-        //         capture_value += tables.material[types.PieceType.queen.index()] - 100;
-        //     if ((if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w) +| capture_value < alpha -| margin)
-        //         continue;
-        // }
+        if (!pos.endgame(pos.state.turn)) {
+            // // Delta pruning inside
+            // var capture_value: types.Value = pos.board[move.getTo().index()].pieceToPieceType().index();
+            // if (move.isPromotion())
+            //     capture_value += tables.material[types.PieceType.queen.index()] - tables.material[types.PieceType.pawn.index()];
+            // if ((if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w) +| capture_value < alpha -| margin)
+            //     continue;
+
+            if (!seeGreaterEqual(pos.*, move, -40))
+                continue;
+        }
 
         try pos.movePiece(move, &s);
 
