@@ -81,9 +81,8 @@ pub const MovePick = struct {
         // Sort captures
         if (self.stage == 3 or self.stage == 13) {
             var scores: [types.max_moves]types.Value = undefined;
-            var negative_captures: [types.max_moves]bool = undefined;
-            pos.scoreMoves(self.moves_capture.items, .capture, &scores, &negative_captures);
-            position.orderMoves(self.moves_capture.items, &scores, &negative_captures);
+            pos.scoreMoves(self.moves_capture.items, .capture, &scores);
+            position.orderMoves(self.moves_capture.items, &scores);
             self.stage += 1;
         }
 
@@ -136,9 +135,8 @@ pub const MovePick = struct {
         // Sort quiets
         if (self.stage == 7) {
             var scores: [types.max_moves]types.Value = undefined;
-            var negative_captures: [types.max_moves]bool = undefined;
-            pos.scoreMoves(self.moves_quiet.items, .quiet, &scores, &negative_captures);
-            position.orderMoves(self.moves_quiet.items, &scores, &negative_captures);
+            pos.scoreMoves(self.moves_quiet.items, .quiet, &scores);
+            position.orderMoves(self.moves_quiet.items, &scores);
             self.stage += 1;
         }
 

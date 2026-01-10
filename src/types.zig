@@ -421,11 +421,9 @@ pub const Move = packed struct {
     pub const MoveSortContext = struct {
         items: []Move,
         scores: []Value,
-        negative_captures: []bool,
 
         pub fn swap(ctx: @This(), a: usize, b: usize) void {
             std.mem.swap(Value, &ctx.scores[a], &ctx.scores[b]);
-            std.mem.swap(bool, &ctx.negative_captures[a], &ctx.negative_captures[b]);
             return std.mem.swap(Move, &ctx.items[a], &ctx.items[b]);
         }
 
@@ -433,9 +431,7 @@ pub const Move = packed struct {
             // Assert there were no undefined value
             std.debug.assert(ctx.scores[a] < 20_000);
             std.debug.assert(ctx.scores[b] < 20_000);
-            const bonus_a: Value = if (ctx.negative_captures[a]) 0 else 30_000;
-            const bonus_b: Value = if (ctx.negative_captures[b]) 0 else 30_000;
-            return ctx.scores[a] + bonus_a > ctx.scores[b] + bonus_b;
+            return ctx.scores[a] > ctx.scores[b];
         }
     };
 
