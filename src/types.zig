@@ -433,7 +433,9 @@ pub const Move = packed struct {
             // Assert there were no undefined value
             std.debug.assert(ctx.scores[a] < 20_000);
             std.debug.assert(ctx.scores[b] < 20_000);
-            return ctx.scores[a] > ctx.scores[b];
+            const bonus_a: Value = if (ctx.negative_captures[a]) 0 else 30_000;
+            const bonus_b: Value = if (ctx.negative_captures[b]) 0 else 30_000;
+            return ctx.scores[a] + bonus_a > ctx.scores[b] + bonus_b;
         }
     };
 
