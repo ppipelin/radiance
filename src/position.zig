@@ -801,10 +801,9 @@ pub const Position = struct {
     }
 
     // Use .prc_queen if flag is not comptime known
-    pub fn scoreMoves(self: Position, list: []Move, comptime flag: MoveFlags, scores: []Value, negative_captures: []bool) void {
+    pub fn scoreMoves(self: Position, list: []Move, comptime flag: MoveFlags, scores: []Value) void {
         for (list, 0..) |move, i| {
             scores[i] = 0;
-            negative_captures[i] = false;
 
             var from_piece: PieceType = self.board[move.getFrom().index()].pieceToPieceType();
             const to_piece: PieceType = self.board[move.getTo().index()].pieceToPieceType();
@@ -817,7 +816,6 @@ pub const Position = struct {
                 if (move.getFlags() != MoveFlags.en_passant) {
                     const capture_delta: Value = tables.material[to_piece.index()] - tables.material[from_piece.index()];
                     scores[i] += capture_delta;
-                    negative_captures[i] = capture_delta < 0;
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
@@ -1098,9 +1096,9 @@ pub const Position = struct {
     }
 };
 
-pub fn orderMoves(moves: []Move, scores: []Value, negative_captures: []bool) void {
+pub fn orderMoves(moves: []Move, scores: []Value) void {
     if (moves.len <= 1)
         return;
 
-    std.sort.pdqContext(0, moves.len, Move.MoveSortContext{ .items = moves, .scores = scores, .negative_captures = negative_captures });
+    std.sort.pdqContext(0, moves.len, Move.MoveSortContext{ .items = moves, .scores = scores });
 }
