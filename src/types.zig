@@ -510,7 +510,9 @@ pub const Move = packed struct {
     }
 
     pub fn printUCIDebug(self: Move) void {
-        const writer = std.io.getStdErr().writer();
+        var buffer: [64]u8 = undefined;
+        const writer = std.debug.lockStderrWriter(&buffer);
+        defer std.debug.unlockStderrWriter();
         self.printUCI(writer) catch unreachable;
     }
 };

@@ -879,8 +879,9 @@ pub const Position = struct {
     }
 
     pub fn printFenDebug(self: Position) void {
-        const writer = std.io.getStdErr().writer();
         var buffer: [90]u8 = undefined;
+        const writer = std.debug.lockStderrWriter(&buffer);
+        defer std.debug.unlockStderrWriter();
         const fen = self.getFen(&buffer);
         writer.print("fen: {s}\n", .{fen}) catch unreachable;
     }
