@@ -1,5 +1,6 @@
 //! This module provides tests for move generation of the program
 
+const movepick = @import("movepick.zig");
 const position = @import("position.zig");
 const search = @import("search.zig");
 const std = @import("std");
@@ -340,4 +341,91 @@ test "MovegenKing" {
     pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
 
     try expectEqual(23, list.items.len);
+}
+
+test "MovepickMvvLva" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var output: [4096]u8 = undefined;
+    var stdout = std.Io.Writer.fixed(&output);
+
+    var mp: movepick.MovePick = .{};
+    defer mp.deinit(allocator);
+
+    var s: position.State = position.State{};
+    var pos: position.Position = try position.Position.setFen(&s, "4k3/8/7p/3q2B1/8/8/1K6/2rR2p1 w - -");
+
+    var move: types.Move = try mp.nextMove(allocator, &pos, .none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(allocator, &pos, .none, false)) {
+        try types.Move.printUCI(move, &stdout);
+    }
+    var buffer_out: []u8 = stdout.buffered();
+    try std.testing.expectStringStartsWith(buffer_out, "d1d5g5c1d1c1");
+    // try std.testing.expectStringEndsWith(stdout.buffered(), "g5h6d1g1b2c1"); // Works when there is no SEE
+
+    // Reset
+    _ = stdout.consumeAll();
+    mp.deinit(allocator);
+    mp = .{};
+
+    pos = try position.Position.setFen(&s, "3k4/8/6rn/8/6p1/5P2/4Q3/3K2R1 w");
+
+    move = try mp.nextMove(allocator, &pos, .none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(allocator, &pos, .none, false)) {
+        try types.Move.printUCI(move, &stdout);
+    }
+
+    buffer_out = stdout.buffered();
+    try std.testing.expectStringStartsWith(buffer_out, "f3g4");
+    try std.testing.expectStringEndsWith(buffer_out, "g1g4");
+}
+
+test "MovepickSee" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var output: [4096]u8 = undefined;
+    var stdout = std.Io.Writer.fixed(&output);
+
+    var mp: movepick.MovePick = .{};
+    defer mp.deinit(allocator);
+
+    var s: position.State = position.State{};
+    var pos: position.Position = try position.Position.setFen(&s, "3kr3/8/4r1rn/8/4p1p1/5B1P/4Q3/3K2R1 w"); // win with second pawn
+
+    var move: types.Move = try mp.nextMove(allocator, &pos, .none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(allocator, &pos, .none, false)) {
+        try types.Move.printUCI(move, &stdout);
+    }
+
+    const buffer_out: []u8 = stdout.buffered();
+    try std.testing.expectStringStartsWith(buffer_out, "h3g4f3g4");
+    // try std.testing.expectStringEndsWith(buffer_out, "g1g4f3e4"); // Bad captures (See < 0) are not sorted by SEE
+
+    pos = try position.Position.setFen(&s, "3k1r2/5r2/8/5n2/4b1B1/7B/5R2/3K1R2 w");
+
+    mp.deinit(allocator);
+    mp = .{};
+    _ = stdout.consumeAll();
+
+    move = try mp.nextMove(allocator, &pos, .none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(allocator, &pos, .none, false)) {
+        try types.Move.printUCI(move, &stdout);
+    }
+
+    try std.testing.expectStringStartsWith(buffer_out, "g4f5f2f5");
+
+    pos = try position.Position.setFen(&s, "3k1r2/5r2/5r2/5n2/4b1B1/7B/5R2/3K1R2 w");
+
+    mp.deinit(allocator);
+    mp = .{};
+    _ = stdout.consumeAll();
+
+    move = try mp.nextMove(allocator, &pos, .none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(allocator, &pos, .none, false)) {
+        try types.Move.printUCI(move, &stdout);
+    }
+
+    try std.testing.expect(!std.mem.eql(u8, buffer_out, "g4f5"));
 }
