@@ -24,7 +24,7 @@ pub const MovePick = struct {
     tt_move: types.Move = types.Move.none,
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
-    first_negative_capture: usize = 0,
+    negative_captures: [types.max_moves]bool = undefined,
 
     pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
@@ -83,8 +83,8 @@ pub const MovePick = struct {
         // Sort captures
         if (self.stage == 3 or self.stage == 13) {
             var scores: [types.max_moves]types.Value = undefined;
-            self.first_negative_capture = pos.scoreMoves(self.moves_capture.items, .capture, &scores);
-            position.orderMoves(self.moves_capture.items, &scores, &self.first_negative_capture);
+            pos.scoreMoves(self.moves_capture.items, .capture, &scores, &self.negative_captures);
+            position.orderMoves(self.moves_capture.items, &scores, &self.negative_captures);
             self.stage += 1;
         }
 
@@ -95,7 +95,7 @@ pub const MovePick = struct {
 
         // Positive captures
         if (self.stage == 4) {
-            if (extractMove(pos.*, self.moves_capture.items[self.index_capture..], 0)) {
+            if (!self.negative_captures[self.index_capture]) {
                 self.index_capture += 1;
                 return self.moves_capture.items[self.index_capture - 1];
             }
@@ -137,9 +137,9 @@ pub const MovePick = struct {
         // Sort quiets
         if (self.stage == 7) {
             var scores: [types.max_moves]types.Value = undefined;
-            _ = pos.scoreMoves(self.moves_quiet.items, .quiet, &scores);
-            var tmp: usize = 0;
-            position.orderMoves(self.moves_quiet.items, &scores, &tmp);
+            var negative_captures: [types.max_moves]bool = undefined;
+            pos.scoreMoves(self.moves_quiet.items, .quiet, &scores, &negative_captures);
+            position.orderMoves(self.moves_quiet.items, &scores, &negative_captures);
             self.stage += 1;
         }
 
@@ -177,7 +177,6 @@ pub const MovePick = struct {
         self.tt_move = types.Move.none;
         self.index_capture = 0;
         self.index_quiet = 0;
-        self.first_negative_capture = 0;
     }
 
     // Find first move that satisfies threshold and put it first
