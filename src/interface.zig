@@ -62,7 +62,7 @@ pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnman
     for (keys) |key| {
         const option: Option = options.get(key).?;
         writer.print("option name {s} type {s} default {s} ", .{ key, option.type, option.default_value }) catch unreachable;
-        if (std.mem.eql(u8, option.type, "spin")) {
+        if (std.ascii.eqlIgnoreCase(option.type, "spin")) {
             writer.print("min {} max {}", .{ option.min, option.max }) catch unreachable;
         }
         writer.print("\n", .{}) catch unreachable;
@@ -95,19 +95,19 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
 
         var existing_command: bool = false;
 
-        if (std.mem.eql(u8, "quit", primary_token) or std.mem.eql(u8, "exit", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("quit", primary_token) or std.ascii.eqlIgnoreCase("exit", primary_token)) {
             existing_command = true;
             g_stop = true;
             break;
         }
 
-        if (std.mem.eql(u8, "stop", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("stop", primary_token)) {
             existing_command = true;
             g_stop = true;
             try stdout.print("Stopped search\n", .{});
         }
 
-        if (std.mem.eql(u8, "license", primary_token) or std.mem.eql(u8, "--license", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("license", primary_token) or std.ascii.eqlIgnoreCase("--license", primary_token)) {
             existing_command = true;
             try stdout.print(
                 \\Radiance is chess engine for playing and analyzing.
@@ -118,7 +118,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
             , .{});
         }
 
-        if (std.mem.eql(u8, "uci", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("uci", primary_token)) {
             existing_command = true;
             try stdout.print(
                 \\id name Radiance {s}
@@ -132,12 +132,12 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
             , .{});
         }
 
-        if (std.mem.eql(u8, "ucinewgame", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("ucinewgame", primary_token)) {
             existing_command = true;
             pos = try position.Position.setFen(&states.items[0], position.start_fen);
         }
 
-        if (std.mem.eql(u8, "position", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("position", primary_token)) {
             existing_command = true;
             cmd_position(&pos, &tokens, &states) catch |err| {
                 try stdout.print("Command position failed with error {}, reset to startpos\n", .{err});
@@ -147,7 +147,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
             };
         }
 
-        if (std.mem.eql(u8, "go", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("go", primary_token)) {
             existing_command = true;
 
             if (search_thread != null) {
@@ -169,17 +169,17 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
             };
         }
 
-        if (std.mem.eql(u8, "bench", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("bench", primary_token)) {
             existing_command = true;
             try cmd_bench(allocator, stdout);
         }
 
-        if (std.mem.eql(u8, "isready", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("isready", primary_token)) {
             existing_command = true;
             try stdout.print("readyok\n", .{});
         }
 
-        if (std.mem.eql(u8, "setoption", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("setoption", primary_token)) {
             existing_command = true;
             var tmp_options: std.StringArrayHashMapUnmanaged(Option) = try options.clone(allocator);
             defer tmp_options.deinit(allocator);
@@ -190,22 +190,22 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
             };
         }
 
-        if (std.mem.eql(u8, "ponderhit", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("ponderhit", primary_token)) {
             existing_command = true;
             try stdout.print("UCI - Received ponderhit\n", .{});
         }
 
-        if (std.mem.eql(u8, "d", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("d", primary_token)) {
             existing_command = true;
             pos.print(stdout);
         }
 
-        if (std.mem.eql(u8, "eval", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("eval", primary_token)) {
             existing_command = true;
             const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
-            if (std.mem.eql(u8, evaluation_mode, "Shannon")) {
+            if (std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
                 try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(pos)});
-            } else if (std.mem.eql(u8, evaluation_mode, "PSQ")) {
+            } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
                 try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(pos)});
             }
         }
@@ -257,7 +257,7 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
     defer list.deinit(allocator);
 
     // Read the option name (can contain spaces)
-    while (token != null and !std.mem.eql(u8, "value", token.?)) : (token = tokens.next()) {
+    while (token != null and !std.ascii.eqlIgnoreCase("value", token.?)) : (token = tokens.next()) {
         if (list.items.len != 0)
             try list.append(allocator, ' ');
         try list.appendSlice(allocator, token.?);
@@ -281,7 +281,7 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
     if (options.contains(name)) {
         var option = options.get(name).?;
         option.current_value = value;
-        if (std.mem.eql(u8, option.type, "spin")) {
+        if (std.ascii.eqlIgnoreCase(option.type, "spin")) {
             const value_parsed = try std.fmt.parseInt(i64, value, 10);
             if (value_parsed > option.max) {
                 return error.UpperBoundBreached;
@@ -304,11 +304,11 @@ fn cmd_position(pos: *position.Position, tokens: anytype, states: *StateList) !v
         return;
     }
 
-    if (std.mem.eql(u8, "startpos", token.?)) {} else if (std.mem.eql(u8, "kiwi", token.?)) {
+    if (std.ascii.eqlIgnoreCase("startpos", token.?)) {} else if (std.ascii.eqlIgnoreCase("kiwi", token.?)) {
         fen = position.kiwi_fen;
-    } else if (std.mem.eql(u8, "lasker", token.?)) {
+    } else if (std.ascii.eqlIgnoreCase("lasker", token.?)) {
         fen = position.lasker_fen;
-    } else if (std.mem.eql(u8, "fen", token.?)) {
+    } else if (std.ascii.eqlIgnoreCase("fen", token.?)) {
         var tokens_split = std.mem.splitSequence(u8, tokens.rest(), " moves ");
         token = tokens_split.next();
         fen = token.?;
@@ -323,7 +323,7 @@ fn cmd_position(pos: *position.Position, tokens: anytype, states: *StateList) !v
     pos.* = try position.Position.setFen(&states.items[states.items.len - 1], fen);
 
     token = tokens.next();
-    if (token != null and std.mem.eql(u8, "moves", token.?)) {
+    if (token != null and std.ascii.eqlIgnoreCase("moves", token.?)) {
         tokens_rest = tokens.rest();
     }
 
@@ -349,75 +349,75 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *position.P
 
     while (token != null) : (token = tokens.next()) {
         // Needs to be the last command on the line
-        if (std.mem.eql(u8, "searchmoves", token.?)) {
+        if (std.ascii.eqlIgnoreCase("searchmoves", token.?)) {
             // TODO
             break;
-        } else if (std.mem.eql(u8, "wtime", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("wtime", token.?)) {
             token = tokens.next();
             if (token == null) {
                 return error.MissingParameter;
             }
             limits.time[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token.?, 10);
-        } else if (std.mem.eql(u8, "btime", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("btime", token.?)) {
             token = tokens.next();
             if (token == null) {
                 return error.MissingParameter;
             }
             limits.time[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, token.?, 10);
-        } else if (std.mem.eql(u8, "winc", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("winc", token.?)) {
             token = tokens.next();
             if (token == null) {
                 return error.MissingParameter;
             }
             limits.inc[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token.?, 10);
-        } else if (std.mem.eql(u8, "binc", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("binc", token.?)) {
             token = tokens.next();
             if (token == null) {
                 return error.MissingParameter;
             }
             limits.inc[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, token.?, 10);
-        } else if (std.mem.eql(u8, "movestogo", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("movestogo", token.?)) {
             token = tokens.next();
             if (token == null) {
                 return error.MissingParameter;
             }
             limits.movestogo = try std.fmt.parseInt(u8, token.?, 10);
-        } else if (std.mem.eql(u8, "depth", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("depth", token.?)) {
             token = tokens.next();
             if (token == null) {
                 return error.MissingParameter;
             }
             limits.depth = try std.fmt.parseInt(u8, token.?, 10);
-        } else if (std.mem.eql(u8, "nodes", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("nodes", token.?)) {
             token = tokens.next();
             if (token == null) {
                 return error.MissingParameter;
             }
             limits.nodes = try std.fmt.parseInt(u32, token.?, 10);
-        } else if (std.mem.eql(u8, "movetime", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("movetime", token.?)) {
             token = tokens.next();
             if (token == null) {
                 return error.MissingParameter;
             }
             limits.movetime = try std.fmt.parseInt(types.TimePoint, token.?, 10);
-        } else if (std.mem.eql(u8, "mate", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("mate", token.?)) {
             token = tokens.next();
             if (token == null) {
                 return error.MissingParameter;
             }
             limits.mate = try std.fmt.parseInt(u8, token.?, 10);
-        } else if (std.mem.eql(u8, "perft", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("perft", token.?)) {
             token = tokens.next();
             if (token == null) {
                 return error.MissingParameter;
             }
             limits.perft = try std.fmt.parseInt(u8, token.?, 10);
-        } else if (std.mem.eql(u8, "infinite", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("infinite", token.?)) {
             limits.infinite = true;
-        } else if (std.mem.eql(u8, "ponder", token.?)) {}
+        } else if (std.ascii.eqlIgnoreCase("ponder", token.?)) {}
     }
 
-    const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
+    const is_960: bool = std.ascii.eqlIgnoreCase(options.get("UCI_Chess960").?.current_value, "true");
 
     var t = try std.time.Timer.start();
     if (limits.perft > 0) {
@@ -430,7 +430,7 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *position.P
         const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
 
         const search_mode: []const u8 = options.get("Search").?.current_value;
-        if (std.mem.eql(u8, search_mode, "Random")) {
+        if (std.ascii.eqlIgnoreCase(search_mode, "Random")) {
             try stdout.print("bestmove ", .{});
             if (is_960) {
                 try (try search.searchRandom(allocator, pos, true)).printUCI(stdout);
@@ -438,13 +438,13 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *position.P
                 try (try search.searchRandom(allocator, pos, false)).printUCI(stdout);
             }
             try stdout.print("\n", .{});
-        } else if (std.mem.eql(u8, search_mode, "NegamaxAlphaBeta")) {
+        } else if (std.ascii.eqlIgnoreCase(search_mode, "NegamaxAlphaBeta")) {
             var move: types.Move = .none;
-            if (std.mem.eql(u8, evaluation_mode, "Materialist")) {
+            if (std.ascii.eqlIgnoreCase(evaluation_mode, "Materialist")) {
                 move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateMaterialist, options);
-            } else if (std.mem.eql(u8, evaluation_mode, "Shannon")) {
+            } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
                 move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateShannon, options);
-            } else if (std.mem.eql(u8, evaluation_mode, "PSQ")) {
+            } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
                 move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateTable, options);
             }
             try stdout.print("bestmove ", .{});

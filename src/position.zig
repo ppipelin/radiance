@@ -1016,10 +1016,10 @@ pub const Position = struct {
         }
 
         const turn: ?[]const u8 = tokens.next();
-        if (turn != null and std.mem.eql(u8, turn.?, "w")) {
+        if (turn != null and std.ascii.eqlIgnoreCase(turn.?, "w")) {
             pos.state.turn = Color.white;
             pos.state.material_key ^= tables.hash_turn;
-        } else if (turn != null and std.mem.eql(u8, turn.?, "b")) {
+        } else if (turn != null and std.ascii.eqlIgnoreCase(turn.?, "b")) {
             pos.state.turn = Color.black;
         } else {
             return error.UnknownTurn;
@@ -1077,7 +1077,7 @@ pub const Position = struct {
         const ep: []const u8 = tokens.next() orelse return pos;
         if (ep.len == 2) {
             for (types.square_to_str, 0..) |sq_str, i| {
-                if (std.mem.eql(u8, ep, sq_str)) {
+                if (std.ascii.eqlIgnoreCase(ep, sq_str)) {
                     const sq_ep: Square = @enumFromInt(i);
                     pos.state.en_passant = sq_ep;
                     pos.state.material_key ^= tables.hash_en_passant[sq_ep.file().index()];
