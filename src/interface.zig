@@ -295,7 +295,7 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
     }
 }
 
-fn cmd_position(pos: *position.Position, tokens: anytype, states: *StateList) !void {
+fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states: *StateList) !void {
     var fen: []const u8 = position.start_fen;
     var token: ?[]const u8 = tokens.next();
     var tokens_rest: ?[]const u8 = null;
@@ -340,7 +340,7 @@ fn cmd_position(pos: *position.Position, tokens: anytype, states: *StateList) !v
     }
 }
 
-fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *position.Position, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
+fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
     limits = Limits{};
     var token: ?[]const u8 = tokens.next();
     g_stop = false;

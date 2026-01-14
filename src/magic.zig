@@ -164,7 +164,7 @@ pub fn initMagic() void {
     }
 }
 
-fn generateMagic(magic_out: *Magic, ptr: [*]Bitboard, sq: types.Square, mask: Bitboard, getAttacks: fn (types.Square, Bitboard) Bitboard, shift: u8, prng: *std.Random.DefaultPrng) void {
+fn generateMagic(noalias magic_out: *Magic, noalias ptr: [*]Bitboard, sq: types.Square, mask: Bitboard, getAttacks: fn (types.Square, Bitboard) Bitboard, shift: u8, prng: *std.Random.DefaultPrng) void {
     var blockers: [1 << 12]Bitboard = @splat(0);
     const blockers_size: usize = tables.computeBlockers(mask, &blockers);
 
