@@ -24,13 +24,13 @@ pub fn main() !void {
 
     const args = try std.process.argsAlloc(allocator);
 
-    if (args.len > 1 and std.mem.eql(u8, args[1], "compute")) {
+    if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "compute")) {
         var iterations: u64 = 1;
         if (args.len > 2) {
             iterations = try std.fmt.parseInt(u64, args[2], 10);
         }
         magic.compute(iterations);
-    } else if (args.len > 1 and std.mem.eql(u8, args[1], "bench")) {
+    } else if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "bench")) {
         try interface.cmd_bench(allocator, stdout);
     } else {
         try interface.loop(allocator, stdin, stdout);
