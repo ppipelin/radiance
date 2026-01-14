@@ -222,12 +222,9 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     }
 
     // Order moves
-    // TODO: improve with undefined buffers
-    const scores: []types.Value = try allocator.alloc(types.Value, move_list.items.len);
-    defer allocator.free(scores);
-    pos.scoreMoves(move_list.items, .prc_queen, scores);
-    position.orderMoves(move_list.items, scores);
-    // pos.orderMoves(move_list.items);
+    var scores: [types.max_moves]types.Value = undefined;
+    pos.scoreMoves(move_list.items, .prc_queen, &scores);
+    position.orderMoves(move_list.items, &scores);
 
     try root_moves.ensureTotalCapacity(allocator, root_moves_len);
     defer root_moves.clearAndFree(allocator);
