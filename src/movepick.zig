@@ -185,11 +185,8 @@ pub const MovePick = struct {
                 std.mem.swap(types.Move, &moves[0], &moves[i]);
             }
         }
-        // TODO: test
         // Last element was brought first in the slice, reorder it
-        // std.debug.print("moves 1 {any}\n", .{moves});
-        // std.mem.rotate(types.Move, moves, 1);
-        // std.debug.print("moves 2 {any}\n", .{moves});
+        std.mem.rotate(types.Move, moves, 1);
         return false;
     }
 };
