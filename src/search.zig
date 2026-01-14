@@ -308,10 +308,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
     interface.nodes_searched += 1;
 
-    // Quiescence search at depth 0 and razoring for non_pv where material difference is more than q+r+b
-    // const razoring_threshold = (tables.material[types.PieceType.queen.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()]);
-    // const razoring: bool = (if (pos.state.turn.isWhite()) pos.score_material_b - pos.score_material_w else pos.score_material_w - pos.score_material_b) >= razoring_threshold;
-    // or (!pv_node and razoring)
+    // Quiescence search at depth 0
     if (current_depth <= 0) {
         // return eval(pos.*);
         return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_nmr);
@@ -334,6 +331,15 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
     if (pos.state.checkers == 0) {
         const static_eval: types.Value = eval(pos.*);
+
+        // Razoring for non_pv where material difference is more than q+r+b
+        // const razoring_threshold: types.Value = tables.material[types.PieceType.queen.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
+        const razoring_threshold: types.Value = alpha - tables.material[types.PieceType.rook.index()] - tables.material[types.PieceType.pawn.index()] * current_depth * current_depth;
+        const razoring: bool = static_eval < razoring_threshold;
+        if (!pv_node and razoring) {
+            // return eval(pos.*);
+            return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_nmr);
+        }
 
         // Reverse Futility Pruning
         if (!pv_node and current_depth <= 8 and beta < types.value_mate_in_max_depth) {
