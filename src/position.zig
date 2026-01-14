@@ -493,63 +493,26 @@ pub const Position = struct {
             var from_bb: Bitboard = self.bb_pieces[pt.index()] & bb_them;
             while (from_bb != 0) {
                 const from: Square = types.popLsb(&from_bb);
-                // Extract the king with ^ our_king.sqToBB() as it cannot move to a place that it covers
-                if (is_960) {
-                    if (pt == PieceType.queen and from.rank() == our_king.rank()) {
-                        const tmp: Bitboard = switch (self.state.turn) {
-                            inline else => |turn| tables.getAttacks(.rook, turn.invert(), from, bb_all ^ our_king.sqToBB()),
-                        };
-                        self.state.attacked_horizontal |= tmp;
-                        self.state.attacked |= tmp | switch (self.state.turn) {
-                            inline else => |turn| tables.getAttacks(.bishop, turn.invert(), from, bb_all ^ our_king.sqToBB()),
-                        };
-                    } else if (pt == PieceType.rook and from.rank() == our_king.rank()) {
-                        const tmp: Bitboard = switch (self.state.turn) {
-                            inline else => |turn| tables.getAttacks(.rook, turn.invert(), from, bb_all ^ our_king.sqToBB()),
-                        };
-                        self.state.attacked_horizontal |= tmp;
-                        self.state.attacked |= tmp;
-                    } else {
+
+                // Extract the king as it cannot move to a place that it covers
+                const blockers: Bitboard = bb_all ^ our_king.sqToBB();
+
+                if (is_960 and from.rank() == our_king.rank() and (pt == PieceType.queen or pt == PieceType.rook)) {
+                    const tmp: Bitboard = switch (self.state.turn) {
+                        inline else => |turn| tables.getAttacks(.rook, turn.invert(), from, blockers),
+                    };
+                    self.state.attacked_horizontal |= tmp;
+                    self.state.attacked |= tmp;
+                    if (pt == PieceType.queen) {
                         self.state.attacked |= switch (self.state.turn) {
-                            .white => switch (pt) {
-                                types.PieceType.none => unreachable,
-                                types.PieceType.pawn => tables.getAttacks(.pawn, .black, from, bb_all ^ our_king.sqToBB()),
-                                types.PieceType.knight => tables.getAttacks(.knight, .black, from, bb_all ^ our_king.sqToBB()),
-                                types.PieceType.bishop => tables.getAttacks(.bishop, .black, from, bb_all ^ our_king.sqToBB()),
-                                types.PieceType.rook => tables.getAttacks(.rook, .black, from, bb_all ^ our_king.sqToBB()),
-                                types.PieceType.queen => tables.getAttacks(.queen, .black, from, bb_all ^ our_king.sqToBB()),
-                                types.PieceType.king => tables.getAttacks(.king, .black, from, bb_all ^ our_king.sqToBB()),
-                            },
-                            .black => switch (pt) {
-                                types.PieceType.none => unreachable,
-                                types.PieceType.pawn => tables.getAttacks(.pawn, .white, from, bb_all ^ our_king.sqToBB()),
-                                types.PieceType.knight => tables.getAttacks(.knight, .white, from, bb_all ^ our_king.sqToBB()),
-                                types.PieceType.bishop => tables.getAttacks(.bishop, .white, from, bb_all ^ our_king.sqToBB()),
-                                types.PieceType.rook => tables.getAttacks(.rook, .white, from, bb_all ^ our_king.sqToBB()),
-                                types.PieceType.queen => tables.getAttacks(.queen, .white, from, bb_all ^ our_king.sqToBB()),
-                                types.PieceType.king => tables.getAttacks(.king, .white, from, bb_all ^ our_king.sqToBB()),
-                            },
+                            inline else => |turn| tables.getAttacks(.bishop, turn.invert(), from, blockers),
                         };
                     }
                 } else {
                     self.state.attacked |= switch (self.state.turn) {
-                        .white => switch (pt) {
-                            types.PieceType.none => unreachable,
-                            types.PieceType.pawn => tables.getAttacks(.pawn, .black, from, bb_all ^ our_king.sqToBB()),
-                            types.PieceType.knight => tables.getAttacks(.knight, .black, from, bb_all ^ our_king.sqToBB()),
-                            types.PieceType.bishop => tables.getAttacks(.bishop, .black, from, bb_all ^ our_king.sqToBB()),
-                            types.PieceType.rook => tables.getAttacks(.rook, .black, from, bb_all ^ our_king.sqToBB()),
-                            types.PieceType.queen => tables.getAttacks(.queen, .black, from, bb_all ^ our_king.sqToBB()),
-                            types.PieceType.king => tables.getAttacks(.king, .black, from, bb_all ^ our_king.sqToBB()),
-                        },
-                        .black => switch (pt) {
-                            types.PieceType.none => unreachable,
-                            types.PieceType.pawn => tables.getAttacks(.pawn, .white, from, bb_all ^ our_king.sqToBB()),
-                            types.PieceType.knight => tables.getAttacks(.knight, .white, from, bb_all ^ our_king.sqToBB()),
-                            types.PieceType.bishop => tables.getAttacks(.bishop, .white, from, bb_all ^ our_king.sqToBB()),
-                            types.PieceType.rook => tables.getAttacks(.rook, .white, from, bb_all ^ our_king.sqToBB()),
-                            types.PieceType.queen => tables.getAttacks(.queen, .white, from, bb_all ^ our_king.sqToBB()),
-                            types.PieceType.king => tables.getAttacks(.king, .white, from, bb_all ^ our_king.sqToBB()),
+                        inline else => |turn| switch (pt) {
+                            .none => unreachable,
+                            inline else => |pt_current| tables.getAttacks(pt_current, turn.invert(), from, blockers),
                         },
                     };
                 }
@@ -695,13 +658,8 @@ pub const Position = struct {
 
                     // Careful: bb_us not excluded
                     var to: Bitboard = switch (pt) {
-                        else => unreachable,
-                        types.PieceType.pawn => tables.getAttacks(.pawn, color, from, bb_all),
-                        types.PieceType.knight => tables.getAttacks(.knight, color, from, bb_all),
-                        types.PieceType.bishop => tables.getAttacks(.bishop, color, from, bb_all),
-                        types.PieceType.rook => tables.getAttacks(.rook, color, from, bb_all),
-                        types.PieceType.queen => tables.getAttacks(.queen, color, from, bb_all),
-                        types.PieceType.king => tables.getAttacks(.king, color, from, bb_all),
+                        .none => unreachable,
+                        inline else => |pt_current| tables.getAttacks(pt_current, color, from, bb_all),
                     };
 
                     // Only keep moves aligned with king
@@ -749,13 +707,8 @@ pub const Position = struct {
                 // Careful: bb_us not excluded
                 var to: Bitboard =
                     switch (pt) {
-                        types.PieceType.none => unreachable,
-                        types.PieceType.pawn => tables.getAttacks(.pawn, color, from, bb_all),
-                        types.PieceType.knight => tables.getAttacks(.knight, color, from, bb_all),
-                        types.PieceType.bishop => tables.getAttacks(.bishop, color, from, bb_all),
-                        types.PieceType.rook => tables.getAttacks(.rook, color, from, bb_all),
-                        types.PieceType.queen => tables.getAttacks(.queen, color, from, bb_all),
-                        types.PieceType.king => tables.getAttacks(.king, color, from, bb_all),
+                        .none => unreachable,
+                        inline else => |pt_current| tables.getAttacks(pt_current, color, from, bb_all),
                     };
 
                 if (gen_type == .all or gen_type == .capture) { // Can be a promotion

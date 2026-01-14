@@ -65,12 +65,8 @@ fn evaluateShannonColor(pos: position.Position, comptime col: types.Color) types
         while (from_bb != 0) {
             const from: types.Square = types.popLsb(&from_bb);
             const attackers: types.Bitboard = switch (pt) {
-                else => unreachable,
-                types.PieceType.knight => tables.getAttacks(.knight, col, from, bb_all),
-                types.PieceType.bishop => tables.getAttacks(.bishop, col, from, bb_all),
-                types.PieceType.rook => tables.getAttacks(.rook, col, from, bb_all),
-                types.PieceType.queen => tables.getAttacks(.queen, col, from, bb_all),
-                types.PieceType.king => tables.getAttacks(.king, col, from, bb_all),
+                .none => unreachable,
+                inline else => |pt_current| tables.getAttacks(pt_current, col, from, bb_all),
             };
             mobility += @popCount(attackers & ~bb_us);
         }
