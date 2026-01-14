@@ -636,7 +636,7 @@ pub inline fn lsb(x: Bitboard) u7 {
     return @ctz(x);
 }
 
-pub inline fn popLsb(x: *Bitboard) Square {
+pub inline fn popLsb(noalias x: *Bitboard) Square {
     const l: u7 = lsb(x.*);
     x.* &= x.* - 1;
     return @enumFromInt(l);

@@ -25,7 +25,7 @@ pub const MovePick = struct {
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
 
-    pub fn nextMove(self: *MovePick, allocator: std.mem.Allocator, pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
+    pub fn nextMove(noalias self: *MovePick, allocator: std.mem.Allocator, noalias pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
 
@@ -166,7 +166,7 @@ pub const MovePick = struct {
         return types.Move.none;
     }
 
-    pub fn deinit(self: *MovePick, allocator: std.mem.Allocator) void {
+    pub fn deinit(noalias self: *MovePick, allocator: std.mem.Allocator) void {
         self.moves_capture.clearAndFree(allocator);
         self.moves_quiet.clearAndFree(allocator);
         self.stage = 0;

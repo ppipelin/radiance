@@ -50,7 +50,7 @@ inline fn outOfTime(limits: interface.Limits) bool {
     return elapsed(limits) > remaining_computed;
 }
 
-pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *position.Position, depth: u8, comptime is_960: bool, verbose: bool) !u64 {
+pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, depth: u8, comptime is_960: bool, verbose: bool) !u64 {
     var nodes: u64 = 0;
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
@@ -90,7 +90,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *positio
     return nodes;
 }
 
-pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u8, comptime is_960: bool) !u64 {
+pub fn perftTest(allocator: std.mem.Allocator, noalias pos: *position.Position, depth: u8, comptime is_960: bool) !u64 {
     var nodes: u64 = 0;
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
@@ -145,7 +145,7 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
     return nodes;
 }
 
-pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, comptime is_960: bool) !types.Move {
+pub fn searchRandom(allocator: std.mem.Allocator, noalias pos: *position.Position, comptime is_960: bool) !types.Move {
     var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
     defer move_list.deinit(allocator);
 
@@ -166,7 +166,7 @@ pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, compt
     return move_list.items[rand.intRangeAtMost(u8, 0, len - 1)];
 }
 
-pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !types.Move {
+pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !types.Move {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
     if (limits.movetime > 0) {
@@ -299,7 +299,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     return move;
 }
 
-fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Stack, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, current_depth: u8, comptime is_960: bool, is_nmr: bool) !types.Value {
+fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, current_depth: u8, comptime is_960: bool, is_nmr: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
@@ -554,7 +554,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]St
     return best_score;
 }
 
-fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, ss: [*]Stack, pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, is_nmr: bool) !types.Value {
+fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, is_nmr: bool) !types.Value {
     const pv_node: bool = nodetype == NodeType.pv;
 
     var alpha = alpha_;
