@@ -88,7 +88,7 @@ pub const Position = struct {
 
     state: *State = undefined,
 
-    pub fn init(state: *State) Position {
+    pub fn init(noalias state: *State) Position {
         state.* = State{};
         var pos: Position = Position{};
 
@@ -98,7 +98,7 @@ pub const Position = struct {
     }
 
     /// Remove from board and bitboards
-    pub inline fn remove(self: *Position, p: Piece, sq: Square) void {
+    pub inline fn remove(noalias self: *Position, p: Piece, sq: Square) void {
         self.board[sq.index()] = Piece.none;
         const removeFilter: Bitboard = ~sq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] &= removeFilter;
@@ -116,7 +116,7 @@ pub const Position = struct {
     }
 
     /// Add to board and bitboards
-    pub inline fn add(self: *Position, p: Piece, sq: Square) void {
+    pub inline fn add(noalias self: *Position, p: Piece, sq: Square) void {
         self.board[sq.index()] = p;
         const addFilter: Bitboard = sq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] |= addFilter;
@@ -139,7 +139,7 @@ pub const Position = struct {
         }
     }
 
-    inline fn removeAdd(self: *Position, p: Piece, removeSq: Square, addSq: Square) void {
+    inline fn removeAdd(noalias self: *Position, p: Piece, removeSq: Square, addSq: Square) void {
         if (removeSq == addSq)
             return;
         self.board[removeSq.index()] = Piece.none;
@@ -162,7 +162,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn movePiece(self: *Position, move: Move, state: *State) !void {
+    pub fn movePiece(noalias self: *Position, move: Move, noalias state: *State) !void {
         // Reset data and set as previous
         state.turn = self.state.turn;
         state.castle_info = self.state.castle_info;
@@ -349,7 +349,7 @@ pub const Position = struct {
         self.updateCheckersPinned();
     }
 
-    pub fn unMovePiece(self: *Position, move: Move) !void {
+    pub fn unMovePiece(noalias self: *Position, move: Move) !void {
         const from: Square = move.getFrom();
         var to: Square = move.getTo();
         var to_piece: Piece = self.board[to.index()];
@@ -396,7 +396,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn moveNull(self: *Position, state: *State) !void {
+    pub fn moveNull(noalias self: *Position, noalias state: *State) !void {
         // Reset data and set as previous
         state.turn = self.state.turn;
         state.castle_info = self.state.castle_info;
@@ -423,11 +423,11 @@ pub const Position = struct {
         self.updateCheckersPinned();
     }
 
-    pub fn unMoveNull(self: *Position) !void {
+    pub fn unMoveNull(noalias self: *Position) !void {
         self.state = self.state.previous.?;
     }
 
-    pub fn updateCheckersPinned(self: *Position) void {
+    pub fn updateCheckersPinned(noalias self: *Position) void {
         const bb_us: Bitboard = self.bb_colors[self.state.turn.index()];
         const bb_them: Bitboard = self.bb_colors[self.state.turn.invert().index()];
 
@@ -476,7 +476,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn updateAttacked(self: *Position, comptime is_960: bool) void {
+    pub fn updateAttacked(noalias self: *Position, comptime is_960: bool) void {
         const bb_us: Bitboard = self.bb_colors[self.state.turn.index()];
         const bb_them: Bitboard = self.bb_colors[self.state.turn.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
@@ -520,7 +520,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn generateLegalMoves(self: *Position, allocator: std.mem.Allocator, comptime gen_type: GenerationType, comptime color: Color, list: *std.ArrayListUnmanaged(Move), comptime is_960: bool) void {
+    pub fn generateLegalMoves(noalias self: *Position, allocator: std.mem.Allocator, comptime gen_type: GenerationType, comptime color: Color, noalias list: *std.ArrayListUnmanaged(Move), comptime is_960: bool) void {
         const bb_us: Bitboard = self.bb_colors[color.index()];
         const bb_them: Bitboard = self.bb_colors[color.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
@@ -828,7 +828,7 @@ pub const Position = struct {
         writer.print("fen: {s}\n", .{fen}) catch unreachable;
     }
 
-    pub fn getFen(self: *const Position, fen: []u8) []u8 {
+    pub fn getFen(noalias self: *const Position, fen: []u8) []u8 {
         std.debug.assert(fen.len >= 90);
         var i: i8 = Square.a8.index();
         var cnt: usize = 0;
@@ -919,7 +919,7 @@ pub const Position = struct {
     }
 
     // Maybe sq should be a square and use sq.add()
-    pub fn setFen(state: *State, fen: []const u8) !Position {
+    pub fn setFen(noalias state: *State, fen: []const u8) !Position {
         state.* = State{};
         var pos: Position = Position.init(state);
         var sq: i32 = Square.a8.index();
