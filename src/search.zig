@@ -61,8 +61,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, pos: *positio
 
     pos.updateAttacked(is_960);
     switch (pos.state.turn) {
-        .white => pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &move_list, is_960),
-        .black => pos.generateLegalMoves(allocator, types.GenerationType.all, .black, &move_list, is_960),
+        inline else => |turn| pos.generateLegalMoves(allocator, types.GenerationType.all, turn, &move_list, is_960),
     }
 
     if (depth == 1) {
@@ -102,13 +101,9 @@ pub fn perftTest(allocator: std.mem.Allocator, pos: *position.Position, depth: u
 
     pos.updateAttacked(is_960);
     switch (pos.state.turn) {
-        .white => {
-            pos.generateLegalMoves(allocator, .capture, .white, &move_list, is_960);
-            pos.generateLegalMoves(allocator, .quiet, .white, &move_list, is_960);
-        },
-        .black => {
-            pos.generateLegalMoves(allocator, .capture, .black, &move_list, is_960);
-            pos.generateLegalMoves(allocator, .quiet, .black, &move_list, is_960);
+        inline else => |turn| {
+            pos.generateLegalMoves(allocator, .capture, turn, &move_list, is_960);
+            pos.generateLegalMoves(allocator, .quiet, turn, &move_list, is_960);
         },
     }
 
@@ -156,8 +151,7 @@ pub fn searchRandom(allocator: std.mem.Allocator, pos: *position.Position, compt
 
     pos.updateAttacked(is_960);
     switch (pos.state.turn) {
-        .white => pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &move_list, is_960),
-        .black => pos.generateLegalMoves(allocator, types.GenerationType.all, .black, &move_list, is_960),
+        inline else => |turn| pos.generateLegalMoves(allocator, types.GenerationType.all, turn, &move_list, is_960),
     }
 
     if (move_list.items.len == 0)
@@ -204,13 +198,8 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
         pos.updateAttacked(false);
     }
     switch (is_960) {
-        true => switch (pos.state.turn) {
-            .white => pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &move_list, true),
-            .black => pos.generateLegalMoves(allocator, types.GenerationType.all, .black, &move_list, true),
-        },
-        false => switch (pos.state.turn) {
-            .white => pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &move_list, false),
-            .black => pos.generateLegalMoves(allocator, types.GenerationType.all, .black, &move_list, false),
+        inline else => |is_960_current| switch (pos.state.turn) {
+            inline else => |turn| pos.generateLegalMoves(allocator, types.GenerationType.all, turn, &move_list, is_960_current),
         },
     }
 
