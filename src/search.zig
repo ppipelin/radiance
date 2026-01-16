@@ -347,7 +347,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             tt_value += ss[0].ply;
         }
 
-        if (!is_nmr and !pv_node and tt_depth > depth - @intFromBool(tt_value <= beta)) {
+        if (!is_nmr and !pv_node and tt_depth > depth -| @intFromBool(tt_value <= beta)) {
             switch (tt_bound) {
                 .exact => score = tt_value,
                 .lowerbound => alpha = @max(alpha, tt_value),
@@ -490,23 +490,23 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, d - 1, is_960, false);
                     // Failed so roll back to full-depth null window
                     if (score > alpha and depth > d) {
-                        score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
+                        score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth -| 1, is_960, false);
                     }
                 }
                 // In case non PV search are called without LMR, null window search at current depth
                 else if (!pv_node or move_count > 1) {
-                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
+                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth -| 1, is_960, false);
                 }
                 // Full-depth search
                 // Only for first move (PVS) or after a fail high
                 if (pv_node and (move_count == 1 or score > alpha)) {
-                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
+                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, depth -| 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
                     // Let's assert we don't store draw (repetition)
                     if (score != types.value_draw) {
-                        if (found == null or tt_depth <= depth - 1) {
+                        if (found == null or tt_depth <= depth -| 1) {
                             const tt_flag: types.TableBound = if (score >= beta) .lowerbound else if (alpha != alpha_) .exact else .upperbound;
 
-                            try tables.transposition_table.put(allocator, key, .{ score, depth - 1, move, tt_flag });
+                            try tables.transposition_table.put(allocator, key, .{ score, depth -| 1, move, tt_flag });
                         }
                     }
                 }
@@ -567,8 +567,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                         }
                     }
                     if (score != types.value_draw) {
-                        if (found == null or tt_depth <= depth - 1) {
-                            try tables.transposition_table.put(allocator, key, .{ score, depth - 1, move, .lowerbound });
+                        if (found == null or tt_depth <= depth -| 1) {
+                            try tables.transposition_table.put(allocator, key, .{ score, depth -| 1, move, .lowerbound });
                         }
                     }
                     break;
