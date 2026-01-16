@@ -374,7 +374,19 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     if (alpha >= beta) return alpha;
 
     if (pos.state.checkers == 0) {
-        const static_eval: types.Value = eval(pos.*);
+        var static_eval: types.Value = -types.value_none;
+
+        if (tt_hit) {
+            // TODO: Handle bound if needed
+            // switch (tt_bound) {
+            //     .exact => static_eval = tt_value,
+            //     .lowerbound =>,
+            //     .upperbound =>,
+            // }
+            static_eval = tt_value;
+        } else {
+            static_eval = eval(pos.*);
+        }
 
         // Razoring for non_pv where material difference is more than q+r+b
         // const razoring_threshold: types.Value = tables.material[types.PieceType.queen.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
