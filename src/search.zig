@@ -326,6 +326,50 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     var move_count_quiets: u16 = 0;
     var move_count_captures: u16 = 0;
 
+    // Transposition table probe
+    const key: tables.Key = pos.state.material_key;
+    const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(key);
+    const tt_hit: bool = found != null;
+    var tt_value: types.Value = -types.value_none;
+    var tt_depth: u8 = 0;
+    var tt_move: types.Move = .none;
+    var tt_bound: types.TableBound = .upperbound;
+    if (tt_hit) {
+        tt_value = found.?[0];
+        tt_depth = found.?[1];
+        tt_move = found.?[2];
+        tt_bound = found.?[3];
+        // Update the mate score retrieved from the table to consider the current ply
+        if (score > types.value_mate_in_max_depth) {
+            tt_value -= ss[0].ply;
+        } else if (score < types.value_mated_in_max_depth) {
+            tt_value += ss[0].ply;
+        }
+
+        if (!is_nmr and !pv_node and tt_depth > current_depth - @intFromBool(tt_value <= beta)) {
+            switch (tt_bound) {
+                .exact => score = tt_value,
+                .lowerbound => alpha = @max(alpha, tt_value),
+                .upperbound => beta = @min(beta, tt_value),
+            }
+            if (alpha >= beta) {
+                return alpha;
+            }
+
+            // At non-PV nodes check for early transposition table cutoff
+            if (tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
+
+                // TODO: Update histories
+
+                if (pos.state.full_move < 96) {
+                    return tt_value;
+                }
+            }
+        }
+
+        interface.transposition_used += 1;
+    }
+
     // Pruning
     if (alpha >= beta) return alpha;
 
@@ -365,7 +409,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         }
     }
 
-    var mp: movepick.MovePick = .{};
+    var mp: movepick.MovePick = .{ .tt_move = tt_move };
     defer mp.deinit(allocator);
 
     var pv_move: types.Move = types.Move.none;
@@ -394,8 +438,6 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             ss[1].pv = null;
         }
 
-        const key: tables.Key = pos.state.material_key;
-
         // Prunings per move
         // Mate pruning, we cannot get a better mate at this ply
         if (beta < -types.value_mate + ss[0].ply + 1) {
@@ -414,30 +456,6 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         if (pos.state.repetition < 0) {
             score = types.value_draw;
         } else {
-            const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(key);
-            if (found != null) {
-                var tt_eval = found.?[0];
-                // Update the mate score retrieved from the table to consider the current ply
-                if (score > types.value_mate_in_max_depth) {
-                    tt_eval -= ss[0].ply;
-                } else if (score < types.value_mated_in_max_depth) {
-                    tt_eval += ss[0].ply;
-                }
-
-                if (!is_nmr and !pv_node and found.?[1] > current_depth - 1) {
-                    switch (found.?[3]) {
-                        .exact => score = tt_eval,
-                        .lowerbound => alpha = @max(alpha, tt_eval),
-                        .upperbound => beta = @min(beta, tt_eval),
-                    }
-                    if (alpha >= beta) {
-                        try pos.unMovePiece(move);
-                        return alpha;
-                    }
-                }
-                interface.transposition_used += 1;
-            }
-
             if (score == -types.value_none) {
                 // Passed pawns moves are not reduced
                 const from_piece: types.Piece = pos.board[move.getFrom().index()];
@@ -467,7 +485,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                     score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
                     // Let's assert we don't store draw (repetition)
                     if (score != types.value_draw) {
-                        if (found == null or found.?[1] <= current_depth - 1) {
+                        if (found == null or tt_depth <= current_depth - 1) {
                             const tt_flag: types.TableBound = if (score >= beta) .lowerbound else if (alpha != alpha_) .exact else .upperbound;
 
                             try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move, tt_flag });
@@ -531,8 +549,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                         }
                     }
                     if (score != types.value_draw) {
-                        const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(key);
-                        if (found == null or found.?[1] <= current_depth - 1) {
+                        if (found == null or tt_depth <= current_depth - 1) {
                             try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move, .lowerbound });
                         }
                     }
