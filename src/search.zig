@@ -604,6 +604,34 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
         ss[0].pv.?[0] = types.Move.none;
     }
 
+    // Transposition table probe
+    const key: tables.Key = pos.state.material_key;
+    const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(key);
+    const tt_hit: bool = found != null;
+    var tt_value: types.Value = -types.value_none;
+    var tt_depth: u8 = 0;
+    var tt_move: types.Move = .none;
+    var tt_bound: types.TableBound = .upperbound;
+    if (tt_hit) {
+        tt_value = found.?[0];
+        tt_depth = found.?[1];
+        tt_move = found.?[2];
+        tt_bound = found.?[3];
+        // Update the mate score retrieved from the table to consider the current ply
+        if (score > types.value_mate_in_max_depth) {
+            tt_value -= ss[0].ply;
+        } else if (score < types.value_mated_in_max_depth) {
+            tt_value += ss[0].ply;
+        }
+
+        // At non-PV nodes check for early transposition table cutoff
+        if (!is_nmr and !pv_node and tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
+            return tt_value;
+        }
+
+        interface.transposition_used += 1;
+    }
+
     // Delta pruning margin
     const margin: types.Value = 200;
 
