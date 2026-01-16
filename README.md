@@ -16,10 +16,9 @@
 
 - Fancy Magic Bitboards
 - [Staged](https://www.chessprogramming.org/Move_Generation#Staged_Move_Generation) Move Generation
-- Fancy Magic Bitboards For Sliders
 - Transposition Table Move Ordering
 - Principal Variation Move Ordering
-- MVV-LVA
+- [Static Exchange Evaluation](https://www.chessprogramming.org/Static_Exchange_Evaluation)
 - [Chess960](https://www.chessprogramming.org/Chess960) support
 
 ## Search
@@ -30,6 +29,9 @@
 - [Late Move Reductions](https://www.chessprogramming.org/Late_Move_Reductions)
 - [Null Move Pruning](https://www.chessprogramming.org/Null_Move_Pruning)
 - [Reverse Futility Pruning](https://www.chessprogramming.org/Reverse_Futility_Pruning)
+- Mate pruning
+- Razoring
+- Internal iterative reductions
 - [Quiescence Search](https://www.chessprogramming.org/Quiescence_Search)
 - Threefold Repetition
 - Time Management
@@ -52,16 +54,17 @@ CCRL [blitz benchmark](https://computerchess.org.uk/ccrl/404/cgi/compare_engines
 
 | Rank | Name             | CCRL  |  Elo |  + |  - | games | score | oppo. | draws |
 | ---- | ---------------- | ----- | ---- | -- | -- | ----- | ----- | ----- | ----- |
-|    1 | [radiance_4.1]   |       | 1733 | 47 | 43 |   322 |   88% |  1343 |   10% |
-|    2 | [radiance_4.0.1] |       | 1591 | 10 | 10 |  9618 |   91% |  1059 |    6% |
-|    3 | [radiance_3.5]   |  1326 | 1326 |  8 |  8 |  9616 |   70% |  1092 |   11% |
-|    4 | [radiance_3.4]   |  1300 | 1302 |  8 |  8 |  9616 |   68% |  1095 |   11% |
-|    5 | [radiance_3.3]   |       | 1250 |  8 |  7 |  9615 |   63% |  1101 |   11% |
-|    6 | [radiance_3.2]   |       | 1239 |  8 |  7 |  9615 |   62% |  1103 |   12% |
-|    7 | [radiance_3.1.1] |  1116 | 1070 |  8 |  8 |  9552 |   45% |  1120 |    9% |
-|    8 | [radiance_3.0.1] |       |  793 |  9 |  9 |  9552 |   20% |  1155 |    9% |
-|    9 | [radiance_2.4]   |   866 |  751 |  9 |  9 |  9552 |   16% |  1160 |   10% |
-|   10 | [radiance_2.3]   |   865 |  707 |  9 |  9 |  9552 |   13% |  1166 |    9% |
+|    1 | [radiance_4.2]   |       | 1844 | 10 | 10 |  4096 |   81% |  1594 |   22% |
+|    2 | [radiance_4.1]   |  1674 | 1673 | 10 | 10 |  5371 |   65% |  1489 |   18% |
+|    3 | [radiance_4.0.1] |       | 1514 |  8 |  8 | 12264 |   75% |  1165 |    8% |
+|    4 | [radiance_3.5]   |  1321 | 1256 |  8 |  7 | 10216 |   66% |  1059 |   11% |
+|    5 | [radiance_3.4]   |  1300 | 1232 |  8 |  8 | 10218 |   64% |  1062 |   11% |
+|    6 | [radiance_3.3]   |       | 1180 |  8 |  8 | 10216 |   59% |  1068 |   11% |
+|    7 | [radiance_3.2]   |       | 1169 |  8 |  7 | 10215 |   58% |  1070 |   11% |
+|    8 | [radiance_3.1.1] |  1114 |  999 |  8 |  8 |  9552 |   45% |  1049 |    9% |
+|    9 | [radiance_3.0.1] |       |  722 |  9 |  9 |  9552 |   20% |  1084 |    9% |
+|   10 | [radiance_2.4]   |       |  681 |  9 |  9 |  9552 |   16% |  1089 |   10% |
+|   11 | [radiance_2.3]   |   864 |  636 |  9 |  9 |  9552 |   13% |  1095 |    9% |
 
 
 ## Getting started

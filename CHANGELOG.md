@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2] - 2026-01-17
+
+### Added
+
+- Internal iterative reductions
+- Razoring
+- `noalias` keyword for some pointers
+- Static Exchange Evaluation, use in movepick and quiesce
+- Using a best_move
+- Mate pruning
+- Newer benchmark positions with tactical wins
+
+### Changed
+
+- Transposition table probing timing
+- Inputs to be case insensitive
+- Pins are computed for both sides
+- History table simplifications
+- Support Zig 15.2
+- Use `comptime` for Color parameters, chess 960 boolean, Movepick flags and `getAttacks`
+- Use `@splat` for initialization
+- Display min and max for `uci` options
+- Use ReleaseSafe for release
+
+### Removed
+
+- Negative move score variable in movepick
+- Allocator removed in `computeBlockers`
+- Allocator removed in movepick
+- Allocator removed in `iterativeDeepening`
+
+
 ## [4.1] - 2025-08-16
 
 ### Added
@@ -20,8 +52,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Use real evaluation for `static_eval`
-- Display min and max for `uci` options
-- Use ReleaseSafe for release
 
 ## [4.0.1] - 2025-04-17
 
@@ -292,7 +322,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - UCI `position` command
 - `Random` search
 
-[Unreleased]: https://github.com/ppipelin/radiance/compare/4.1...HEAD
+[Unreleased]: https://github.com/ppipelin/radiance/compare/4.2...HEAD
+[4.2]: https://github.com/ppipelin/radiance/compare/4.1...4.2
 [4.1]: https://github.com/ppipelin/radiance/compare/4.0.1...4.1
 [4.0.1]: https://github.com/ppipelin/radiance/compare/4.0...4.0.1
 [4.0]: https://github.com/ppipelin/radiance/tag/4.0
