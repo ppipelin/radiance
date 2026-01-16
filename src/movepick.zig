@@ -35,6 +35,9 @@ pub const MovePick = struct {
                 return self.tt_move;
             }
 
+            if (self.tt_move != types.Move.none)
+                return self.tt_move;
+
             const found: ?std.meta.Tuple(&[_]type{ types.Value, u8, types.Move, types.TableBound }) = tables.transposition_table.get(pos.state.material_key);
             if (found != null) {
                 const move: types.Move = found.?[2];
