@@ -5,7 +5,7 @@ const std = @import("std");
 const tables = @import("tables.zig");
 
 pub const major = 4;
-pub const minor = 1;
+pub const minor = 2;
 pub const patch = 0;
 
 pub fn computeVersion() []const u8 {
