@@ -420,6 +420,11 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                 return null_score;
             }
         }
+
+        // Internal iterative reductions
+        if (pv_node and depth >= 6 and !tt_hit) {
+            depth -|= 1;
+        }
     }
 
     var mp: movepick.MovePick = .{ .tt_move = tt_move };
