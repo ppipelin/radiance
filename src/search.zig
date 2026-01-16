@@ -232,8 +232,8 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     interface.seldepth = 0;
     interface.transposition_used = 0;
 
-    var current_depth: u8 = 1;
-    while (current_depth <= limits.depth) : (current_depth += 1) {
+    var depth: u8 = 1;
+    while (depth <= limits.depth) : (depth += 1) {
         // Some variables have to be reset
         for (root_moves.items) |*root_move| {
             root_move.previous_score = root_move.score;
@@ -253,11 +253,11 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
         while (true) {
             var score: types.Value = 0;
             if (is_960) {
-                score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, current_depth, true, false);
+                score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, true, false);
             } else {
-                score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, current_depth, false, false);
+                score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, false, false);
             }
-            if (current_depth > 1 and outOfTime(limits))
+            if (depth > 1 and outOfTime(limits))
                 break;
 
             // In case of failing low/high increase aspiration window and re-search, otherwise exit the loop.
@@ -280,12 +280,12 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
         // Even if outofTime we keep a better move if there is one
         std.sort.insertion(RootMove, root_moves.items, {}, RootMove.sort);
 
-        if (current_depth > 1 and outOfTime(limits)) {
+        if (depth > 1 and outOfTime(limits)) {
             break;
         }
 
         try stdout.print("info failedHighCnt {} alpha {} beta {}\n", .{ failed_high_cnt, alpha, beta });
-        try info(stdout, limits, current_depth, root_moves.items[0].score, options);
+        try info(stdout, limits, depth, root_moves.items[0].score, options);
         try stdout.flush();
     }
 
@@ -299,17 +299,18 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     return move;
 }
 
-fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, current_depth: u8, comptime is_960: bool, is_nmr: bool) !types.Value {
+fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: u8, comptime is_960: bool, is_nmr: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
     var alpha = alpha_;
     var beta = beta_;
+    var depth = depth_;
 
     interface.nodes_searched += 1;
 
     // Quiescence search at depth 0
-    if (current_depth <= 0) {
+    if (depth <= 0) {
         // return eval(pos.*);
         return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_nmr);
     }
@@ -346,7 +347,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             tt_value += ss[0].ply;
         }
 
-        if (!is_nmr and !pv_node and tt_depth > current_depth - @intFromBool(tt_value <= beta)) {
+        if (!is_nmr and !pv_node and tt_depth > depth - @intFromBool(tt_value <= beta)) {
             switch (tt_bound) {
                 .exact => score = tt_value,
                 .lowerbound => alpha = @max(alpha, tt_value),
@@ -390,7 +391,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
         // Razoring for non_pv where material difference is more than q+r+b
         // const razoring_threshold: types.Value = tables.material[types.PieceType.queen.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
-        const razoring_threshold: types.Value = alpha - tables.material[types.PieceType.rook.index()] - tables.material[types.PieceType.pawn.index()] * current_depth * current_depth;
+        const razoring_threshold: types.Value = alpha - tables.material[types.PieceType.rook.index()] - tables.material[types.PieceType.pawn.index()] * depth * depth;
         const razoring: bool = static_eval < razoring_threshold;
         if (!pv_node and razoring) {
             // return eval(pos.*);
@@ -398,20 +399,20 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         }
 
         // Reverse Futility Pruning
-        if (!pv_node and current_depth <= 8 and beta < types.value_mate_in_max_depth) {
-            const futility_margin: types.Value = @as(types.Value, current_depth) * 80;
+        if (!pv_node and depth <= 8 and beta < types.value_mate_in_max_depth) {
+            const futility_margin: types.Value = @as(types.Value, depth) * 80;
             if (static_eval - futility_margin >= beta)
                 return beta;
         }
 
         // Null move pruning
-        if (!is_nmr and current_depth >= 3 and !pos.endgame(pos.state.turn.invert()) and static_eval > beta) {
+        if (!is_nmr and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and static_eval > beta) {
             const tapered: u8 = @intCast(@min(@divTrunc(static_eval -| beta, 200), 6));
-            const r: u8 = tapered + @divTrunc(current_depth, 3) + 5;
+            const r: u8 = tapered + @divTrunc(depth, 3) + 5;
             try pos.moveNull(&s);
-            const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, current_depth -| r, is_960, true);
+            const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, depth -| r, is_960, true);
             try pos.unMoveNull();
-            if (current_depth > 1 and outOfTime(limits))
+            if (depth > 1 and outOfTime(limits))
                 return -types.value_none;
 
             // Do not return unproven mate
@@ -478,29 +479,29 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                 }
 
                 // Late moves reduction (LMR) before full
-                if (current_depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
+                if (depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
                     // Reduced LMR
-                    const d: u8 = @max(1, current_depth -| 4);
+                    const d: u8 = @max(1, depth -| 4);
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, d - 1, is_960, false);
                     // Failed so roll back to full-depth null window
-                    if (score > alpha and current_depth > d) {
-                        score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1, is_960, false);
+                    if (score > alpha and depth > d) {
+                        score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
                     }
                 }
                 // In case non PV search are called without LMR, null window search at current depth
                 else if (!pv_node or move_count > 1) {
-                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, current_depth - 1, is_960, false);
+                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
                 }
                 // Full-depth search
                 // Only for first move (PVS) or after a fail high
                 if (pv_node and (move_count == 1 or score > alpha)) {
-                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, current_depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
+                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
                     // Let's assert we don't store draw (repetition)
                     if (score != types.value_draw) {
-                        if (found == null or tt_depth <= current_depth - 1) {
+                        if (found == null or tt_depth <= depth - 1) {
                             const tt_flag: types.TableBound = if (score >= beta) .lowerbound else if (alpha != alpha_) .exact else .upperbound;
 
-                            try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move, tt_flag });
+                            try tables.transposition_table.put(allocator, key, .{ score, depth - 1, move, tt_flag });
                         }
                     }
                 }
@@ -511,7 +512,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         try pos.unMovePiece(move);
 
         // Useless ?
-        if (current_depth > 1 and outOfTime(interface.limits))
+        if (depth > 1 and outOfTime(interface.limits))
             return -types.value_none;
 
         if (root_node) {
@@ -551,7 +552,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
                 // Fail high
                 if (score >= beta) {
-                    const bonus: types.Value = @as(types.Value, current_depth);
+                    const bonus: types.Value = @as(types.Value, depth);
 
                     if (!move.isCapture()) {
                         tables.updateHistory(&tables.history[pos.state.turn.index()][move.getFromTo()], bonus);
@@ -561,8 +562,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                         }
                     }
                     if (score != types.value_draw) {
-                        if (found == null or tt_depth <= current_depth - 1) {
-                            try tables.transposition_table.put(allocator, key, .{ score, current_depth - 1, move, .lowerbound });
+                        if (found == null or tt_depth <= depth - 1) {
+                            try tables.transposition_table.put(allocator, key, .{ score, depth - 1, move, .lowerbound });
                         }
                     }
                     break;
