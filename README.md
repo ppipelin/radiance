@@ -123,6 +123,7 @@ This project was originaly written in C++ before 4.0 version and archived under 
 
 _I'm radiant!_
 
+[radiance_4.2]: https://github.com/ppipelin/radiance/releases/tag/4.2
 [radiance_4.1]: https://github.com/ppipelin/radiance/releases/tag/4.1
 [radiance_4.0.1]: https://github.com/ppipelin/radiance/releases/tag/4.0.1
 [radiance_3.5]: https://github.com/ppipelin/radiance_archived/releases/tag/3.5
