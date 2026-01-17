@@ -134,7 +134,7 @@ pub fn mobilityScore(pos: position.Position, comptime color: types.Color) types.
 
 pub fn evaluateTable(pos: position.Position) types.Value {
     var score: types.Value = pos.score_material_w - pos.score_material_b;
-    const endgame: bool = pos.endgame(pos.state.turn);
+    const endgame_ratio: i64 = pos.endgameRatio(pos.state.turn);
 
     const bb_white: types.Bitboard = pos.bb_colors[types.Color.white.index()];
     const bb_black: types.Bitboard = pos.bb_colors[types.Color.black.index()];
@@ -159,14 +159,15 @@ pub fn evaluateTable(pos: position.Position) types.Value {
 
     // Compute potential checkers (queen slider from king with our pieces to remove blockers maybe ? expensive)
 
-    if (endgame) {
+    {
         const moveset_white_king = tables.getAttacks(.king, .white, white_king, bb_all) & ~bb_white;
         const moveset_black_king = tables.getAttacks(.king, .black, black_king, bb_all) & ~bb_black;
-        score += @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
-    } else {
+        score += @truncate(@divTrunc(endgame_ratio * (@as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king))), 10_000));
+    }
+    {
         const moveset_white_king = tables.getAttacks(.queen, .white, white_king, bb_all) & ~bb_white;
         const moveset_black_king = tables.getAttacks(.queen, .black, black_king, bb_all) & ~bb_black;
-        score -= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
+        score -= @truncate(@divTrunc((1 - endgame_ratio) * (@as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king))), 10_000));
     }
 
     score += mobilityScore(pos, .white) - mobilityScore(pos, .black);
@@ -195,30 +196,33 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         }
     }
 
-    if (endgame) {
+    {
         if (score > 0) {
             score += -pos.score_king_b;
         } else if (score < 0) {
             score += pos.score_king_w;
         }
-        score += if (pos.state.turn.isWhite()) distanceKings(pos) else -distanceKings(pos);
-    } else {
+        score += @truncate(@divTrunc(endgame_ratio * if (pos.state.turn.isWhite()) distanceKings(pos) else -distanceKings(pos), 10_000));
+    }
+    {
         // Pawn bonus when in side of king
         const filter_left = types.file | types.file >> 1 | types.file >> 2 | types.file >> 3;
         const filter_right = types.file >> 4 | types.file >> 5 | types.file >> 6 | types.file >> 7;
+        var score_variation: types.Value = 0;
         if (white_king.file().index() < 4) {
-            score += 5 * @popCount(filter_left & bb_white_pawn_);
+            score_variation += 5 * @popCount(filter_left & bb_white_pawn_);
         } else {
-            score += 5 * @popCount(filter_right & bb_white_pawn_);
+            score_variation += 5 * @popCount(filter_right & bb_white_pawn_);
         }
         if (black_king.file().index() < 4) {
-            score -= 5 * @popCount(filter_left & bb_black_pawn_);
+            score_variation -= 5 * @popCount(filter_left & bb_black_pawn_);
         } else {
-            score -= 5 * @popCount(filter_right & bb_black_pawn_);
+            score_variation -= 5 * @popCount(filter_right & bb_black_pawn_);
         }
+        score += @truncate(@divTrunc((1 - endgame_ratio) * score_variation, 10_000));
     }
 
-    const tapered: i64 = @divTrunc(@as(i64, pos.score_material_w + pos.score_material_b - 2 * tables.material[types.PieceType.king.index()]) * 10_000, (4152 * 2));
+    const tapered: i64 = @divTrunc(@as(i64, pos.score_material_w + pos.score_material_b) * 10_000, (tables.max_value_start * 2));
     score += @truncate(@divTrunc(tapered * pos.score_mg, 10_000));
     score += @truncate(@divTrunc((10_000 - tapered) * pos.score_eg, 10_000));
 

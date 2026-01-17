@@ -391,6 +391,9 @@ pub fn updateHistory(history_value: *Value, bonus: Value) void {
 
 // Start position total 14152, max 20952
 pub const material = [types.PieceType.nb()]types.Value{ 0, 100, 305, 333, 563, 950, 10_000 };
+pub const max_value: types.Value = material[PieceType.knight.index()] * 2 + material[PieceType.bishop.index()] * 2 + material[PieceType.rook.index()] * 2 + material[PieceType.queen.index()] * 9 + material[PieceType.king.index()];
+pub const max_value_start: types.Value = material[PieceType.pawn.index()] * 8 + material[PieceType.knight.index()] * 2 + material[PieceType.bishop.index()] * 2 + material[PieceType.rook.index()] * 2 + material[PieceType.queen.index()] + material[PieceType.king.index()];
+pub const engame_threshold: i64 = 10_000 * 0.33;
 
 pub const passed_pawn_table = [types.board_size - 1]types.Value{ 0, 15, 15, 25, 40, 60, 70 };
 

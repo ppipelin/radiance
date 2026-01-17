@@ -404,7 +404,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         }
 
         // Null move pruning
-        if (!is_nmr and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and static_eval > beta) {
+        if (!is_nmr and depth >= 3 and pos.endgameRatio(pos.state.turn.invert()) > tables.engame_threshold and static_eval > beta) {
             const tapered: u8 = @intCast(@min(@divTrunc(static_eval -| beta, 200), 6));
             const r: u8 = tapered + @divTrunc(depth, 3) + 5;
             try pos.moveNull(&s);
@@ -651,7 +651,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
     // Delta pruning margin
     const margin: types.Value = 200;
 
-    if (!pos.endgame(pos.state.turn)) {
+    if (pos.endgameRatio(pos.state.turn) > tables.engame_threshold) {
         const best_capture: types.Value = tables.material[types.PieceType.queen.index()];
         if (stand_pat + best_capture < (alpha - margin))
             return alpha;
@@ -673,7 +673,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
             return -types.value_mate;
         }
 
-        if (!pos.endgame(pos.state.turn)) {
+        if (pos.endgameRatio(pos.state.turn) > tables.engame_threshold) {
             // // Delta pruning inside
             // var capture_value: types.Value = pos.board[move.getTo().index()].pieceToPieceType().index();
             // if (move.isPromotion())

@@ -785,11 +785,11 @@ pub const Position = struct {
         }
     }
 
-    pub fn endgame(self: Position, col: Color) bool {
-        // Compute score based on the endgame condition
-        // Once ennemy has less pieces our king attacks the other one
-        // King, seven pawns a rook and a bishop
-        return (if (col.isWhite()) self.score_material_b else self.score_material_w) <= tables.material[PieceType.king.index()] + 7 * tables.material[PieceType.pawn.index()] + tables.material[PieceType.rook.index()] + tables.material[PieceType.bishop.index()];
+    // How close is a position from endgame
+    // 1 = startpos, 0 = endgame
+    pub fn endgameRatio(self: Position, col: Color) i64 {
+        const score_current: i64 = if (col.isWhite()) self.score_material_b else self.score_material_w;
+        return @divTrunc(score_current * 10_000, tables.max_value_start);
     }
 
     pub fn print(self: Position, writer: *std.Io.Writer) void {
