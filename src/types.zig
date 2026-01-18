@@ -547,8 +547,8 @@ pub const MoveFlags = enum(u4) {
 };
 
 pub const GenerationType = enum(u3) {
-    capture,
     quiet,
+    capture,
     all,
 
     pub inline fn index(self: GenerationType) u8 {

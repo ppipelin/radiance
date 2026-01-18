@@ -212,7 +212,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
 
     // Order moves
     var scores: [types.max_moves]types.Value = undefined;
-    pos.scoreMoves(move_list.items, .prc_queen, &scores);
+    pos.scoreMoves(move_list.items, .all, &scores);
     position.orderMoves(move_list.items, &scores);
 
     try root_moves.ensureTotalCapacity(allocator, root_moves_len);
