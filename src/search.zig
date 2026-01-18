@@ -789,13 +789,13 @@ pub fn seeGreaterEqual(pos: position.Position, move: types.Move, threshold: type
             // Update blockers, remove consumed piece
             blockers ^= bb & -%bb;
 
-            // Update atackers, can be any color
+            // Update revealed attackers, can be any color
             pt: switch (pt) {
                 .pawn, .bishop => attackers |= tables.getAttacks(.bishop, .white, to, blockers) & (pos.bb_pieces[types.PieceType.bishop.index()] | pos.bb_pieces[types.PieceType.queen.index()]),
                 .rook => attackers |= tables.getAttacks(.rook, .white, to, blockers) & (pos.bb_pieces[types.PieceType.rook.index()] | pos.bb_pieces[types.PieceType.queen.index()]),
                 .queen => {
-                    attackers |= tables.getAttacks(.bishop, .white, to, blockers) & (pos.bb_pieces[types.PieceType.bishop.index()] | pos.bb_pieces[types.PieceType.queen.index()]);
-                    continue :pt .pawn;
+                    attackers |= tables.getAttacks(.rook, .white, to, blockers) & (pos.bb_pieces[types.PieceType.rook.index()] | pos.bb_pieces[types.PieceType.queen.index()]);
+                    continue :pt .bishop;
                 },
                 .knight, .king => break :pt,
                 .none => unreachable,
