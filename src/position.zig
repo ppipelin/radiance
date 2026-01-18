@@ -750,7 +750,7 @@ pub const Position = struct {
     }
 
     // Use .prc_queen if flag is not comptime known
-    pub fn scoreMoves(self: Position, list: []Move, comptime flag: MoveFlags, scores: []Value) void {
+    pub fn scoreMoves(self: Position, list: []Move, comptime flag: GenerationType, scores: []Value) void {
         for (list, 0..) |move, i| {
             scores[i] = 0;
 
@@ -761,7 +761,7 @@ pub const Position = struct {
                 from_piece = MoveFlags.promoteType(move.getFlags());
             }
 
-            if (flag == .capture or flag == .prc_queen and move.isCapture()) {
+            if (flag == .capture or flag == .all and move.isCapture()) {
                 if (move.getFlags() != MoveFlags.en_passant) {
                     const capture_delta: Value = tables.material[to_piece.index()] - tables.material[from_piece.index()];
                     scores[i] += capture_delta;
