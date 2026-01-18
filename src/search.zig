@@ -743,6 +743,19 @@ pub fn seeGreaterEqual(pos: position.Position, move: types.Move, threshold: type
     var attackers: types.Bitboard = tables.getAttackersAll(pos, to, blockers);
     var current_attackers: types.Bitboard = 0;
 
+    // Compute pinned pieces that can interfere in SEE
+    const king_white: types.Square = @enumFromInt(types.lsb(pos.bb_colors[types.Color.white.index()] & pos.bb_pieces[types.PieceType.king.index()]));
+    const king_black: types.Square = @enumFromInt(types.lsb(pos.bb_colors[types.Color.black.index()] & pos.bb_pieces[types.PieceType.king.index()]));
+
+    const line_white: types.Bitboard = tables.squares_line[to.index()][king_white.index()];
+    const line_black: types.Bitboard = tables.squares_line[to.index()][king_black.index()];
+
+    // Move alongisde their pin
+    const pinned_allowed: types.Bitboard = pos.state.pinned[types.Color.white.index()] & line_white | pos.state.pinned[types.Color.black.index()] & line_black;
+    const allowed = (~(pos.state.pinned[types.Color.white.index()] | pos.state.pinned[types.Color.black.index()]) | pinned_allowed);
+
+    var attackers_allowed: types.Bitboard = 0;
+
     var result = true;
 
     while (true) {
@@ -750,12 +763,19 @@ pub fn seeGreaterEqual(pos: position.Position, move: types.Move, threshold: type
         // Update attackers if some blockers were removed
         attackers &= blockers;
 
-        current_attackers = attackers & pos.bb_colors[col.index()];
+        // Resolve allowed here
+        if ((pos.state.pinner[col.index()] & blockers) == 0) {
+            // Once all pinners have moved we accept pinned to move
+            // Not perfect but okayish
+            attackers_allowed = attackers;
+        } else {
+            attackers_allowed = attackers & allowed;
+        }
+
+        current_attackers = attackers_allowed & pos.bb_colors[col.index()];
         // Current color loses if no attackers
         if (current_attackers == 0)
             break;
-
-        // TODO: Deal with pinned
 
         result = !result;
 
@@ -767,7 +787,7 @@ pub fn seeGreaterEqual(pos: position.Position, move: types.Move, threshold: type
 
             // If capture with king but opponent still has attackers we lose
             if (pt == .king)
-                return if ((attackers & pos.bb_colors[col.invert().index()]) > 0) !result else result;
+                return if ((attackers_allowed & pos.bb_colors[col.invert().index()]) > 0) !result else result;
 
             const bb: types.Bitboard = current_attackers & pos.bb_pieces[pt.index()];
             if (bb == 0)

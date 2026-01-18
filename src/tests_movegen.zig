@@ -241,18 +241,73 @@ test "SeeComplexNoCaptureLoss" {
     try std.testing.expect(!search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g3g4"), 0));
 }
 
-// test "SeePin" {
-//     tables.initAll(allocator);
-//     defer tables.deinitAll(allocator);
+test "SeePin" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
 
-//     var s: position.State = position.State{};
-//     const pos: position.Position = try position.Position.setFen(&s, "kr3r2/6nb/6b1/5p2/1Q2P3/3B4/2B5/1K3R2 w");
+    var s: position.State = position.State{};
+    const pos: position.Position = try position.Position.setFen(&s, "kr3r2/6nb/6b1/1Q3p2/4P3/3B4/2B5/1K3R2 w");
 
-//     try std.testing.expect(search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), -tables.material[types.PieceType.pawn.index()]));
-//     try std.testing.expect(!search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), 0));
-//     try std.testing.expect(!search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), tables.material[types.PieceType.pawn.index()]));
-//     try std.testing.expect(!search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), tables.material[types.PieceType.pawn.index()] + 1));
-// }
+    try std.testing.expect(search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e4f5"), -tables.material[types.PieceType.pawn.index()]));
+    try std.testing.expect(search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e4f5"), 0));
+    try std.testing.expect(!search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e4f5"), tables.material[types.PieceType.pawn.index()]));
+}
+
+test "SeePin2" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var s: position.State = position.State{};
+    const pos: position.Position = try position.Position.setFen(&s, "k7/6b1/5b2/4p1q1/3B1Q2/2B1K1B1/8/8 w");
+
+    try std.testing.expect(search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "d4e5"), -tables.material[types.PieceType.bishop.index()] + tables.material[types.PieceType.pawn.index()]));
+    try std.testing.expect(!search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "d4e5"), -tables.material[types.PieceType.pawn.index()]));
+}
+
+test "SeePinUpdate" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var s: position.State = position.State{};
+    const pos: position.Position = try position.Position.setFen(&s, "k7/6b1/3B1b2/4p1q1/3B1Q2/2B1K3/8/8 w");
+
+    try std.testing.expect(search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "d4e5"), 0));
+    try std.testing.expect(search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "d4e5"), tables.material[types.PieceType.pawn.index()]));
+}
+
+test "SeePinUpdate2" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var s: position.State = position.State{};
+    const pos: position.Position = try position.Position.setFen(&s, "k7/6b1/3B1b2/4p1qr/3B1Q2/2B1K3/8/8 w");
+
+    try std.testing.expect(!search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "d4e5"), 0));
+    try std.testing.expect(!search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "d4e5"), tables.material[types.PieceType.pawn.index()]));
+}
+
+test "SeePinUpdate3" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var s: position.State = position.State{};
+    const pos: position.Position = try position.Position.setFen(&s, "k7/6b1/3B1b2/4p1qr/3B1B2/2B1K3/8/8 w");
+
+    try std.testing.expect(search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "d4e5"), -tables.material[types.PieceType.bishop.index()] + tables.material[types.PieceType.pawn.index()]));
+    try std.testing.expect(search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "d4e5"), tables.material[types.PieceType.pawn.index()]));
+    try std.testing.expect(!search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "d4e5"), tables.material[types.PieceType.pawn.index()] + 1));
+}
+
+test "SeePinUpdate4" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var s: position.State = position.State{};
+    const pos: position.Position = try position.Position.setFen(&s, "2k5/8/8/8/8/4q1B1/3Q4/2K1Q1q1 b");
+
+    try std.testing.expect(search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g1e1"), 0));
+    try std.testing.expect(!search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g1e1"), 1));
+}
 
 test "MovegenEnPassant" {
     tables.initAll(allocator);
