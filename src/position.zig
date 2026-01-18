@@ -60,6 +60,7 @@ pub const State = struct {
     en_passant: Square = Square.none,
     checkers: Bitboard = 0,
     pinned: [Color.nb()]Bitboard = .{ 0, 0 },
+    pinner: [Color.nb()]Bitboard = .{ 0, 0 },
     attacked: Bitboard = 0,
     attacked_horizontal: Bitboard = 0,
     last_captured_piece: Piece = Piece.none,
@@ -172,6 +173,7 @@ pub const Position = struct {
         state.en_passant = Square.none;
         state.checkers = self.state.checkers;
         state.pinned = self.state.pinned;
+        state.pinner = self.state.pinner;
         state.last_captured_piece = Piece.none;
         state.material_key = self.state.material_key;
         state.previous = self.state;
@@ -406,6 +408,7 @@ pub const Position = struct {
         state.en_passant = Square.none;
         state.checkers = self.state.checkers;
         state.pinned = self.state.pinned;
+        state.pinner = self.state.pinner;
         state.last_captured_piece = Piece.none;
         state.material_key = self.state.material_key;
         state.previous = self.state;
@@ -435,6 +438,7 @@ pub const Position = struct {
         const king_them: Square = @enumFromInt(types.lsb(bb_them & self.bb_pieces[PieceType.king.index()]));
 
         self.state.pinned = .{ 0, 0 };
+        self.state.pinner = .{ 0, 0 };
 
         // Compute checkers from non blockables piece types
         // All knights can attack the king the same way a knight would attack form the king's square
@@ -447,6 +451,8 @@ pub const Position = struct {
         // Compute candidate checkers from sliders and pinned pieces, transform the king into a slider
         var candidates: Bitboard = tables.getAttacks(.bishop, .white, king_us, bb_them) & ((self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
         candidates |= tables.getAttacks(.rook, .white, king_us, bb_them) & ((self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.invert().index()]);
+
+        self.state.pinner[self.state.turn.index()] = candidates;
 
         while (candidates != 0) {
             const sq: Square = types.popLsb(&candidates);
@@ -461,9 +467,11 @@ pub const Position = struct {
             }
         }
 
-        // Detect pinned for other side
+        // Detect pinned and pinner for other side
         candidates = tables.getAttacks(.bishop, .white, king_them, bb_us) & ((self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.index()]);
         candidates |= tables.getAttacks(.rook, .white, king_them, bb_us) & ((self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()]) & self.bb_colors[self.state.turn.index()]);
+
+        self.state.pinner[self.state.turn.invert().index()] = candidates;
 
         while (candidates != 0) {
             const sq: Square = types.popLsb(&candidates);
