@@ -539,12 +539,14 @@ pub const Position = struct {
         if (gen_type == .all or gen_type == .quiet)
             Move.generateMove(allocator, MoveFlags.quiet, our_king, to_king & ~bb_all, list);
 
+        // This switch computes masks that allow capture or quiet moves based on check status and pinned pieces moves
         switch (types.popcount(self.state.checkers)) {
             // Double check, we already computed king moves
             2 => {
                 return;
             },
             // SingleCheck
+            // Only non pinned pieces will be able to move
             1 => {
                 var checker_sq: Square = @enumFromInt(types.lsb(self.state.checkers));
                 switch (self.board[checker_sq.index()].pieceToPieceType()) {
@@ -590,6 +592,7 @@ pub const Position = struct {
                 }
             },
             // No check
+            // Pinned pieces moves are computed here
             else => {
                 capture_mask = bb_them;
                 quiet_mask = ~bb_all;
@@ -651,6 +654,7 @@ pub const Position = struct {
                     Move.generateMoveFrom(allocator, MoveFlags.en_passant, from_en_passant_ & self.state.pinned[self.state.turn.index()] & tables.squares_line[our_king.index()][self.state.en_passant.index()], self.state.en_passant, list);
                 }
 
+                // Pinned knight can't move
                 var bb_pinned = self.state.pinned[self.state.turn.index()] & ~self.bb_pieces[PieceType.knight.index()];
                 while (bb_pinned != 0) {
                     const from: Square = types.popLsb(&bb_pinned);
