@@ -19,7 +19,7 @@ pub fn main() !void {
     try stdout.flush();
 
     var stdin_buffer: [16 * 1024]u8 = undefined;
-    var stdin_reader: std.fs.File.Reader = std.fs.File.stdin().reader(&stdin_buffer); // Can use &.{} for no buffer
+    var stdin_reader: std.fs.File.Reader = std.fs.File.stdin().readerStreaming(&stdin_buffer); // Can use &.{} for no buffer
     const stdin: *std.Io.Reader = &stdin_reader.interface;
 
     const args = try std.process.argsAlloc(allocator);
