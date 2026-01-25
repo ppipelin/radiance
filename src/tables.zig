@@ -302,6 +302,17 @@ pub fn getAttacks(comptime pt: PieceType, comptime color: Color, sq: Square, blo
     };
 }
 
+// Get attacks of pieces on filter based on color and piece type
+pub fn getAttacksAllFiltered(comptime pt: PieceType, comptime color: Color, blockers: Bitboard, filter: Bitboard) Bitboard {
+    var attacks: types.Bitboard = 0;
+    var sq_to_test: types.Bitboard = filter;
+    while (sq_to_test != 0) {
+        const sq: types.Square = types.popLsb(&sq_to_test);
+        attacks |= getAttacks(pt, color, sq, blockers);
+    }
+    return attacks;
+}
+
 pub inline fn getAttackers(pos: position.Position, comptime color: Color, sq: Square, blockers: Bitboard) Bitboard {
     const p = getAttacks(PieceType.pawn, color.invert(), sq, blockers) & pos.bb_pieces[PieceType.pawn.index()];
     const n = getAttacks(PieceType.knight, color, sq, blockers) & pos.bb_pieces[PieceType.knight.index()];
