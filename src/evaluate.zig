@@ -146,6 +146,19 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     const white_king: types.Square = @enumFromInt(types.lsb(bb_white & pos.bb_pieces[types.PieceType.king.index()]));
     const black_king: types.Square = @enumFromInt(types.lsb(bb_black & pos.bb_pieces[types.PieceType.king.index()]));
 
+    // Moveset bonuses should take into account attacked squares.
+    // Be careful that early game king does not seek for attacked square
+
+    // Bishop pair
+
+    // Calculate outposts
+
+    // Evaluate space with open files (and some ranks ?)
+
+    // Compute threats (by lesser pieces)
+
+    // Compute potential checkers (queen slider from king with our pieces to remove blockers maybe ? expensive)
+
     if (endgame) {
         const moveset_white_king = tables.getAttacks(.king, .white, white_king, bb_all) & ~bb_white;
         const moveset_black_king = tables.getAttacks(.king, .black, black_king, bb_all) & ~bb_black;
