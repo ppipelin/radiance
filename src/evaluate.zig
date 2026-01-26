@@ -166,7 +166,7 @@ pub fn evaluateTable(pos: position.Position) types.Value {
 
     score += mobilityBonus(pos, .white) - mobilityBonus(pos, .black);
 
-    score += variable.bishop_pair * @as(types.Value, (@intFromBool(@popCount(bb_white & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2) - @intFromBool(@popCount(bb_black & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2)));
+    score += variable.bishop_pair * (@as(types.Value, (@intFromBool(@popCount(bb_white & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2)) - @as(types.Value, @intFromBool(@popCount(bb_black & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2))));
 
     const bb_white_pawn_: types.Bitboard = bb_white & pos.bb_pieces[types.PieceType.pawn.index()];
     const bb_black_pawn_: types.Bitboard = bb_black & pos.bb_pieces[types.PieceType.pawn.index()];
