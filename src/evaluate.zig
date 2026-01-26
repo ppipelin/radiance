@@ -98,18 +98,18 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     const bb_them: types.Bitboard = pos.bb_colors[color.invert().index()];
     const bb_all: types.Bitboard = pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()];
     var attacked_square: types.Bitboard = tables.getAttacksAllFiltered(.pawn, color.invert(), bb_all, bb_them & pos.bb_pieces[types.PieceType.pawn.index()]);
-    var score: types.Value = 0;
+    var bonus: types.Value = 0;
 
     var knight_bb: types.Bitboard = pos.bb_pieces[types.PieceType.knight.index()] & bb_us;
     while (knight_bb != 0) {
         const sq: types.Square = types.popLsb(&knight_bb);
-        score += variable.knight_mobility * @popCount(tables.getAttacks(.knight, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.knight_mobility * @popCount(tables.getAttacks(.knight, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     var bishop_bb: types.Bitboard = pos.bb_pieces[types.PieceType.bishop.index()] & bb_us;
     while (bishop_bb != 0) {
         const sq: types.Square = types.popLsb(&bishop_bb);
-        score += variable.bishop_mobility * @popCount(tables.getAttacks(.bishop, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.bishop_mobility * @popCount(tables.getAttacks(.bishop, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     attacked_square |= tables.getAttacksAllFiltered(.knight, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.knight.index()]);
@@ -118,7 +118,7 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     var rook_bb: types.Bitboard = pos.bb_pieces[types.PieceType.rook.index()] & bb_us;
     while (rook_bb != 0) {
         const sq: types.Square = types.popLsb(&rook_bb);
-        score += variable.rook_mobility * @popCount(tables.getAttacks(.rook, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.rook_mobility * @popCount(tables.getAttacks(.rook, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     attacked_square |= tables.getAttacksAllFiltered(.rook, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.rook.index()]);
@@ -126,10 +126,10 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     var queen_bb: types.Bitboard = pos.bb_pieces[types.PieceType.queen.index()] & bb_us;
     while (queen_bb != 0) {
         const sq: types.Square = types.popLsb(&queen_bb);
-        score += variable.queen_mobility * @popCount(tables.getAttacks(.queen, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.queen_mobility * @popCount(tables.getAttacks(.queen, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
-    return score;
+    return bonus;
 }
 
 pub fn evaluateTable(pos: position.Position) types.Value {
@@ -158,13 +158,15 @@ pub fn evaluateTable(pos: position.Position) types.Value {
 
     score += mobilityBonus(pos, .white) - mobilityBonus(pos, .black);
 
+    score += variable.bishop_pair * (@as(types.Value, (@intFromBool(@popCount(bb_white & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2)) - @as(types.Value, @intFromBool(@popCount(bb_black & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2))));
+
     const bb_white_pawn_: types.Bitboard = bb_white & pos.bb_pieces[types.PieceType.pawn.index()];
     const bb_black_pawn_: types.Bitboard = bb_black & pos.bb_pieces[types.PieceType.pawn.index()];
 
     score -=
-        50 * (computeIsolatedPawns(bb_white_pawn_) - computeIsolatedPawns(bb_black_pawn_)) +
-        20 * (computeDoubledPawns(bb_white_pawn_) - computeDoubledPawns(bb_black_pawn_)) +
-        10 * (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_black) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_white));
+        variable.pawn_isolated * (computeIsolatedPawns(bb_white_pawn_) - computeIsolatedPawns(bb_black_pawn_)) +
+        variable.pawn_doubled * (computeDoubledPawns(bb_white_pawn_) - computeDoubledPawns(bb_black_pawn_)) +
+        variable.pawn_blocked * (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_black) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_white));
 
     var bb_white_pawn: types.Bitboard = bb_white_pawn_;
     while (bb_white_pawn != 0) {
@@ -194,14 +196,14 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         const filter_left = types.file | types.file >> 1 | types.file >> 2 | types.file >> 3;
         const filter_right = types.file >> 4 | types.file >> 5 | types.file >> 6 | types.file >> 7;
         if (white_king.file().index() < 4) {
-            score += 5 * @popCount(filter_left & bb_white_pawn_);
+            score += variable.pawn_defend_king * @popCount(filter_left & bb_white_pawn_);
         } else {
-            score += 5 * @popCount(filter_right & bb_white_pawn_);
+            score += variable.pawn_defend_king * @popCount(filter_right & bb_white_pawn_);
         }
         if (black_king.file().index() < 4) {
-            score -= 5 * @popCount(filter_left & bb_black_pawn_);
+            score -= variable.pawn_defend_king * @popCount(filter_left & bb_black_pawn_);
         } else {
-            score -= 5 * @popCount(filter_right & bb_black_pawn_);
+            score -= variable.pawn_defend_king * @popCount(filter_right & bb_black_pawn_);
         }
     }
 

@@ -44,6 +44,7 @@
 - Transposition Table Evaluation
 - Endgame Heuristics
 - Pawn Structures Heuristics
+- Bishop pair bonus
 - Mobility Bonus
 
 ## Versions tournament
