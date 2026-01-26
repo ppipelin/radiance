@@ -132,6 +132,33 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     return bonus;
 }
 
+pub fn spaceBonus(pos: position.Position) types.Value {
+    var bonus: types.Value = 0;
+
+    // Vertical bonus
+
+    const pawn_white: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
+    const pawn_black: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
+
+    const vertical_white: types.Bitboard = types.mask_file[0] * @intFromBool((types.mask_file[0] & pawn_white) != 0) | types.mask_file[1] * @intFromBool((types.mask_file[1] & pawn_white) != 0) | types.mask_file[2] * @intFromBool((types.mask_file[2] & pawn_white) != 0) | types.mask_file[3] * @intFromBool((types.mask_file[3] & pawn_white) != 0) | types.mask_file[4] * @intFromBool((types.mask_file[4] & pawn_white) != 0) | types.mask_file[5] * @intFromBool((types.mask_file[5] & pawn_white) != 0) | types.mask_file[6] * @intFromBool((types.mask_file[6] & pawn_white) != 0) | types.mask_file[7] * @intFromBool((types.mask_file[7] & pawn_white) != 0);
+
+    const vertical_black: types.Bitboard = types.mask_file[0] * @intFromBool((types.mask_file[0] & pawn_black) != 0) | types.mask_file[1] * @intFromBool((types.mask_file[1] & pawn_black) != 0) | types.mask_file[2] * @intFromBool((types.mask_file[2] & pawn_black) != 0) | types.mask_file[3] * @intFromBool((types.mask_file[3] & pawn_black) != 0) | types.mask_file[4] * @intFromBool((types.mask_file[4] & pawn_black) != 0) | types.mask_file[5] * @intFromBool((types.mask_file[5] & pawn_black) != 0) | types.mask_file[6] * @intFromBool((types.mask_file[6] & pawn_black) != 0) | types.mask_file[7] * @intFromBool((types.mask_file[7] & pawn_black) != 0);
+
+    const open_files: types.Bitboard = ~(vertical_white | vertical_black);
+    const semi_open_files_white: types.Bitboard = ~(vertical_white) & vertical_black;
+    const semi_open_files_black: types.Bitboard = ~(vertical_black) & vertical_white;
+
+    bonus += variable.rook_open_files * (@as(types.Value, @popCount(open_files & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.white.index()])) - @as(types.Value, @popCount(open_files & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.black.index()])));
+
+    bonus += variable.rook_semi_open_files * (@as(types.Value, @popCount(semi_open_files_white & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.white.index()])) - @as(types.Value, @popCount(semi_open_files_black & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.black.index()])));
+
+    // Horizontal bonus
+
+    // Can be a counting of ranks of safe pawn
+
+    return bonus;
+}
+
 pub fn evaluateTable(pos: position.Position) types.Value {
     var score: types.Value = pos.score_material_w - pos.score_material_b;
     const endgame: bool = pos.endgame(pos.state.turn);
@@ -157,6 +184,8 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     }
 
     score += mobilityBonus(pos, .white) - mobilityBonus(pos, .black);
+
+    score += spaceBonus(pos);
 
     score += variable.bishop_pair * (@as(types.Value, (@intFromBool(@popCount(bb_white & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2)) - @as(types.Value, @intFromBool(@popCount(bb_black & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2))));
 
