@@ -811,6 +811,8 @@ pub const Position = struct {
                 // const condition: bool = (self.state.check_square[self.state.turn.invert().index()][from_piece.index()] & move.getTo().sqToBB()) > 0;
                 // if (condition and search.seeGreaterEqual(self, move, variable.getValue("check_bonus_threshold")))
                 //     scores[i] += variable.getValue("check_bonus");
+
+                // TODO: threatByLesser
             }
 
             scores[i] += @as(Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
