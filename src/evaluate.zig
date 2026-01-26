@@ -156,6 +156,14 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         score -= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
     }
 
+    // Calculate outposts
+
+    // Evaluate space with open files (and some ranks ?)
+
+    // Compute threats (by lesser pieces)
+
+    // Compute potential checkers (queen slider from king with our pieces to remove blockers maybe ? expensive)
+
     score += mobilityBonus(pos, .white) - mobilityBonus(pos, .black);
 
     score += variable.bishop_pair * @as(types.Value, (@intFromBool(@popCount(bb_white & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2) - @intFromBool(@popCount(bb_black & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2)));
