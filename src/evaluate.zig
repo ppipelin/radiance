@@ -97,6 +97,7 @@ pub fn evaluateShannon(pos: position.Position) types.Value {
     }
 }
 
+// TODO: take into account pinned ?
 pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.Value {
     const bb_us: types.Bitboard = pos.bb_colors[color.index()];
     const bb_them: types.Bitboard = pos.bb_colors[color.invert().index()];
@@ -165,6 +166,7 @@ pub fn spaceBonus(pos: position.Position) types.Value {
     return bonus;
 }
 
+// TODO: Add pawn structure hash
 pub fn evaluateTable(pos: position.Position) types.Value {
     var score: types.Value = pos.score_material_w - pos.score_material_b;
     const endgame: bool = pos.endgame(pos.state.turn);
@@ -188,6 +190,14 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         const moveset_black_king = tables.getAttacks(.queen, .black, black_king, bb_all) & ~bb_black;
         score -|= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
     }
+
+    // Calculate outposts
+
+    // Evaluate space with open files (and some ranks ?)
+
+    // Compute threats (by lesser pieces)
+
+    // Compute potential checkers (queen slider from king with our pieces to remove blockers maybe ? expensive)
 
     score +|= mobilityBonus(pos, .white) - mobilityBonus(pos, .black);
 
