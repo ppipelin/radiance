@@ -3,6 +3,7 @@ const position = @import("position.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
+const variable = @import("variable.zig");
 
 const allocator = std.testing.allocator;
 
@@ -87,4 +88,16 @@ test "EvaluatePawnHeuristics" {
     try std.testing.expectEqual(2, evaluate.computeDoubledPawns(bb_white));
     try std.testing.expectEqual(1, evaluate.computeBlockedPawns(bb_white, types.Color.white, bb_black));
     try std.testing.expectEqual(2, evaluate.computeIsolatedPawns(bb_white));
+}
+
+test "EvaluateSpaceBonus" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    const fen: []const u8 = "1r2k1rr/2p4p/8/3P4/2NR4/1P5P/8/1RRRKRRR w";
+
+    var s: position.State = position.State{};
+    const pos: position.Position = try position.Position.setFen(&s, fen);
+
+    try std.testing.expectEqual(variable.rook_open_files * (2 - 1) + variable.rook_semi_open_files * (1 - 1), evaluate.spaceBonus(pos));
 }
