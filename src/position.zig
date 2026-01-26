@@ -810,6 +810,8 @@ pub const Position = struct {
                 // Bonus for giving check (and not to compromizing)
                 if (search.seeGreaterEqual(self, move, variable.getValue("check_bonus_threshold")))
                     scores[i] += variable.getValue("check_bonus") * @as(Value, @intFromBool((self.state.check_square[self.state.turn.invert().index()][from_piece.index()] & move.getTo().sqToBB()) > 0));
+
+                // TODO: threatByLesser
             }
 
             scores[i] += @as(Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
