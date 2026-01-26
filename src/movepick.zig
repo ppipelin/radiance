@@ -4,6 +4,7 @@ const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
 
+// TODO: Use enum for Stages
 /// MovePick struct to allow staged move generation
 /// Stages
 /// 0. Transposition table init (and 10.)
