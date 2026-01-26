@@ -2,6 +2,7 @@ const position = @import("position.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
+const variable = @import("variable.zig");
 
 pub inline fn computeDoubledPawns(bb_pawn: types.Bitboard) types.Value {
     var doubled_pawns: types.Value = 0;
@@ -92,6 +93,45 @@ pub fn evaluateShannon(pos: position.Position) types.Value {
     }
 }
 
+pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.Value {
+    const bb_us: types.Bitboard = pos.bb_colors[color.index()];
+    const bb_them: types.Bitboard = pos.bb_colors[color.invert().index()];
+    const bb_all: types.Bitboard = pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()];
+    var attacked_square: types.Bitboard = tables.getAttacksAllFiltered(.pawn, color.invert(), bb_all, bb_them & pos.bb_pieces[types.PieceType.pawn.index()]);
+    var score: types.Value = 0;
+
+    var knight_bb: types.Bitboard = pos.bb_pieces[types.PieceType.knight.index()] & bb_us;
+    while (knight_bb != 0) {
+        const sq: types.Square = types.popLsb(&knight_bb);
+        score += variable.knight_mobility * @popCount(tables.getAttacks(.knight, color, sq, bb_all) & ~bb_us & ~attacked_square);
+    }
+
+    var bishop_bb: types.Bitboard = pos.bb_pieces[types.PieceType.bishop.index()] & bb_us;
+    while (bishop_bb != 0) {
+        const sq: types.Square = types.popLsb(&bishop_bb);
+        score += variable.bishop_mobility * @popCount(tables.getAttacks(.bishop, color, sq, bb_all) & ~bb_us & ~attacked_square);
+    }
+
+    attacked_square |= tables.getAttacksAllFiltered(.knight, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.knight.index()]);
+    attacked_square |= tables.getAttacksAllFiltered(.bishop, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.bishop.index()]);
+
+    var rook_bb: types.Bitboard = pos.bb_pieces[types.PieceType.rook.index()] & bb_us;
+    while (rook_bb != 0) {
+        const sq: types.Square = types.popLsb(&rook_bb);
+        score += variable.rook_mobility * @popCount(tables.getAttacks(.rook, color, sq, bb_all) & ~bb_us & ~attacked_square);
+    }
+
+    attacked_square |= tables.getAttacksAllFiltered(.rook, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.rook.index()]);
+
+    var queen_bb: types.Bitboard = pos.bb_pieces[types.PieceType.queen.index()] & bb_us;
+    while (queen_bb != 0) {
+        const sq: types.Square = types.popLsb(&queen_bb);
+        score += variable.queen_mobility * @popCount(tables.getAttacks(.queen, color, sq, bb_all) & ~bb_us & ~attacked_square);
+    }
+
+    return score;
+}
+
 pub fn evaluateTable(pos: position.Position) types.Value {
     var score: types.Value = pos.score_material_w - pos.score_material_b;
     const endgame: bool = pos.endgame(pos.state.turn);
@@ -116,40 +156,7 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         score -= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
     }
 
-    // Evaluate sliders pseudo legal moveset
-    var white_sliders_diag: types.Bitboard = bb_white & (pos.bb_pieces[types.PieceType.bishop.index()]);
-    var white_sliders_orth: types.Bitboard = bb_white & (pos.bb_pieces[types.PieceType.rook.index()]);
-
-    var black_sliders_diag: types.Bitboard = bb_black & (pos.bb_pieces[types.PieceType.bishop.index()]);
-    var black_sliders_orth: types.Bitboard = bb_black & (pos.bb_pieces[types.PieceType.rook.index()]);
-
-    var moveset_white_diag: types.Bitboard = 0;
-    var moveset_white_orth: types.Bitboard = 0;
-
-    var moveset_black_diag: types.Bitboard = 0;
-    var moveset_black_orth: types.Bitboard = 0;
-    while (white_sliders_diag != 0) {
-        const sq: types.Square = types.popLsb(&white_sliders_diag);
-        moveset_white_diag |= tables.getAttacks(.bishop, .white, sq, bb_all) & ~bb_white;
-    }
-
-    while (white_sliders_orth != 0) {
-        const sq: types.Square = types.popLsb(&white_sliders_orth);
-        moveset_white_orth |= tables.getAttacks(.rook, .white, sq, bb_all) & ~bb_white;
-    }
-
-    while (black_sliders_diag != 0) {
-        const sq: types.Square = types.popLsb(&black_sliders_diag);
-        moveset_black_diag |= tables.getAttacks(.bishop, .black, sq, bb_all) & ~bb_black;
-    }
-
-    while (black_sliders_orth != 0) {
-        const sq: types.Square = types.popLsb(&black_sliders_orth);
-        moveset_black_orth |= tables.getAttacks(.rook, .black, sq, bb_all) & ~bb_black;
-    }
-
-    score += 5 * (@as(types.Value, @popCount(moveset_white_diag)) + @as(types.Value, @popCount(moveset_white_orth)));
-    score -= 5 * (@as(types.Value, @popCount(moveset_black_diag)) + @as(types.Value, @popCount(moveset_black_orth)));
+    score += mobilityBonus(pos, .white) - mobilityBonus(pos, .black);
 
     const bb_white_pawn_: types.Bitboard = bb_white & pos.bb_pieces[types.PieceType.pawn.index()];
     const bb_black_pawn_: types.Bitboard = bb_black & pos.bb_pieces[types.PieceType.pawn.index()];
