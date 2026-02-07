@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bishop pair bonus in evaluation
 
+
+### Changed
+
+- Overflow handling for big scores and fixed pv display for mate
+
 ## [4.2] - 2026-01-17
 
 ### Added
