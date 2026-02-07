@@ -103,13 +103,13 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     var knight_bb: types.Bitboard = pos.bb_pieces[types.PieceType.knight.index()] & bb_us;
     while (knight_bb != 0) {
         const sq: types.Square = types.popLsb(&knight_bb);
-        bonus += variable.knight_mobility * @popCount(tables.getAttacks(.knight, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.knight_mobility *| @popCount(tables.getAttacks(.knight, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     var bishop_bb: types.Bitboard = pos.bb_pieces[types.PieceType.bishop.index()] & bb_us;
     while (bishop_bb != 0) {
         const sq: types.Square = types.popLsb(&bishop_bb);
-        bonus += variable.bishop_mobility * @popCount(tables.getAttacks(.bishop, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.bishop_mobility *| @popCount(tables.getAttacks(.bishop, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     attacked_square |= tables.getAttacksAllFiltered(.knight, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.knight.index()]);
@@ -118,7 +118,7 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     var rook_bb: types.Bitboard = pos.bb_pieces[types.PieceType.rook.index()] & bb_us;
     while (rook_bb != 0) {
         const sq: types.Square = types.popLsb(&rook_bb);
-        bonus += variable.rook_mobility * @popCount(tables.getAttacks(.rook, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.rook_mobility *| @popCount(tables.getAttacks(.rook, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     attacked_square |= tables.getAttacksAllFiltered(.rook, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.rook.index()]);
@@ -126,7 +126,7 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     var queen_bb: types.Bitboard = pos.bb_pieces[types.PieceType.queen.index()] & bb_us;
     while (queen_bb != 0) {
         const sq: types.Square = types.popLsb(&queen_bb);
-        bonus += variable.queen_mobility * @popCount(tables.getAttacks(.queen, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.queen_mobility *| @popCount(tables.getAttacks(.queen, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     return bonus;
@@ -176,23 +176,23 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     if (endgame) {
         const moveset_white_king = tables.getAttacks(.king, .white, white_king, bb_all) & ~bb_white;
         const moveset_black_king = tables.getAttacks(.king, .black, black_king, bb_all) & ~bb_black;
-        score += @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
+        score +|= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
     } else {
         const moveset_white_king = tables.getAttacks(.queen, .white, white_king, bb_all) & ~bb_white;
         const moveset_black_king = tables.getAttacks(.queen, .black, black_king, bb_all) & ~bb_black;
-        score -= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
+        score -|= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
     }
 
-    score += mobilityBonus(pos, .white) - mobilityBonus(pos, .black);
+    score +|= mobilityBonus(pos, .white) - mobilityBonus(pos, .black);
 
-    score += spaceBonus(pos);
+    score +|= spaceBonus(pos);
 
-    score += variable.bishop_pair * (@as(types.Value, (@intFromBool(@popCount(bb_white & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2)) - @as(types.Value, @intFromBool(@popCount(bb_black & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2))));
+    score +|= variable.bishop_pair * (@as(types.Value, (@intFromBool(@popCount(bb_white & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2)) - @as(types.Value, @intFromBool(@popCount(bb_black & pos.bb_pieces[types.PieceType.bishop.index()]) >= 2))));
 
     const bb_white_pawn_: types.Bitboard = bb_white & pos.bb_pieces[types.PieceType.pawn.index()];
     const bb_black_pawn_: types.Bitboard = bb_black & pos.bb_pieces[types.PieceType.pawn.index()];
 
-    score -=
+    score -|=
         variable.pawn_isolated * (computeIsolatedPawns(bb_white_pawn_) - computeIsolatedPawns(bb_black_pawn_)) +
         variable.pawn_doubled * (computeDoubledPawns(bb_white_pawn_) - computeDoubledPawns(bb_black_pawn_)) +
         variable.pawn_blocked * (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_black) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_white));
@@ -201,7 +201,7 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     while (bb_white_pawn != 0) {
         const sq: types.Square = types.popLsb(&bb_white_pawn);
         if (tables.passed_pawn[types.Color.white.index()][sq.index()] & bb_black_pawn_ == 0) {
-            score += tables.passed_pawn_table[sq.rank().relativeRank(types.Color.white).index()];
+            score +|= tables.passed_pawn_table[sq.rank().relativeRank(types.Color.white).index()];
         }
     }
 
@@ -209,25 +209,25 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     while (bb_black_pawn != 0) {
         const sq: types.Square = types.popLsb(&bb_black_pawn);
         if (tables.passed_pawn[types.Color.black.index()][sq.index()] & bb_white_pawn_ == 0) {
-            score -= tables.passed_pawn_table[sq.rank().relativeRank(types.Color.black).index()];
+            score -|= tables.passed_pawn_table[sq.rank().relativeRank(types.Color.black).index()];
         }
     }
 
     if (endgame) {
         if (score > 0) {
-            score += -pos.score_king_b;
+            score +|= -pos.score_king_b;
         } else if (score < 0) {
-            score += pos.score_king_w;
+            score +|= pos.score_king_w;
         }
-        score += if (pos.state.turn.isWhite()) distanceKings(pos) else -distanceKings(pos);
+        score +|= if (pos.state.turn.isWhite()) distanceKings(pos) else -distanceKings(pos);
     } else {
         // Pawn bonus when in side of king
         const filter_left = types.file | types.file >> 1 | types.file >> 2 | types.file >> 3;
         const filter_right = types.file >> 4 | types.file >> 5 | types.file >> 6 | types.file >> 7;
         if (white_king.file().index() < 4) {
-            score += variable.pawn_defend_king * @popCount(filter_left & bb_white_pawn_);
+            score +|= variable.pawn_defend_king * @popCount(filter_left & bb_white_pawn_);
         } else {
-            score += variable.pawn_defend_king * @popCount(filter_right & bb_white_pawn_);
+            score +|= variable.pawn_defend_king * @popCount(filter_right & bb_white_pawn_);
         }
         if (black_king.file().index() < 4) {
             score -= variable.pawn_defend_king * @popCount(filter_left & bb_black_pawn_);
@@ -237,8 +237,8 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     }
 
     const tapered: i64 = @divTrunc(@as(i64, pos.score_material_w + pos.score_material_b - 2 * tables.material[types.PieceType.king.index()]) * 10_000, (4152 * 2));
-    score += @truncate(@divTrunc(tapered * pos.score_mg, 10_000));
-    score += @truncate(@divTrunc((10_000 - tapered) * pos.score_eg, 10_000));
+    score +|= @truncate(@divTrunc(tapered * pos.score_mg, 10_000));
+    score +|= @truncate(@divTrunc((10_000 - tapered) * pos.score_eg, 10_000));
 
     return if (pos.state.turn.isWhite()) score else -score;
 }

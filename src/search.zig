@@ -262,7 +262,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
 
             // In case of failing low/high increase aspiration window and re-search, otherwise exit the loop.
             if (score <= alpha) {
-                beta = @divTrunc(alpha + beta, 2);
+                beta = @divTrunc(alpha, 2) + @divTrunc(beta, 2);
                 alpha = @max(score -| delta, -types.value_infinite);
                 failed_high_cnt = 0;
             } else if (score >= beta) {
@@ -389,7 +389,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
         // Razoring for non_pv where material difference is more than q+r+b
         // const razoring_threshold: types.Value = tables.material[types.PieceType.queen.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
-        const razoring_threshold: types.Value = alpha - tables.material[types.PieceType.rook.index()] - tables.material[types.PieceType.pawn.index()] * depth * depth;
+        const razoring_threshold: types.Value = alpha -| tables.material[types.PieceType.rook.index()] -| tables.material[types.PieceType.pawn.index()] *| depth *| depth;
         const razoring: bool = static_eval < razoring_threshold;
         if (!pv_node and razoring) {
             // return eval(pos.*);
@@ -523,7 +523,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                 if (root_move.pv.items[0] != move)
                     continue;
 
-                root_move.average_score = if (root_move.average_score == -types.value_infinite) score else @divTrunc(score +| root_move.average_score, 2);
+                root_move.average_score = if (root_move.average_score == -types.value_infinite) score else @divTrunc(score, 2) + @divTrunc(root_move.average_score, 2);
 
                 if (move_count == 1 or score > alpha) {
                     root_move.score = score;
