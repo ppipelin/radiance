@@ -389,7 +389,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
         // Razoring for non_pv where material difference is more than q+r+b
         // const razoring_threshold: types.Value = tables.material[types.PieceType.queen.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
-        const razoring_threshold: types.Value = alpha - tables.material[types.PieceType.rook.index()] - tables.material[types.PieceType.pawn.index()] * depth * depth;
+        const razoring_threshold: types.Value = alpha -| tables.material[types.PieceType.rook.index()] -| tables.material[types.PieceType.pawn.index()] *| depth *| depth;
         const razoring: bool = static_eval < razoring_threshold;
         if (!pv_node and razoring) {
             // return eval(pos.*);
