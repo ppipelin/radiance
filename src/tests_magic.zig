@@ -12,7 +12,7 @@ test "MovegenAccessions" {
     const iterations: u64 = 1000;
 
     // Dictionary
-    var t = std.time.Timer.start() catch unreachable;
+    var t = try std.time.Timer.start();
     for (0..iterations) |_| {
         var sq: types.Square = types.Square.a1;
         while (sq != types.Square.none) : (sq = sq.inc().*) {
@@ -36,7 +36,7 @@ test "MovegenAccessions" {
     const t1 = t.read();
 
     // Magic
-    t = std.time.Timer.start() catch unreachable;
+    t = try std.time.Timer.start();
     var sq: types.Square = types.Square.a1;
     for (0..iterations) |_| {
         sq = types.Square.a1;

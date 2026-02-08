@@ -73,7 +73,7 @@ CCRL [blitz benchmark](https://computerchess.org.uk/ccrl/404/cgi/compare_engines
 ### Compile and run
 
 ```
-zig build run -relase=fast
+zig build run -release=fast
 ```
 
 ### Deploy
