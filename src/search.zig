@@ -339,9 +339,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         tt_value, tt_depth, tt_move, tt_bound = found.?;
 
         // Update the mate score retrieved from the table to consider the current ply
-        if (score > types.value_mate_in_max_depth) {
+        if (tt_value > types.value_mate_in_max_depth) {
             tt_value -= ss[0].ply;
-        } else if (score < types.value_mated_in_max_depth) {
+        } else if (tt_value < types.value_mated_in_max_depth) {
             tt_value += ss[0].ply;
         }
 
@@ -631,14 +631,11 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
     var tt_move: types.Move = .none;
     var tt_bound: types.TableBound = .upperbound;
     if (tt_hit) {
-        tt_value = found.?[0];
-        tt_depth = found.?[1];
-        tt_move = found.?[2];
-        tt_bound = found.?[3];
+        tt_value, tt_depth, tt_move, tt_bound = found.?;
         // Update the mate score retrieved from the table to consider the current ply
-        if (score > types.value_mate_in_max_depth) {
+        if (tt_value > types.value_mate_in_max_depth) {
             tt_value -= ss[0].ply;
-        } else if (score < types.value_mated_in_max_depth) {
+        } else if (tt_value < types.value_mated_in_max_depth) {
             tt_value += ss[0].ply;
         }
 
