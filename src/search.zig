@@ -548,8 +548,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             best_score = score;
             if (score > alpha) {
                 best_move = move;
-                if (pv_node and !root_node) // Update pv even in fail-high case
-                {
+                // Update pv even in fail-high case
+                if (pv_node and !root_node) {
                     update_pv(ss[0].pv.?, move, ss[1].pv.?);
                 }
 
@@ -569,7 +569,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                             try tables.transposition_table.put(allocator, key, .{ score, depth -| 1, move, .lowerbound });
                         }
                     }
-                    break;
+                    return best_score;
                 } else {
                     alpha = score; // Update alpha! Always alpha < beta
                 }
@@ -613,6 +613,8 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
     var s: position.State = position.State{};
     var pv: [200]types.Move = @splat(.none);
     var score: types.Value = -types.value_none;
+    var best_score: types.Value = -types.value_none;
+    var best_move: types.Move = types.Move.none;
 
     // Initialize node
     if (pv_node) {
@@ -695,16 +697,21 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
 
         try pos.unMovePiece(move);
 
-        if (score >= beta) {
-            // beta cutoff
-            return beta;
-        }
-        if (score > alpha) {
-            // Update pv even in fail-high case
-            if (pv_node)
-                update_pv(ss[0].pv.?, move, ss[1].pv.?);
-            // alpha acts like max in MiniMax
-            alpha = score;
+        if (score > best_score) {
+            best_score = score;
+            if (score > alpha) {
+                best_move = move;
+                // Update pv even in fail-high case
+                if (pv_node)
+                    update_pv(ss[0].pv.?, move, ss[1].pv.?);
+
+                // Fail high
+                if (score >= beta) {
+                    return best_score;
+                } else {
+                    alpha = score;
+                }
+            }
         }
 
         if (outOfTime(limits))
