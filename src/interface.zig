@@ -81,8 +81,6 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
     states.appendAssumeCapacity(position.State{});
     var pos: position.Position = try position.Position.setFen(&states.items[0], position.start_fen);
 
-    var alloc = std.heap.ArenaAllocator.init(allocator);
-    defer alloc.deinit();
     while (true) {
         const line: []u8 = try stdin.takeDelimiter('\n') orelse break;
 
@@ -459,7 +457,7 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
 }
 
 pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer) anyerror!void {
-    var t = std.time.Timer.start() catch unreachable;
+    var t = try std.time.Timer.start();
 
     var list: std.ArrayListUnmanaged([]const u8) = .empty;
     defer list.deinit(allocator);
