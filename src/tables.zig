@@ -295,9 +295,9 @@ pub fn getAttacks(comptime pt: PieceType, comptime color: Color, sq: Square, blo
         // PieceType.rook => moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable,
         // PieceType.bishop => moves_bishop[sq.index()].get(moves_bishop_mask[sq.index()] & blockers) orelse unreachable,
         // PieceType.queen => (moves_rook[sq.index()].get(moves_rook_mask[sq.index()] & blockers) orelse unreachable) | (moves_bishop[sq.index()].get(moves_bishop_mask[sq.index()] & blockers) orelse unreachable),
-        PieceType.rook => magic.magics_rook[sq.index()].computeValue(blockers),
-        PieceType.bishop => magic.magics_bishop[sq.index()].computeValue(blockers),
-        PieceType.queen => magic.magics_bishop[sq.index()].computeValue(blockers) | magic.magics_rook[sq.index()].computeValue(blockers),
+        PieceType.rook => magic.magics_rook[sq.index()].computeValue(blockers, magic.postmask_rook[sq.index()]),
+        PieceType.bishop => magic.magics_bishop[sq.index()].computeValue(blockers, magic.postmask_bishop[sq.index()]),
+        PieceType.queen => magic.magics_bishop[sq.index()].computeValue(blockers, magic.postmask_bishop[sq.index()]) | magic.magics_rook[sq.index()].computeValue(blockers, magic.postmask_rook[sq.index()]),
         else => pseudo_legal_attacks[pt.index()][sq.index()],
     };
 }

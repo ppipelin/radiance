@@ -19,9 +19,9 @@ const Magic = struct {
         return @truncate(blockers);
     }
 
-    pub fn computeValue(self: Magic, blockers_: Bitboard) Bitboard {
+    pub fn computeValue(self: Magic, blockers_: Bitboard, postmask: Bitboard) Bitboard {
         const index = self.computeIndex(blockers_);
-        return self.ptr.?[index];
+        return self.ptr.?[index] & postmask;
     }
 
     fn nnz(self: Magic) u16 {
@@ -47,6 +47,8 @@ var magic_holder: [107648]Bitboard = @splat(0);
 var magic_holder_tmp: [107648]Bitboard = @splat(0);
 pub var magics_bishop: [types.board_size2]Magic = undefined;
 pub var magics_rook: [types.board_size2]Magic = undefined;
+pub var postmask_bishop: [types.board_size2]Bitboard = undefined;
+pub var postmask_rook: [types.board_size2]Bitboard = undefined;
 
 const bishop_bits = [types.board_size2]u8{
     6, 5, 5, 5, 5, 5, 5, 6,
@@ -186,6 +188,8 @@ pub fn initMagic() void {
 
         magics_bishop[sq.index()] = Magic{ .ptr = ptr, .mask = tables.moves_bishop_mask[sq.index()], .magic = magic_numbers[sq.index()], .shift = @truncate(64 - bishop_bits[sq.index()]) };
 
+        postmask_bishop[sq.index()] = tables.getBishopAttacks(sq, 0);
+
         const blockers_size = tables.computeBlockers(magics_bishop[sq.index()].mask, &blockers);
         for (blockers[0..blockers_size]) |blocker| {
             const index = magics_bishop[sq.index()].computeIndex(blocker);
@@ -200,6 +204,8 @@ pub fn initMagic() void {
         var blockers: [1 << 12]Bitboard = @splat(0);
 
         magics_rook[sq.index()] = Magic{ .ptr = ptr, .mask = tables.moves_rook_mask[sq.index()], .magic = magic_numbers[types.board_size2 + sq.index()], .shift = @truncate(64 - rook_bits[sq.index()]) };
+
+        postmask_rook[sq.index()] = tables.getRookAttacks(sq, 0);
 
         const blockers_size = tables.computeBlockers(magics_rook[sq.index()].mask, &blockers);
         for (blockers[0..blockers_size]) |blocker| {
@@ -228,11 +234,12 @@ fn generateMagic(noalias magic_out: *Magic, noalias ptr: [*]Bitboard, sq: types.
 
     var valid = true;
     for (blockers[0..blockers_size]) |blocker| {
+        const postmask = getAttacks(sq, 0);
         const index = magic_out.computeIndex(blocker);
         const moves = getAttacks(sq, blocker);
-        if (magic_out.ptr.?[index] == 0) {
+        if ((magic_out.ptr.?[index] & postmask) == 0) {
             magic_out.ptr.?[index] = moves;
-        } else if (magic_out.ptr.?[index] != moves) {
+        } else if ((magic_out.ptr.?[index] & postmask) != moves) {
             valid = false;
             break;
         } else {

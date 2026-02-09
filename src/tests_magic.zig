@@ -46,7 +46,7 @@ test "MovegenAccessions" {
             const moves_bishop_blockers_size: usize = tables.computeBlockers(tables.moves_bishop_mask[sq.index()], &moves_bishop_blockers);
 
             for (moves_bishop_blockers[0..moves_bishop_blockers_size]) |blockers| {
-                _ = magic.magics_bishop[sq.index()].computeValue(blockers);
+                _ = magic.magics_bishop[sq.index()].computeValue(blockers, magic.postmask_bishop[sq.index()]);
             }
 
             var moves_rook_blockers: [1 << 12]types.Bitboard = @splat(0);
@@ -54,7 +54,7 @@ test "MovegenAccessions" {
             const moves_rook_blockers_size: usize = tables.computeBlockers(tables.moves_rook_mask[sq.index()], &moves_rook_blockers);
 
             for (moves_rook_blockers[0..moves_rook_blockers_size]) |blockers| {
-                _ = magic.magics_rook[sq.index()].computeValue(blockers);
+                _ = magic.magics_rook[sq.index()].computeValue(blockers, magic.postmask_rook[sq.index()]);
             }
         }
     }
