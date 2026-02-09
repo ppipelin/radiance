@@ -97,18 +97,18 @@ pub fn compute(iterations: u64) void {
 
     for (0..iterations) |i| {
         const display_step = 10;
-        if (@mod(i, @max(1, @divTrunc(iterations, display_step))) == 0) {
+        if (@divTrunc(iterations, display_step) != 0 and @mod(i, @divTrunc(iterations, display_step)) == 0) {
             std.debug.print("{}%\n", .{i / @divTrunc(iterations, 10) * display_step});
         }
         var ptr: [*]Bitboard = &magic_holder_tmp;
         var sq: types.Square = .a1;
         while (sq != .none) : (sq = sq.inc().*) {
             var magic_b: Magic = .empty;
-            var magic_r: Magic = .empty;
-            generateMagic(&magic_b, ptr, sq, tables.moves_bishop_mask[sq.index()], tables.getBishopAttacks, bishop_bits[sq.index()], &prng);
+
+            const valid_bishop: bool = generateMagic(&magic_b, ptr, sq, tables.moves_bishop_mask[sq.index()], tables.getBishopAttacks, bishop_bits[sq.index()], &prng);
+            if (!valid_bishop)
+                continue;
             ptr = ptr + (@as(u64, 1) << @truncate(64 - @as(usize, magic_b.shift)));
-            generateMagic(&magic_r, ptr, sq, tables.moves_rook_mask[sq.index()], tables.getRookAttacks, rook_bits[sq.index()], &prng);
-            ptr = ptr + (@as(u64, 1) << @truncate(64 - @as(usize, magic_r.shift)));
 
             // If we found a bigger shift or if magic array is more sparse take new one
             if (magic_b.shift > magics_bishop[sq.index()].shift) {
@@ -121,18 +121,28 @@ pub fn compute(iterations: u64) void {
                 magics_bishop[sq.index()] = magic_b;
                 improved_sparse = true;
             }
-
-            if (magic_r.shift > magics_rook[sq.index()].shift) {
-                std.debug.print("found better rook shift for sq {}, from {} to {}\n", .{ sq, magics_rook[sq.index()].shift, magic_r.shift });
-                magics_rook[sq.index()] = magic_r;
-                improved_shift = true;
-            }
-            if (magic_r.nnz() < magics_rook[sq.index()].nnz()) {
-                std.debug.print("found more sparse rook magic for sq {}, from {} to {}\n", .{ sq, magics_rook[sq.index()].nnz(), magic_r.nnz() });
-                magics_rook[sq.index()] = magic_r;
-                improved_sparse = true;
-            }
         }
+
+        // sq = .a1;
+        // while (sq != .none) : (sq = sq.inc().*) {
+        //     var magic_r: Magic = .empty;
+
+        //     const valid_rook: bool = generateMagic(&magic_r, ptr, sq, tables.moves_rook_mask[sq.index()], tables.getRookAttacks, rook_bits[sq.index()], &prng);
+        //     if (!valid_rook)
+        //         continue;
+        //     ptr = ptr + (@as(u64, 1) << @truncate(64 - @as(usize, magic_r.shift)));
+
+        //     if (magic_r.shift > magics_rook[sq.index()].shift) {
+        //         std.debug.print("found better rook shift for sq {}, from {} to {}\n", .{ sq, magics_rook[sq.index()].shift, magic_r.shift });
+        //         magics_rook[sq.index()] = magic_r;
+        //         improved_shift = true;
+        //     }
+        //     if (magic_r.nnz() < magics_rook[sq.index()].nnz()) {
+        //         std.debug.print("found more sparse rook magic for sq {}, from {} to {}\n", .{ sq, magics_rook[sq.index()].nnz(), magic_r.nnz() });
+        //         magics_rook[sq.index()] = magic_r;
+        //         improved_sparse = true;
+        //     }
+        // }
     }
 
     std.debug.print("nnz per square :\n", .{});
@@ -170,26 +180,28 @@ pub fn compute(iterations: u64) void {
 pub fn initMagic() void {
     var ptr: [*]Bitboard = &magic_holder;
 
-    var sq = types.Square.a1;
-    while (sq != types.Square.none) : (sq = sq.inc().*) {
+    var sq: types.Square = .a1;
+    while (sq != .none) : (sq = sq.inc().*) {
         var blockers: [1 << 12]Bitboard = @splat(0);
 
         magics_bishop[sq.index()] = Magic{ .ptr = ptr, .mask = tables.moves_bishop_mask[sq.index()], .magic = magic_numbers[sq.index()], .shift = @truncate(64 - bishop_bits[sq.index()]) };
 
-        var blockers_size = tables.computeBlockers(magics_bishop[sq.index()].mask, &blockers);
+        const blockers_size = tables.computeBlockers(magics_bishop[sq.index()].mask, &blockers);
         for (blockers[0..blockers_size]) |blocker| {
             const index = magics_bishop[sq.index()].computeIndex(blocker);
             magics_bishop[sq.index()].ptr.?[index] = tables.getBishopAttacks(sq, blocker);
         }
 
         ptr = ptr + (@as(u64, 1) << @truncate(64 - @as(u64, magics_bishop[sq.index()].shift)));
+    }
 
-        // defer blockers.clearRetainingCapacity(); ????
-        blockers = @splat(0);
+    sq = .a1;
+    while (sq != .none) : (sq = sq.inc().*) {
+        var blockers: [1 << 12]Bitboard = @splat(0);
 
         magics_rook[sq.index()] = Magic{ .ptr = ptr, .mask = tables.moves_rook_mask[sq.index()], .magic = magic_numbers[types.board_size2 + sq.index()], .shift = @truncate(64 - rook_bits[sq.index()]) };
 
-        blockers_size = tables.computeBlockers(magics_rook[sq.index()].mask, &blockers);
+        const blockers_size = tables.computeBlockers(magics_rook[sq.index()].mask, &blockers);
         for (blockers[0..blockers_size]) |blocker| {
             const index = magics_rook[sq.index()].computeIndex(blocker);
             magics_rook[sq.index()].ptr.?[index] = tables.getRookAttacks(sq, blocker);
@@ -199,39 +211,34 @@ pub fn initMagic() void {
 }
 
 // shift corresponds to the best shift so far
-fn generateMagic(noalias magic_out: *Magic, noalias ptr: [*]Bitboard, sq: types.Square, mask: Bitboard, getAttacks: fn (types.Square, Bitboard) Bitboard, shift: u8, prng: *std.Random.DefaultPrng) void {
+fn generateMagic(noalias magic_out: *Magic, noalias ptr: [*]Bitboard, sq: types.Square, mask: Bitboard, getAttacks: fn (types.Square, Bitboard) Bitboard, shift: u8, prng: *std.Random.DefaultPrng) bool {
     var blockers: [1 << 12]Bitboard = @splat(0);
     const blockers_size: usize = tables.computeBlockers(mask, &blockers);
 
-    while (true) {
-        // Erase previous data
-        @memset(ptr[0..((@as(u64, 1) << @truncate(shift)))], 0);
+    // Erase previous data
+    @memset(ptr[0..((@as(u64, 1) << @truncate(shift)))], 0);
 
-        var magic = Magic{
-            .ptr = ptr,
-            .mask = mask,
-            .magic = prng.random().int(u64) & prng.random().int(u64) & prng.random().int(u64),
-            // .shift = @truncate(64 - @divTrunc(@as(u64, prng.random().int(u8)) * shift, 1 << 8)),
-            .shift = @truncate(64 - (shift -| prng.random().int(u1))), // half the time increase size of shift
-        };
+    magic_out.* = Magic{
+        .ptr = ptr,
+        .mask = mask,
+        .magic = prng.random().int(u64) & prng.random().int(u64) & prng.random().int(u64),
+        // .shift = @truncate(64 - @divTrunc(@as(u64, prng.random().int(u8)) * shift, 1 << 8)),
+        .shift = @truncate(64 - (shift -| prng.random().int(u1))), // half the time increase size of shift
+    };
 
-        var valid = true;
-        for (blockers[0..blockers_size]) |blocker| {
-            const index = magic.computeIndex(blocker);
-            const moves = getAttacks(sq, blocker);
-            if (magic.ptr.?[index] == 0) {
-                magic.ptr.?[index] = moves;
-            } else if (magic.ptr.?[index] != moves) {
-                valid = false;
-                break;
-            } else {
-                // std.debug.print("constructive collision\n", .{});
-            }
-        }
-
-        if (valid) {
-            magic_out.* = magic;
+    var valid = true;
+    for (blockers[0..blockers_size]) |blocker| {
+        const index = magic_out.computeIndex(blocker);
+        const moves = getAttacks(sq, blocker);
+        if (magic_out.ptr.?[index] == 0) {
+            magic_out.ptr.?[index] = moves;
+        } else if (magic_out.ptr.?[index] != moves) {
+            valid = false;
             break;
+        } else {
+            // std.debug.print("constructive collision\n", .{});
         }
     }
+
+    return valid;
 }
