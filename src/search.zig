@@ -339,11 +339,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         tt_value, tt_depth, tt_move, tt_bound = found.?;
 
         // Update the mate score retrieved from the table to consider the current ply
-        if (tt_value > types.value_mate_in_max_depth) {
-            tt_value -= ss[0].ply;
-        } else if (tt_value < types.value_mated_in_max_depth) {
-            tt_value += ss[0].ply;
-        }
+        tt_value = types.valueFromTT(tt_value, ss[0].ply);
 
         if (!is_nmr and !pv_node and tt_depth > depth -| @intFromBool(tt_value <= beta)) {
             switch (tt_bound) {
@@ -504,7 +500,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                         if (found == null or tt_depth <= depth -| 1) {
                             const tt_flag: types.TableBound = if (score >= beta) .lowerbound else if (alpha != alpha_) .exact else .upperbound;
 
-                            try tables.transposition_table.put(allocator, key, .{ score, depth -| 1, move, tt_flag });
+                            try tables.transposition_table.put(allocator, key, .{ types.valueToTT(score, ss[0].ply), depth -| 1, move, tt_flag });
                         }
                     }
                 }
@@ -566,7 +562,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                     }
                     if (score != types.value_draw) {
                         if (found == null or tt_depth <= depth -| 1) {
-                            try tables.transposition_table.put(allocator, key, .{ score, depth -| 1, move, .lowerbound });
+                            try tables.transposition_table.put(allocator, key, .{ types.valueToTT(score, ss[0].ply), depth -| 1, move, .lowerbound });
                         }
                     }
                     return best_score;
@@ -633,11 +629,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
     if (tt_hit) {
         tt_value, tt_depth, tt_move, tt_bound = found.?;
         // Update the mate score retrieved from the table to consider the current ply
-        if (tt_value > types.value_mate_in_max_depth) {
-            tt_value -= ss[0].ply;
-        } else if (tt_value < types.value_mated_in_max_depth) {
-            tt_value += ss[0].ply;
-        }
+        tt_value = types.valueFromTT(tt_value, ss[0].ply);
 
         // At non-PV nodes check for early transposition table cutoff
         if (!is_nmr and !pv_node and tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
