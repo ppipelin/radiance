@@ -66,7 +66,7 @@ test "EvaluatePawnHeuristics" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
-    var fen: []const u8 = "3k4/7p/3p2P1/3P2P1/P6P/P7/P1P3P1/3K4 w - -";
+    var fen: []const u8 = "3k4/7p/4p1P1/4P1P1/P6P/P7/P5P1/3K4 w - -";
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, fen);
@@ -76,7 +76,7 @@ test "EvaluatePawnHeuristics" {
 
     try std.testing.expectEqual(6, evaluate.computeDoubledPawns(bb_white));
     try std.testing.expectEqual(1, evaluate.computeBlockedPawns(bb_white, types.Color.white, bb_black));
-    try std.testing.expectEqual(3, evaluate.computeIsolatedPawns(bb_white));
+    try std.testing.expectEqual(4, evaluate.computeIsolatedPawns(bb_white));
 
     fen = "8/8/n4pk1/P5pp/3P4/6PP/5K1P/8 w - -";
 
