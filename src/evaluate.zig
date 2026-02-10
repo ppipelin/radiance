@@ -5,12 +5,13 @@ const types = @import("types.zig");
 const variable = @import("variable.zig");
 
 pub inline fn computeDoubledPawns(bb_pawn: types.Bitboard) types.Value {
-    var doubled_pawns: types.Value = 0;
-    for (types.mask_file) |mask| {
-        if (@popCount(mask & bb_pawn) > 1)
-            doubled_pawns += @popCount(mask & bb_pawn);
-    }
-    return doubled_pawns;
+    const bb_pawn_vec: @Vector(types.board_size, types.Bitboard) = @splat(bb_pawn);
+    const condition_vec: @Vector(types.board_size, types.Bitboard) = @splat(1);
+
+    const counted_pawns = @popCount(types.mask_file & bb_pawn_vec);
+    const is_doubled_file: @Vector(types.board_size, u3) = @intFromBool(counted_pawns > condition_vec);
+
+    return @reduce(.Add, is_doubled_file * counted_pawns);
 }
 
 pub inline fn computeBlockedPawns(bb_pawn: types.Bitboard, comptime col: types.Color, blockers: types.Bitboard) types.Value {
@@ -24,14 +25,17 @@ pub inline fn computeBlockedPawns(bb_pawn: types.Bitboard, comptime col: types.C
 pub inline fn computeIsolatedPawns(bb_pawn: types.Bitboard) types.Value {
     const left_neighbors = (bb_pawn & ~types.mask_file[types.File.fh.index()]) << 1;
     const right_neighbors = (bb_pawn & ~types.mask_file[types.File.fa.index()]) >> 1;
-    var adjacent_pawns = left_neighbors | right_neighbors;
+    const adjacent_pawns = left_neighbors | right_neighbors;
+    const bb_pawn_vec: @Vector(types.board_size, types.Bitboard) = @splat(bb_pawn);
+    const adjacent_pawns_vec: @Vector(types.board_size, types.Bitboard) = @splat(adjacent_pawns);
 
-    inline for (types.mask_file) |mask| {
-        if ((mask & adjacent_pawns) > 0)
-            adjacent_pawns |= mask;
-    }
+    const condition_vec: @Vector(types.board_size, types.Bitboard) = @splat(0);
+    const is_isolated_file: @Vector(types.board_size, u3) = @intFromBool((types.mask_file & adjacent_pawns_vec) == condition_vec);
 
-    return @popCount(bb_pawn & ~adjacent_pawns);
+    // There needs to be at least a pawn in the column for it to be isolated
+    const is_pawn_file: @Vector(types.board_size, u3) = @truncate(@popCount(types.mask_file & bb_pawn_vec));
+
+    return @reduce(.Add, is_pawn_file * is_isolated_file);
 }
 
 // Chebyshev distance of kings
@@ -137,18 +141,14 @@ pub fn spaceBonus(pos: position.Position) types.Value {
 
     // Vertical bonus
 
-    const pawn_white: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
-    const pawn_black: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
+    const pawn_white_vec: @Vector(types.board_size, types.Bitboard) = @splat(pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()]);
+    const pawn_black_vec: @Vector(types.board_size, types.Bitboard) = @splat(pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()]);
+
+    const condition_vec: @Vector(types.board_size, types.Bitboard) = @splat(0);
 
     // Columns where there is a pawn
-    var vertical_white: types.Bitboard = 0;
-    inline for (0..types.board_size) |i| {
-        vertical_white |= types.mask_file[i] * @intFromBool((types.mask_file[i] & pawn_white) != 0);
-    }
-    var vertical_black: types.Bitboard = 0;
-    inline for (0..types.board_size) |i| {
-        vertical_black |= types.mask_file[i] * @intFromBool((types.mask_file[i] & pawn_black) != 0);
-    }
+    const vertical_white: types.Bitboard = @reduce(.Or, types.mask_file * @intFromBool((types.mask_file & pawn_white_vec) != condition_vec));
+    const vertical_black: types.Bitboard = @reduce(.Or, types.mask_file * @intFromBool((types.mask_file & pawn_black_vec) != condition_vec));
 
     const open_files: types.Bitboard = ~(vertical_white | vertical_black);
     const semi_open_files_white: types.Bitboard = ~(vertical_white) & vertical_black;
