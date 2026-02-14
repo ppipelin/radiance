@@ -4,7 +4,7 @@ const tables = @import("tables.zig");
 const types = @import("types.zig");
 const variable = @import("variable.zig");
 
-pub inline fn computeDoubledPawns(bb_pawn: types.Bitboard) types.Value {
+pub fn computeDoubledPawns(bb_pawn: types.Bitboard) types.Value {
     const bb_pawn_vec: @Vector(types.board_size, types.Bitboard) = @splat(bb_pawn);
     const condition_vec: @Vector(types.board_size, types.Bitboard) = @splat(1);
 
@@ -22,7 +22,7 @@ pub inline fn computeBlockedPawns(bb_pawn: types.Bitboard, comptime col: types.C
     }
 }
 
-pub inline fn computeIsolatedPawns(bb_pawn: types.Bitboard) types.Value {
+pub fn computeIsolatedPawns(bb_pawn: types.Bitboard) types.Value {
     const left_neighbors = (bb_pawn & ~types.mask_file[types.File.fh.index()]) << 1;
     const right_neighbors = (bb_pawn & ~types.mask_file[types.File.fa.index()]) >> 1;
     const adjacent_pawns = left_neighbors | right_neighbors;
@@ -36,6 +36,14 @@ pub inline fn computeIsolatedPawns(bb_pawn: types.Bitboard) types.Value {
     const is_pawn_file: @Vector(types.board_size, u3) = @truncate(@popCount(types.mask_file & bb_pawn_vec));
 
     return @reduce(.Add, is_pawn_file * is_isolated_file);
+}
+
+// Protecting pawns are mutual so color does not matter
+pub fn pawnStructure(bb_pawn: types.Bitboard) types.Value {
+    const pawn_diagonal_left = (bb_pawn & ~types.mask_file[0]) << (types.board_size - 1);
+    const pawn_diagonal_right = (bb_pawn & ~types.mask_file[types.board_size - 1]) << (types.board_size + 1);
+
+    return @popCount((pawn_diagonal_right | pawn_diagonal_left) & bb_pawn);
 }
 
 // Chebyshev distance of kings
@@ -205,6 +213,8 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         variable.pawn_isolated * (computeIsolatedPawns(bb_white_pawn_) - computeIsolatedPawns(bb_black_pawn_)) +
         variable.pawn_doubled * (computeDoubledPawns(bb_white_pawn_) - computeDoubledPawns(bb_black_pawn_)) +
         variable.pawn_blocked * (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_black) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_white));
+
+    score +|= variable.pawn_protection * (pawnStructure(bb_white_pawn_) - pawnStructure(bb_white_pawn_));
 
     var bb_white_pawn: types.Bitboard = bb_white_pawn_;
     while (bb_white_pawn != 0) {
