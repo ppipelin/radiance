@@ -14,7 +14,7 @@ pub const pawn_isolated = 50;
 pub const pawn_doubled = 20;
 pub const pawn_blocked = 10;
 
-pub const bishop_pair = 30;
+pub const bishop_pair = 10;
 
 pub const rook_open_files = 40;
 pub const rook_semi_open_files = 20;
