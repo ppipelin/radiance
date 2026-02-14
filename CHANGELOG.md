@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Bishop pair bonus in evaluation
+- Pawn structure evaluation
 
 ### Changed
 
