@@ -31,6 +31,9 @@ pub fn initAll(allocator: std.mem.Allocator) void {
 pub const Key = u64;
 
 pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, u8, Move, TableBound })) = .empty;
+// Will store pawn structures once computed
+// Computed every pawn move/capture
+pub var pawn_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{Value})) = .empty;
 
 // pnbrqkPNBRQK
 pub var hash_psq: [types.Piece.nb()][types.board_size2]Key = @splat(@splat(0));

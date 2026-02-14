@@ -90,6 +90,22 @@ test "EvaluatePawnHeuristics" {
     try std.testing.expectEqual(2, evaluate.computeIsolatedPawns(bb_white));
 }
 
+test "EvaluatePawnStructure" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    const fen: []const u8 = "2pk4/1p5p/6p1/5pP1/3ppP2/2P5/p2P3P/P2K4 w - -";
+
+    var s: position.State = position.State{};
+    const pos: position.Position = try position.Position.setFen(&s, fen);
+
+    const bb_white: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
+    const bb_black: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
+
+    try std.testing.expectEqual(2, evaluate.pawnStructure(bb_white));
+    try std.testing.expectEqual(4, evaluate.pawnStructure(bb_black));
+}
+
 test "EvaluateSpaceBonus" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
