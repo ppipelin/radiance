@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Overflow handling for big scores and fixed pv display for mate
 - Resolve depth of mates from transposition table
+- Use SIMD operations for pawn heuristics
 
 ### Removed
 
