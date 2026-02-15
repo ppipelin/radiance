@@ -17,13 +17,13 @@ test "Castle" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "2k5/8/8/8/8/8/8/R2K2R1 w KQ - 0 1");
 
-    var list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     pos.updateAttacked(true);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, true);
+    pos.generateLegalMoves(types.GenerationType.all, .white, &move_list, &move_len, true);
 
-    try expectEqual(26, list.items.len);
+    try expectEqual(26, move_len);
 }
 
 test "CastleIntersect" {
@@ -32,12 +32,12 @@ test "CastleIntersect" {
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "1qk5/8/8/8/8/8/8/R1K1R3 w KQ - 0 1");
-    var list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     pos.updateAttacked(true);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, true);
-    try expectEqual(24, list.items.len);
+    pos.generateLegalMoves(types.GenerationType.all, .white, &move_list, &move_len, true);
+    try expectEqual(24, move_len);
 
     pos = try position.Position.setFen(&s, "rk3r2/8/8/pppppppp/8/8/8/R4RK1 w Qkq -");
     try expectEqual(20, search.perftTest(allocator, &pos, 1, true) catch unreachable);
@@ -53,13 +53,13 @@ test "CastleMixed" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "1r1k1b1q/2pp2pp/1p3p2/4r3/4n3/1P6/1PPP1PPP/R2KRBBQ w AEb");
 
-    var list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     pos.updateAttacked(true);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, true);
+    pos.generateLegalMoves(types.GenerationType.all, .white, &move_list, &move_len, true);
 
-    try expectEqual(31, list.items.len);
+    try expectEqual(31, move_len);
 }
 
 test "CastleCheck" {

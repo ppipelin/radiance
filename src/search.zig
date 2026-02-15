@@ -52,8 +52,8 @@ inline fn outOfTime(limits: interface.Limits) bool {
 
 pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, depth: u8, comptime is_960: bool, verbose: bool) !u64 {
     var nodes: u64 = 0;
-    var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer move_list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     if (depth == 0 or interface.g_stop) {
         return 1;
@@ -61,18 +61,18 @@ pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: 
 
     pos.updateAttacked(is_960);
     switch (pos.state.turn) {
-        inline else => |turn| pos.generateLegalMoves(allocator, types.GenerationType.all, turn, &move_list, is_960),
+        inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, is_960),
     }
 
     if (depth == 1) {
         if (verbose) {
-            try types.Move.displayMoves(stdout, move_list);
+            try types.Move.displayMoves(stdout, move_list[0..move_len]);
             try stdout.flush();
         }
-        return move_list.items.len;
+        return move_len;
     }
 
-    for (move_list.items) |move| {
+    for (move_list[0..move_len]) |move| {
         var s: position.State = position.State{};
 
         try pos.movePiece(move, &s);
@@ -92,8 +92,8 @@ pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: 
 
 pub fn perftTest(allocator: std.mem.Allocator, noalias pos: *position.Position, depth: u8, comptime is_960: bool) !u64 {
     var nodes: u64 = 0;
-    var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer move_list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     if (depth == 0) {
         return 1;
@@ -102,15 +102,16 @@ pub fn perftTest(allocator: std.mem.Allocator, noalias pos: *position.Position, 
     pos.updateAttacked(is_960);
     switch (pos.state.turn) {
         inline else => |turn| {
-            pos.generateLegalMoves(allocator, .capture, turn, &move_list, is_960);
-            pos.generateLegalMoves(allocator, .quiet, turn, &move_list, is_960);
+            pos.generateLegalMoves(.capture, turn, &move_list, &move_len, is_960);
+            pos.generateLegalMoves(.quiet, turn, &move_list, &move_len, is_960);
+            // pos.generateLegalMoves(.all, turn, &move_list, &move_len, is_960);
         },
     }
 
     if (depth == 1)
-        return move_list.items.len;
+        return move_len;
 
-    for (move_list.items) |move| {
+    for (move_list[0..move_len]) |move| {
         var s: position.State = position.State{};
 
         var fen_before: [90]u8 = undefined;
@@ -145,16 +146,16 @@ pub fn perftTest(allocator: std.mem.Allocator, noalias pos: *position.Position, 
     return nodes;
 }
 
-pub fn searchRandom(allocator: std.mem.Allocator, noalias pos: *position.Position, comptime is_960: bool) !types.Move {
-    var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer move_list.deinit(allocator);
+pub fn searchRandom(noalias pos: *position.Position, comptime is_960: bool) !types.Move {
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     pos.updateAttacked(is_960);
     switch (pos.state.turn) {
-        inline else => |turn| pos.generateLegalMoves(allocator, types.GenerationType.all, turn, &move_list, is_960),
+        inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, is_960),
     }
 
-    if (move_list.items.len == 0)
+    if (move_len == 0)
         return error.MoveAfterCheckmate;
     var prng = std.Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
@@ -162,8 +163,7 @@ pub fn searchRandom(allocator: std.mem.Allocator, noalias pos: *position.Positio
         break :blk seed;
     });
     const rand = prng.random();
-    const len: u8 = @intCast(move_list.items.len);
-    return move_list.items[rand.intRangeAtMost(u8, 0, len - 1)];
+    return move_list[rand.intRangeAtMost(u8, 0, @intCast(move_len - 1))];
 }
 
 pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !types.Move {
@@ -189,8 +189,8 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     }
     ss[0].pv = &pv;
 
-    var move_list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer move_list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     if (is_960) {
         pos.updateAttacked(true);
@@ -199,29 +199,28 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     }
     switch (is_960) {
         inline else => |is_960_current| switch (pos.state.turn) {
-            inline else => |turn| pos.generateLegalMoves(allocator, types.GenerationType.all, turn, &move_list, is_960_current),
+            inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, is_960_current),
         },
     }
 
-    const root_moves_len: usize = move_list.items.len;
-    if (root_moves_len == 0) {
+    if (move_len == 0) {
         return error.Checkmated;
-    } else if (root_moves_len == 1) {
-        return move_list.items[0];
+    } else if (move_len == 1) {
+        return move_list[0];
     }
 
     // Order moves
     var scores: [types.max_moves]types.Value = undefined;
-    pos.scoreMoves(move_list.items, .all, &scores);
-    position.orderMoves(move_list.items, &scores);
+    pos.scoreMoves(move_list[0..move_len], .all, &scores);
+    position.orderMoves(move_list[0..move_len], &scores);
 
-    try root_moves.ensureTotalCapacity(allocator, root_moves_len);
+    try root_moves.ensureTotalCapacity(allocator, move_len);
     defer root_moves.clearAndFree(allocator);
     root_moves.clearRetainingCapacity();
 
     // limits.searchmoves here
 
-    for (move_list.items) |move| {
+    for (move_list[0..move_len]) |move| {
         var pv_rm: std.ArrayListUnmanaged(types.Move) = .empty;
         try pv_rm.ensureTotalCapacity(allocator, 200);
         pv_rm.appendAssumeCapacity(move);
@@ -422,7 +421,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     }
 
     var mp: movepick.MovePick = .{ .tt_move = tt_move };
-    defer mp.deinit(allocator);
+    defer mp.deinit();
 
     var pv_move: types.Move = types.Move.none;
     if (root_node and root_moves.items[0].pv.items.len > 0) {
@@ -432,8 +431,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     // Loop over all legal moves
     var previous_quiets: [types.max_moves]types.Move = @splat(.none);
     var previous_captures: [types.max_moves]types.Move = @splat(.none);
-    var move: types.Move = try mp.nextMove(allocator, pos, pv_move, is_960);
-    while (move != types.Move.none) : (move = try mp.nextMove(allocator, pos, pv_move, is_960)) {
+    var move: types.Move = try mp.nextMove(pos, pv_move, is_960);
+    while (move != types.Move.none) : (move = try mp.nextMove(pos, pv_move, is_960)) {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }
@@ -655,11 +654,11 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
 
     // Loop over all legal captures
     var mp: movepick.MovePick = .{ .stage = 10 };
-    defer mp.deinit(allocator);
+    defer mp.deinit();
 
     // Loop over all legal moves
-    var move: types.Move = try mp.nextMove(allocator, pos, types.Move.none, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(allocator, pos, types.Move.none, false)) {
+    var move: types.Move = try mp.nextMove(pos, types.Move.none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(pos, types.Move.none, false)) {
         if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }

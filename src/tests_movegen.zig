@@ -261,13 +261,13 @@ test "MovegenEnPassant" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "4k3/8/8/3pPp2/8/8/8/4K3 w - d6 0 3");
 
-    var list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
+    pos.generateLegalMoves(types.GenerationType.all, .white, &move_list, &move_len, false);
 
-    try expectEqual(7, list.items.len);
+    try expectEqual(7, move_len);
 }
 
 test "MovegenBishop" {
@@ -277,13 +277,13 @@ test "MovegenBishop" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "2k5/8/8/B5BB/8/1B4B1/5B2/2BKB3 w - - 0 1");
 
-    var list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
+    pos.generateLegalMoves(types.GenerationType.all, .white, &move_list, &move_len, false);
 
-    try expectEqual(52, list.items.len);
+    try expectEqual(52, move_len);
 }
 
 test "MovegenRook" {
@@ -293,13 +293,13 @@ test "MovegenRook" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "3k4/8/8/R5RR/8/1R4R1/5R2/2RKR3 w - - 0 1");
 
-    var list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
+    pos.generateLegalMoves(types.GenerationType.all, .white, &move_list, &move_len, false);
 
-    try expectEqual(84, list.items.len);
+    try expectEqual(84, move_len);
 }
 
 test "MovegenSliders" {
@@ -309,13 +309,13 @@ test "MovegenSliders" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "3k4/4R3/3B4/1Q6/8/5R2/2Q1B3/1Q1K1R2 w - - 0 1");
 
-    var list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
+    pos.generateLegalMoves(types.GenerationType.all, .white, &move_list, &move_len, false);
 
-    try expectEqual(86, list.items.len);
+    try expectEqual(86, move_len);
 }
 
 test "MovegenKing" {
@@ -325,22 +325,22 @@ test "MovegenKing" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "3qkr2/8/8/8/8/8/8/4K3 w - - 0 1");
 
-    var list: std.ArrayListUnmanaged(types.Move) = .empty;
-    defer list.deinit(allocator);
+    var move_list: [types.max_moves]types.Move = @splat(.none);
+    var move_len: usize = 0;
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
+    pos.generateLegalMoves(types.GenerationType.all, .white, &move_list, &move_len, false);
 
-    try expectEqual(1, list.items.len);
+    try expectEqual(1, move_len);
 
-    list.clearAndFree(allocator);
-
+    move_list = @splat(.none);
+    move_len = 0;
     pos = try position.Position.setFen(&s, "3qk3/8/8/8/8/8/8/R3K2R w KQ - 0 1");
 
     pos.updateAttacked(false);
-    pos.generateLegalMoves(allocator, types.GenerationType.all, .white, &list, false);
+    pos.generateLegalMoves(types.GenerationType.all, .white, &move_list, &move_len, false);
 
-    try expectEqual(23, list.items.len);
+    try expectEqual(23, move_len);
 }
 
 test "MovepickMvvLva" {
@@ -351,13 +351,13 @@ test "MovepickMvvLva" {
     var stdout = std.Io.Writer.fixed(&output);
 
     var mp: movepick.MovePick = .{};
-    defer mp.deinit(allocator);
+    defer mp.deinit();
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "4k3/8/7p/3q2B1/8/8/1K6/2rR2p1 w - -");
 
-    var move: types.Move = try mp.nextMove(allocator, &pos, .none, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(allocator, &pos, .none, false)) {
+    var move: types.Move = try mp.nextMove(&pos, .none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, false)) {
         try types.Move.printUCI(move, &stdout);
     }
     var buffer_out: []u8 = stdout.buffered();
@@ -366,13 +366,13 @@ test "MovepickMvvLva" {
 
     // Reset
     _ = stdout.consumeAll();
-    mp.deinit(allocator);
+    mp.deinit();
     mp = .{};
 
     pos = try position.Position.setFen(&s, "3k4/8/6rn/8/6p1/5P2/4Q3/3K2R1 w");
 
-    move = try mp.nextMove(allocator, &pos, .none, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(allocator, &pos, .none, false)) {
+    move = try mp.nextMove(&pos, .none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, false)) {
         try types.Move.printUCI(move, &stdout);
     }
 
@@ -389,13 +389,13 @@ test "MovepickSee" {
     var stdout = std.Io.Writer.fixed(&output);
 
     var mp: movepick.MovePick = .{};
-    defer mp.deinit(allocator);
+    defer mp.deinit();
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "3kr3/8/4r1rn/8/4p1p1/5B1P/4Q3/3K2R1 w"); // win with second pawn
 
-    var move: types.Move = try mp.nextMove(allocator, &pos, .none, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(allocator, &pos, .none, false)) {
+    var move: types.Move = try mp.nextMove(&pos, .none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, false)) {
         try types.Move.printUCI(move, &stdout);
     }
 
@@ -405,12 +405,12 @@ test "MovepickSee" {
 
     pos = try position.Position.setFen(&s, "3k1r2/5r2/8/5n2/4b1B1/7B/5R2/3K1R2 w");
 
-    mp.deinit(allocator);
+    mp.deinit();
     mp = .{};
     _ = stdout.consumeAll();
 
-    move = try mp.nextMove(allocator, &pos, .none, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(allocator, &pos, .none, false)) {
+    move = try mp.nextMove(&pos, .none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, false)) {
         try types.Move.printUCI(move, &stdout);
     }
 
@@ -418,12 +418,12 @@ test "MovepickSee" {
 
     pos = try position.Position.setFen(&s, "3k1r2/5r2/5r2/5n2/4b1B1/7B/5R2/3K1R2 w");
 
-    mp.deinit(allocator);
+    mp.deinit();
     mp = .{};
     _ = stdout.consumeAll();
 
-    move = try mp.nextMove(allocator, &pos, .none, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(allocator, &pos, .none, false)) {
+    move = try mp.nextMove(&pos, .none, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, false)) {
         try types.Move.printUCI(move, &stdout);
     }
 

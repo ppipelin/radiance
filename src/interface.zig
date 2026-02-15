@@ -431,9 +431,9 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
         if (std.ascii.eqlIgnoreCase(search_mode, "Random")) {
             try stdout.print("bestmove ", .{});
             if (is_960) {
-                try (try search.searchRandom(allocator, pos, true)).printUCI(stdout);
+                try (try search.searchRandom(pos, true)).printUCI(stdout);
             } else {
-                try (try search.searchRandom(allocator, pos, false)).printUCI(stdout);
+                try (try search.searchRandom(pos, false)).printUCI(stdout);
             }
             try stdout.print("\n", .{});
         } else if (std.ascii.eqlIgnoreCase(search_mode, "NegamaxAlphaBeta")) {
