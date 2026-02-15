@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Overflow handling for big scores and fixed pv display for mate
 - Resolve depth of mates from transposition table
 
+### Removed
+
+- Allocator removed in move generation and search
+
 ## [4.2] - 2026-01-17
 
 ### Added
