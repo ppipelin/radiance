@@ -17,15 +17,16 @@ const types = @import("types.zig");
 /// 8. Quiet return
 /// 9. return `Move.none`
 pub const MovePick = struct {
-    // TODO: Avoid using allocations with types.max_moves and two lengths for slicing
-    moves_capture: std.ArrayListUnmanaged(types.Move) = .empty,
-    moves_quiet: std.ArrayListUnmanaged(types.Move) = .empty,
+    moves_capture: [types.max_moves]types.Move = @splat(.none),
+    moves_quiet: [types.max_moves]types.Move = @splat(.none),
+    capture_len: usize = 0,
+    quiet_len: usize = 0,
     stage: u8 = 0,
     tt_move: types.Move = types.Move.none,
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
 
-    pub fn nextMove(noalias self: *MovePick, allocator: std.mem.Allocator, noalias pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
+    pub fn nextMove(noalias self: *MovePick, noalias pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
 
@@ -63,7 +64,7 @@ pub const MovePick = struct {
             pos.updateAttacked(is_960);
 
             switch (pos.state.turn) {
-                inline else => |turn| pos.generateLegalMoves(allocator, .capture, turn, &self.moves_capture, is_960),
+                inline else => |turn| pos.generateLegalMoves(.capture, turn, &self.moves_capture, &self.capture_len, is_960),
             }
             self.stage += 1;
         }
@@ -72,9 +73,10 @@ pub const MovePick = struct {
         if (self.stage == 2 or self.stage == 12) {
             self.stage += 1;
             if (self.tt_move != types.Move.none) {
-                for (self.moves_capture.items, 0..) |move, i| {
-                    if (move == self.tt_move) {
-                        _ = self.moves_capture.swapRemove(i);
+                for (self.moves_capture[0..self.capture_len]) |*move| {
+                    if (move.* == self.tt_move) {
+                        move.* = self.moves_capture[self.capture_len - 1];
+                        self.capture_len -= 1;
                         break;
                     }
                 }
@@ -84,26 +86,26 @@ pub const MovePick = struct {
         // Sort captures
         if (self.stage == 3 or self.stage == 13) {
             var scores: [types.max_moves]types.Value = undefined;
-            pos.scoreMoves(self.moves_capture.items, .capture, &scores);
-            position.orderMoves(self.moves_capture.items, &scores);
+            pos.scoreMoves(self.moves_capture[0..self.capture_len], .capture, &scores);
+            position.orderMoves(self.moves_capture[0..self.capture_len], &scores);
             self.stage += 1;
         }
 
         // Explored all positive captures, go to next stage
-        if ((self.stage == 4 or self.stage == 14) and self.index_capture >= self.moves_capture.items.len) {
+        if ((self.stage == 4 or self.stage == 14) and self.index_capture >= self.capture_len) {
             self.stage += 1;
         }
 
         // Positive captures
         if (self.stage == 4) {
-            if (extractMove(pos.*, self.moves_capture.items[self.index_capture..], 0)) {
+            if (extractMove(pos.*, self.moves_capture[self.index_capture..self.capture_len], 0)) {
                 self.index_capture += 1;
-                return self.moves_capture.items[self.index_capture - 1];
+                return self.moves_capture[self.index_capture - 1];
             }
         }
 
         if (self.stage == 14) {
-            const move: types.Move = self.moves_capture.items[self.index_capture];
+            const move: types.Move = self.moves_capture[self.index_capture];
             self.index_capture += 1;
             return move;
         }
@@ -116,7 +118,7 @@ pub const MovePick = struct {
         // Quiet init
         if (self.stage == 5) {
             switch (pos.state.turn) {
-                inline else => |turn| pos.generateLegalMoves(allocator, .quiet, turn, &self.moves_quiet, is_960),
+                inline else => |turn| pos.generateLegalMoves(.quiet, turn, &self.moves_quiet, &self.quiet_len, is_960),
             }
             self.stage += 1;
         }
@@ -125,9 +127,10 @@ pub const MovePick = struct {
         if (self.stage == 6) {
             self.stage += 1;
             if (self.tt_move != types.Move.none) {
-                for (self.moves_quiet.items, 0..) |move, i| {
-                    if (move == self.tt_move) {
-                        _ = self.moves_quiet.swapRemove(i);
+                for (self.moves_quiet[0..self.quiet_len]) |*move| {
+                    if (move.* == self.tt_move) {
+                        move.* = self.moves_quiet[self.quiet_len - 1];
+                        self.quiet_len -= 1;
                         break;
                     }
                 }
@@ -137,31 +140,31 @@ pub const MovePick = struct {
         // Sort quiets
         if (self.stage == 7) {
             var scores: [types.max_moves]types.Value = undefined;
-            pos.scoreMoves(self.moves_quiet.items, .quiet, &scores);
-            position.orderMoves(self.moves_quiet.items, &scores);
+            pos.scoreMoves(self.moves_quiet[0..self.quiet_len], .quiet, &scores);
+            position.orderMoves(self.moves_quiet[0..self.quiet_len], &scores);
             self.stage += 1;
         }
 
         // Explored all quiets, go to next stage
-        if (self.stage == 8 and self.index_quiet >= self.moves_quiet.items.len) {
+        if (self.stage == 8 and self.index_quiet >= self.quiet_len) {
             self.stage += 1;
         }
 
         // Quiet
         if (self.stage == 8) {
-            const move: types.Move = self.moves_quiet.items[self.index_quiet];
+            const move: types.Move = self.moves_quiet[self.index_quiet];
             self.index_quiet += 1;
             return move;
         }
 
         // Explored all negative captures, go to next stage
-        if (self.stage == 9 and self.index_capture >= self.moves_capture.items.len) {
+        if (self.stage == 9 and self.index_capture >= self.capture_len) {
             self.stage += 1;
         }
 
         // Negative captures
         if (self.stage == 9) {
-            const move: types.Move = self.moves_capture.items[self.index_capture];
+            const move: types.Move = self.moves_capture[self.index_capture];
             self.index_capture += 1;
             return move;
         }
@@ -169,9 +172,11 @@ pub const MovePick = struct {
         return types.Move.none;
     }
 
-    pub fn deinit(noalias self: *MovePick, allocator: std.mem.Allocator) void {
-        self.moves_capture.clearAndFree(allocator);
-        self.moves_quiet.clearAndFree(allocator);
+    pub fn deinit(noalias self: *MovePick) void {
+        self.moves_capture = @splat(.none);
+        self.moves_quiet = @splat(.none);
+        self.capture_len = 0;
+        self.quiet_len = 0;
         self.stage = 0;
         self.tt_move = types.Move.none;
         self.index_capture = 0;
