@@ -115,13 +115,13 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     var knight_bb: types.Bitboard = pos.bb_pieces[types.PieceType.knight.index()] & bb_us;
     while (knight_bb != 0) {
         const sq: types.Square = types.popLsb(&knight_bb);
-        bonus += variable.knight_mobility *| @popCount(tables.getAttacks(.knight, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus +|= variable.getValue("knight_mobility") *| @popCount(tables.getAttacks(.knight, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     var bishop_bb: types.Bitboard = pos.bb_pieces[types.PieceType.bishop.index()] & bb_us;
     while (bishop_bb != 0) {
         const sq: types.Square = types.popLsb(&bishop_bb);
-        bonus += variable.bishop_mobility *| @popCount(tables.getAttacks(.bishop, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus +|= variable.getValue("bishop_mobility") *| @popCount(tables.getAttacks(.bishop, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     attacked_square |= tables.getAttacksAllFiltered(.knight, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.knight.index()]);
@@ -130,7 +130,7 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     var rook_bb: types.Bitboard = pos.bb_pieces[types.PieceType.rook.index()] & bb_us;
     while (rook_bb != 0) {
         const sq: types.Square = types.popLsb(&rook_bb);
-        bonus += variable.rook_mobility *| @popCount(tables.getAttacks(.rook, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus +|= variable.getValue("rook_mobility") *| @popCount(tables.getAttacks(.rook, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     attacked_square |= tables.getAttacksAllFiltered(.rook, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.rook.index()]);
@@ -138,7 +138,7 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     var queen_bb: types.Bitboard = pos.bb_pieces[types.PieceType.queen.index()] & bb_us;
     while (queen_bb != 0) {
         const sq: types.Square = types.popLsb(&queen_bb);
-        bonus += variable.queen_mobility *| @popCount(tables.getAttacks(.queen, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus +|= variable.getValue("queen_mobility") *| @popCount(tables.getAttacks(.queen, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     return bonus;
@@ -162,9 +162,9 @@ pub fn spaceBonus(pos: position.Position) types.Value {
     const semi_open_files_white: types.Bitboard = ~(vertical_white) & vertical_black;
     const semi_open_files_black: types.Bitboard = ~(vertical_black) & vertical_white;
 
-    bonus += variable.rook_open_files * (@as(types.Value, @popCount(open_files & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.white.index()])) - @as(types.Value, @popCount(open_files & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.black.index()])));
+    bonus += variable.getValue("rook_open_files") * (@as(types.Value, @popCount(open_files & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.white.index()])) - @as(types.Value, @popCount(open_files & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.black.index()])));
 
-    bonus += variable.rook_semi_open_files * (@as(types.Value, @popCount(semi_open_files_white & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.white.index()])) - @as(types.Value, @popCount(semi_open_files_black & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.black.index()])));
+    bonus += variable.getValue("rook_semi_open_files") * (@as(types.Value, @popCount(semi_open_files_white & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.white.index()])) - @as(types.Value, @popCount(semi_open_files_black & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.black.index()])));
 
     // Horizontal bonus
 
@@ -204,17 +204,17 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     const bishops: types.Bitboard = pos.bb_pieces[types.PieceType.bishop.index()];
     const white_pair: types.Value = @intFromBool(@popCount(bb_white & bishops) >= 2);
     const black_pair: types.Value = @intFromBool(@popCount(bb_black & bishops) >= 2);
-    score +|= variable.bishop_pair * (white_pair - black_pair);
+    score +|= variable.getValue("bishop_pair") * (white_pair - black_pair);
 
     const bb_white_pawn_: types.Bitboard = bb_white & pos.bb_pieces[types.PieceType.pawn.index()];
     const bb_black_pawn_: types.Bitboard = bb_black & pos.bb_pieces[types.PieceType.pawn.index()];
 
     score -|=
-        variable.pawn_isolated * (computeIsolatedPawns(bb_white_pawn_) - computeIsolatedPawns(bb_black_pawn_)) +
-        variable.pawn_doubled * (computeDoubledPawns(bb_white_pawn_) - computeDoubledPawns(bb_black_pawn_)) +
-        variable.pawn_blocked * (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_black) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_white));
+        variable.getValue("pawn_isolated") *| (computeIsolatedPawns(bb_white_pawn_) - computeIsolatedPawns(bb_black_pawn_)) +|
+        variable.getValue("pawn_doubled") *| (computeDoubledPawns(bb_white_pawn_) - computeDoubledPawns(bb_black_pawn_)) +|
+        variable.getValue("pawn_blocked") *| (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_black) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_white));
 
-    score +|= variable.pawn_protection * (pawnStructure(bb_white_pawn_) - pawnStructure(bb_white_pawn_));
+    score +|= variable.getValue("pawn_protection") * (pawnStructure(bb_white_pawn_) - pawnStructure(bb_white_pawn_));
 
     var bb_white_pawn: types.Bitboard = bb_white_pawn_;
     while (bb_white_pawn != 0) {
@@ -244,14 +244,14 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         const filter_left = types.file | types.file >> 1 | types.file >> 2 | types.file >> 3;
         const filter_right = types.file >> 4 | types.file >> 5 | types.file >> 6 | types.file >> 7;
         if (white_king.file().index() < 4) {
-            score +|= variable.pawn_defend_king * @popCount(filter_left & bb_white_pawn_);
+            score +|= variable.getValue("pawn_defend_king") *| @popCount(filter_left & bb_white_pawn_);
         } else {
-            score +|= variable.pawn_defend_king * @popCount(filter_right & bb_white_pawn_);
+            score +|= variable.getValue("pawn_defend_king") *| @popCount(filter_right & bb_white_pawn_);
         }
         if (black_king.file().index() < 4) {
-            score -= variable.pawn_defend_king * @popCount(filter_left & bb_black_pawn_);
+            score -|= variable.getValue("pawn_defend_king") *| @popCount(filter_left & bb_black_pawn_);
         } else {
-            score -= variable.pawn_defend_king * @popCount(filter_right & bb_black_pawn_);
+            score -|= variable.getValue("pawn_defend_king") *| @popCount(filter_right & bb_black_pawn_);
         }
     }
 
