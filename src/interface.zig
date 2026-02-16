@@ -237,42 +237,33 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
 }
 
 fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
-    var token: ?[]const u8 = tokens.next();
     var name: []const u8 = undefined;
     var value: []const u8 = undefined;
 
-    if (token == null) {
-        return;
-    }
-
     // Consume the "name" token
-    token = tokens.next();
-    if (token == null) {
+    if (tokens.next() == null) {
         return;
     }
 
     var list: std.ArrayListUnmanaged(u8) = .empty;
     defer list.deinit(allocator);
 
-    // Read the option name (can contain spaces)
-    while (token != null and !std.ascii.eqlIgnoreCase("value", token.?)) : (token = tokens.next()) {
+    // Read the option name (can contain spaces) until value
+    while (tokens.next()) |token_in| {
+        std.debug.print("token_in {s}\n", .{token_in});
+        if (std.ascii.eqlIgnoreCase("value", token_in))
+            break;
         if (list.items.len != 0)
             try list.append(allocator, ' ');
-        try list.appendSlice(allocator, token.?);
+        try list.appendSlice(allocator, token_in);
     }
     name = try list.toOwnedSlice(allocator);
 
-    // Consume the "value" token
-    token = tokens.next();
-    if (token == null) {
-        return;
-    }
-
     // Read the option value (can contain spaces)
-    while (token != null) : (token = tokens.next()) {
+    while (tokens.next()) |token_in| {
         if (list.items.len != 0)
             try list.append(allocator, ' ');
-        try list.appendSlice(allocator, token.?);
+        try list.appendSlice(allocator, token_in);
     }
     value = try list.toOwnedSlice(allocator);
 
@@ -340,79 +331,80 @@ fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states
 
 fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
     limits = Limits{};
-    var token: ?[]const u8 = tokens.next();
     g_stop = false;
 
     limits.start = types.now();
 
-    while (token != null) : (token = tokens.next()) {
+    while (tokens.next()) |token_name| {
+        std.debug.print("token_name {s}\n", .{token_name});
         // Needs to be the last command on the line
-        if (std.ascii.eqlIgnoreCase("searchmoves", token.?)) {
+        if (std.ascii.eqlIgnoreCase("searchmoves", token_name)) {
             // TODO
             break;
-        } else if (std.ascii.eqlIgnoreCase("wtime", token.?)) {
-            token = tokens.next();
-            if (token == null) {
+        } else if (std.ascii.eqlIgnoreCase("wtime", token_name)) {
+            if (tokens.next()) |token_value| {
+                limits.time[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
+            } else {
                 return error.MissingParameter;
             }
-            limits.time[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token.?, 10);
-        } else if (std.ascii.eqlIgnoreCase("btime", token.?)) {
-            token = tokens.next();
-            if (token == null) {
+        } else if (std.ascii.eqlIgnoreCase("btime", token_name)) {
+            if (tokens.next()) |token_value| {
+                limits.time[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
+            } else {
                 return error.MissingParameter;
             }
-            limits.time[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, token.?, 10);
-        } else if (std.ascii.eqlIgnoreCase("winc", token.?)) {
-            token = tokens.next();
-            if (token == null) {
+        } else if (std.ascii.eqlIgnoreCase("winc", token_name)) {
+            if (tokens.next()) |token_value| {
+                std.debug.print("token value {s}\n", .{token_value});
+                limits.inc[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
+            } else {
                 return error.MissingParameter;
             }
-            limits.inc[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token.?, 10);
-        } else if (std.ascii.eqlIgnoreCase("binc", token.?)) {
-            token = tokens.next();
-            if (token == null) {
+        } else if (std.ascii.eqlIgnoreCase("binc", token_name)) {
+            if (tokens.next()) |token_value| {
+                limits.inc[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
+            } else {
                 return error.MissingParameter;
             }
-            limits.inc[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, token.?, 10);
-        } else if (std.ascii.eqlIgnoreCase("movestogo", token.?)) {
-            token = tokens.next();
-            if (token == null) {
+        } else if (std.ascii.eqlIgnoreCase("movestogo", token_name)) {
+            if (tokens.next()) |token_value| {
+                limits.movestogo = try std.fmt.parseInt(u8, token_value, 10);
+            } else {
                 return error.MissingParameter;
             }
-            limits.movestogo = try std.fmt.parseInt(u8, token.?, 10);
-        } else if (std.ascii.eqlIgnoreCase("depth", token.?)) {
-            token = tokens.next();
-            if (token == null) {
+        } else if (std.ascii.eqlIgnoreCase("depth", token_name)) {
+            if (tokens.next()) |token_value| {
+                limits.depth = try std.fmt.parseInt(u8, token_value, 10);
+            } else {
                 return error.MissingParameter;
             }
-            limits.depth = try std.fmt.parseInt(u8, token.?, 10);
-        } else if (std.ascii.eqlIgnoreCase("nodes", token.?)) {
-            token = tokens.next();
-            if (token == null) {
+        } else if (std.ascii.eqlIgnoreCase("nodes", token_name)) {
+            if (tokens.next()) |token_value| {
+                limits.nodes = try std.fmt.parseInt(u32, token_value, 10);
+            } else {
                 return error.MissingParameter;
             }
-            limits.nodes = try std.fmt.parseInt(u32, token.?, 10);
-        } else if (std.ascii.eqlIgnoreCase("movetime", token.?)) {
-            token = tokens.next();
-            if (token == null) {
+        } else if (std.ascii.eqlIgnoreCase("movetime", token_name)) {
+            if (tokens.next()) |token_value| {
+                limits.movetime = try std.fmt.parseInt(types.TimePoint, token_value, 10);
+            } else {
                 return error.MissingParameter;
             }
-            limits.movetime = try std.fmt.parseInt(types.TimePoint, token.?, 10);
-        } else if (std.ascii.eqlIgnoreCase("mate", token.?)) {
-            token = tokens.next();
-            if (token == null) {
+        } else if (std.ascii.eqlIgnoreCase("mate", token_name)) {
+            if (tokens.next()) |token_value| {
+                limits.mate = try std.fmt.parseInt(u8, token_value, 10);
+            } else {
                 return error.MissingParameter;
             }
-            limits.mate = try std.fmt.parseInt(u8, token.?, 10);
-        } else if (std.ascii.eqlIgnoreCase("perft", token.?)) {
-            token = tokens.next();
-            if (token == null) {
+        } else if (std.ascii.eqlIgnoreCase("perft", token_name)) {
+            if (tokens.next()) |token_value| {
+                limits.perft = try std.fmt.parseInt(u8, token_value, 10);
+            } else {
                 return error.MissingParameter;
             }
-            limits.perft = try std.fmt.parseInt(u8, token.?, 10);
-        } else if (std.ascii.eqlIgnoreCase("infinite", token.?)) {
+        } else if (std.ascii.eqlIgnoreCase("infinite", token_name)) {
             limits.infinite = true;
-        } else if (std.ascii.eqlIgnoreCase("ponder", token.?)) {}
+        } else if (std.ascii.eqlIgnoreCase("ponder", token_name)) {}
     }
 
     const is_960: bool = std.ascii.eqlIgnoreCase(options.get("UCI_Chess960").?.current_value, "true");
