@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bishop pair bonus in evaluation
 - Pawn structure evaluation
+- Expose tunable parameters to UCI
+- `tune` option for tuning evaluation parameters
 
 ### Changed
 

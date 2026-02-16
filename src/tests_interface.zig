@@ -241,7 +241,7 @@ test "SearchLeakNoInterface" {
     defer tables.deinitAll(allocator);
 
     var options: std.StringArrayHashMapUnmanaged(interface.Option) = .empty;
-    defer options.deinit(allocator);
+    defer interface.deinitOptions(allocator, &options);
     try interface.initOptions(allocator, &options);
 
     var s: position.State = position.State{};
