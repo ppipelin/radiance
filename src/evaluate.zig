@@ -116,13 +116,13 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     var knight_bb: types.Bitboard = pos.bb_pieces[types.PieceType.knight.index()] & bb_us;
     while (knight_bb != 0) {
         const sq: types.Square = types.popLsb(&knight_bb);
-        bonus += variable.knight_mobility * @popCount(tables.getAttacks(.knight, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.knight_mobility *| @popCount(tables.getAttacks(.knight, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     var bishop_bb: types.Bitboard = pos.bb_pieces[types.PieceType.bishop.index()] & bb_us;
     while (bishop_bb != 0) {
         const sq: types.Square = types.popLsb(&bishop_bb);
-        bonus += variable.bishop_mobility * @popCount(tables.getAttacks(.bishop, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.bishop_mobility *| @popCount(tables.getAttacks(.bishop, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     attacked_square |= tables.getAttacksAllFiltered(.knight, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.knight.index()]);
@@ -131,7 +131,7 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     var rook_bb: types.Bitboard = pos.bb_pieces[types.PieceType.rook.index()] & bb_us;
     while (rook_bb != 0) {
         const sq: types.Square = types.popLsb(&rook_bb);
-        bonus += variable.rook_mobility * @popCount(tables.getAttacks(.rook, color, sq, bb_all) & ~bb_us & ~attacked_square);
+        bonus += variable.rook_mobility *| @popCount(tables.getAttacks(.rook, color, sq, bb_all) & ~bb_us & ~attacked_square);
     }
 
     attacked_square |= tables.getAttacksAllFiltered(.rook, color.invert(), bb_all, ~attacked_square & bb_them & pos.bb_pieces[types.PieceType.rook.index()]);
