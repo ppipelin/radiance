@@ -4,6 +4,7 @@ const position = @import("position.zig");
 const search = @import("search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
+const tune = @import("tune.zig");
 const types = @import("types.zig");
 
 pub fn main() !void {
@@ -30,6 +31,8 @@ pub fn main() !void {
             iterations = try std.fmt.parseInt(u64, args[2], 10);
         }
         magic.compute(iterations);
+    } else if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "tune")) {
+        try tune.run(allocator, stdout);
     } else if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "bench")) {
         try interface.cmd_bench(allocator, stdout);
     } else {
