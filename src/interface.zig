@@ -3,6 +3,7 @@ const position = @import("position.zig");
 const search = @import("search.zig");
 const std = @import("std");
 const types = @import("types.zig");
+const variable = @import("variable.zig");
 
 pub var g_stop = false;
 pub var search_thread: ?std.Thread = null;
@@ -32,15 +33,15 @@ pub const Option = struct {
     default_value: []const u8 = "",
     current_value: []const u8 = "",
     type: []const u8 = "",
-    min: u16 = 0,
-    max: u16 = 0,
+    min: i32 = 0,
+    max: i32 = 0,
     idx: usize = 0, // Order of Option in the OptionsMap
 
     pub inline fn initCombo(default: []const u8, current: []const u8) Option {
         return Option{ .type = "combo", .default_value = default, .current_value = current };
     }
 
-    pub inline fn initSpin(v: []const u8, min: u16, max: u16) Option {
+    pub inline fn initSpin(v: []const u8, min: i32, max: i32) Option {
         return Option{ .type = "spin", .default_value = v, .current_value = v, .max = max, .min = min };
     }
 
@@ -55,6 +56,15 @@ pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMa
     try options.put(allocator, "Evaluation", Option.initCombo("PSQ var PSQ var Shannon", "PSQ"));
     try options.put(allocator, "Search", Option.initCombo("NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
     try options.put(allocator, "UCI_Chess960", Option.initCheck("false", "false"));
+    for (variable.tunables) |tunable| {
+        const min: i32 = @intCast(tunable.min orelse std.math.minInt(types.Value));
+        const max: i32 = @intCast(tunable.min orelse std.math.maxInt(types.Value));
+
+        var buffer: [32]u8 = undefined;
+        const slice = try std.fmt.bufPrint(&buffer, "{d}", .{tunable.default});
+
+        try options.put(allocator, tunable.name, Option.initSpin(slice, min, max));
+    }
 }
 
 pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnmanaged(Option)) void {

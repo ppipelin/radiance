@@ -2,7 +2,8 @@ const std = @import("std");
 const types = @import("types.zig");
 
 const Value = types.Value;
-const ValueTunable = i32;
+const ValueTunable = Value;
+// const ValueTunable = i32;
 // const factor_tunable: ValueTunable = 1000;
 const factor_tunable: ValueTunable = 1;
 
