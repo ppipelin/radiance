@@ -87,16 +87,16 @@ fn sigmoid(value: f32) f32 {
     return 1.0 / (1.0 + @exp(lambda * -value / 100));
 }
 
-fn eval(book: std.ArrayList(Triplet)) !f32 {
+fn eval(book: []const Triplet) !f32 {
     var difference: f32 = 0;
-    for (book.items) |triplet| {
+    for (book) |triplet| {
         var s: position.State = position.State{};
         const pos: position.Position = try position.Position.setFen(&s, triplet[0]);
         const multiply: types.Value = if (pos.state.turn == .white) 1 else -1;
-        // std.debug.print("eval {}, sigm {}, real {}, error^2 {}\n", .{ multiply * evaluate.evaluateTable(pos), sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(pos))), triplet[1].index(), std.math.pow(f32, sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(pos))) - triplet[1].index(), 2) });
+        // std.debug.print("eval {}, sigm {}, real {}, error^2 {d:.2}, fen {s}\n", .{ multiply * evaluate.evaluateTable(pos), sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(pos))), triplet[1].index(), std.math.pow(f32, sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(pos))) - triplet[1].index(), 2), triplet[0] });
         difference += std.math.pow(f32, sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(pos))) - triplet[1].index(), 2);
     }
-    std.debug.print("mean difference {}\n", .{difference / @as(f32, @floatFromInt(book.items.len))});
+    // std.debug.print("mean difference {}\n", .{difference / @as(f32, @floatFromInt(book.len))});
     return difference;
 }
 
@@ -137,7 +137,54 @@ fn updateVariable(variable_new: []const types.Value) void {
 //     }
 // }
 
-fn computeDelta(deltas: []types.Value, magnitude: types.Value) !void {
+fn computeDelta(rand: std.Random, deltas: []f32, magnitude: f32) !void {
+    for (deltas) |*current_delta| {
+        if (rand.boolean()) {
+            current_delta.* = magnitude;
+        } else {
+            current_delta.* = -magnitude;
+        }
+    }
+}
+
+fn applyDelta(variable_new: []types.Value, deltas: []const f32) void {
+    for (variable_new, 0..) |*variable_current, i| {
+        variable_current.* +|= @intFromFloat(std.math.clamp(deltas[i], std.math.minInt(types.Value), std.math.maxInt(types.Value)));
+    }
+}
+
+fn applyDeltaNegative(variable_new: []types.Value, deltas: []const f32) void {
+    for (variable_new, 0..) |*variable_current, i| {
+        variable_current.* -|= @intFromFloat(std.math.clamp(deltas[i], std.math.minInt(types.Value), std.math.maxInt(types.Value)));
+    }
+}
+
+pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usize) !void {
+    var book: std.ArrayList(Triplet) = try readBook(allocator);
+    defer book.deinit(allocator);
+
+    // Set vars
+    // var initial: [17]types.Value = .{ 5, 5, 5, 5, 5, 0, 0, 0, 0, 5, 30, 15, 10, 30, 10, 40, 20 };
+    var initial: [17]types.Value = .{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    var initial_delta_plus = initial;
+    var initial_delta_minus = initial;
+    var delta: [17]f32 = @splat(0);
+
+    // Fit parameters
+    const batch: usize = 1e4;
+    var plateau_counter: usize = 0;
+
+    // Hyper parameters
+    const alpha: f32 = 0.602;
+    const gamma: f32 = 0.101;
+
+    const a: f32 = 2;
+    const c: f32 = 4;
+    const A: f32 = 10;
+
+    updateVariable(initial[0..17]);
+    const initial_eval: f32 = try eval(book.items[0..batch]);
+
     var prng = std.Random.DefaultPrng.init(seed: {
         var seed: u64 = undefined;
         // get random seed from OS
@@ -146,67 +193,59 @@ fn computeDelta(deltas: []types.Value, magnitude: types.Value) !void {
     });
     const rand = prng.random();
 
-    for (deltas) |*current_delta| {
-        if (rand.boolean()) {
-            current_delta.* += magnitude;
-        } else {
-            current_delta.* -= magnitude;
-        }
-    }
-}
-
-fn applyDelta(variable_new: []types.Value, deltas: []const types.Value) void {
-    for (variable_new, 0..) |*variable_current, i| {
-        variable_current.* += deltas[i];
-    }
-}
-
-fn applyDeltaNegative(variable_new: []types.Value, deltas: []const types.Value) void {
-    for (variable_new, 0..) |*variable_current, i| {
-        variable_current.* -= deltas[i];
-    }
-}
-
-pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer) !void {
-    var book: std.ArrayList(Triplet) = try readBook(allocator);
-    defer book.deinit(allocator);
-
-    // Set vars
-    var initial: [17]types.Value = .{ 5, 5, 5, 5, 5, 0, 0, 0, 0, 5, 30, 15, 10, 30, 10, 40, 20 };
-    // var initial: [17]types.Value = .{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    var tmp: [17]types.Value = initial;
-    var delta: [17]types.Value = @splat(0);
-
-    const alpha: f32 = 0.602;
-    const gamma: f32 = 0.101;
-
-    const a: f32 = 0.1;
-    const c: f32 = 1;
-    const A: f32 = 1;
-
-    for (0..2) |k_| {
+    for (0..iterations) |k_| {
         const k: f32 = @floatFromInt(k_);
         const ak = a / std.math.pow(f32, k + 1 + A, alpha);
         const ck = c / std.math.pow(f32, k + 1, gamma);
+        // std.debug.print("HERE ck {}\n", .{ck});
+        // std.debug.print("{}\n", .{@max(@min(ck, std.math.maxInt(types.Value)), std.math.minInt(types.Value))});
+        // std.debug.print("magnitude {}\n", .{magnitude});
+        try computeDelta(rand, &delta, 2 * ck);
+        // std.debug.print("delta {any}", .{delta});
 
-        const magnitude: types.Value = @intFromFloat(@max(@min(ck, std.math.maxInt(types.Value)), std.math.minInt(types.Value)));
-        try computeDelta(&delta, magnitude);
+        initial_delta_plus = initial;
+        initial_delta_minus = initial;
 
-        applyDelta(&tmp, delta[0..]);
-        updateVariable(tmp[0..17]);
-        const v1 = try eval(book);
+        applyDelta(&initial_delta_plus, delta[0..]);
+        updateVariable(initial_delta_plus[0..17]);
+        const v1: f32 = try eval(book.items[0..batch]);
 
-        applyDeltaNegative(&tmp, delta[0..]);
-        updateVariable(tmp[0..17]);
-        const v2 = try eval(book);
+        applyDeltaNegative(&initial_delta_minus, delta[0..]);
+        updateVariable(initial_delta_minus[0..17]);
+        const v2: f32 = try eval(book.items[0..batch]);
 
-        const match = v1 - v2;
+        const match: f32 = v1 - v2;
 
         for (&initial, 0..) |*param, i| {
-            const variation: types.Value = @intFromFloat(@max(@min(ak * match / (ck * @as(f32, @floatFromInt(delta[i]))), std.math.maxInt(types.Value)), std.math.minInt(types.Value)));
-            param.* += variation;
+            if (delta[i] == 0)
+                continue;
+            // std.debug.print("ak * match {}\n", .{ak * match});
+            // std.debug.print("@as(f32, @floatFromInt(delta[i])) {}\n", .{@as(f32, @floatFromInt(delta[i]))});
+            // std.debug.print("ak * match / @as(f32, @floatFromInt(delta[i])) {}\n", .{ak * match / @as(f32, @floatFromInt(delta[i]))});
+            const variation: types.Value = @intFromFloat(@max(@min(ak * (match / delta[i]), std.math.maxInt(types.Value)), std.math.minInt(types.Value)));
+            if (variation == 0)
+                continue;
+
+            plateau_counter = 0;
+
+            param.* -|= variation;
+            std.debug.print("variation {}\n", .{variation});
+        }
+
+        plateau_counter += 1;
+
+        // std.debug.print("mean {d:.3}\n", .{(v1 + v2) / 2.0});
+        std.debug.print("mean {d}\n", .{(v1 + v2) / 2.0});
+
+        // Break if 50 iterations without improvements
+        if (plateau_counter >= 50) {
+            break;
         }
     }
+
+    const final_eval: f32 = try eval(book.items[0..batch]);
+
+    try stdout.print("Error went from {d} to {d}\n", .{ initial_eval, final_eval });
 
     try stdout.print("Found variables:\n", .{});
     for (initial) |param| {

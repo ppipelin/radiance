@@ -32,7 +32,11 @@ pub fn main() !void {
         }
         magic.compute(iterations);
     } else if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "tune")) {
-        try tune.run(allocator, stdout);
+        var iterations: u64 = 1;
+        if (args.len > 2) {
+            iterations = try std.fmt.parseInt(u64, args[2], 10);
+        }
+        try tune.run(allocator, stdout, iterations);
     } else if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "bench")) {
         try interface.cmd_bench(allocator, stdout);
     } else {
