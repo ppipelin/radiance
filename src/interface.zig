@@ -37,25 +37,25 @@ pub const Option = struct {
     max: i32 = 0,
     idx: usize = 0, // Order of Option in the OptionsMap
 
-    pub inline fn initCombo(default: []const u8, current: []const u8) Option {
-        return Option{ .type = "combo", .default_value = default, .current_value = current };
+    pub inline fn initCombo(allocator: std.mem.Allocator, default: []const u8, current: []const u8) !Option {
+        return Option{ .type = "combo", .default_value = try allocator.dupe(u8, default), .current_value = try allocator.dupe(u8, current) };
     }
 
-    pub inline fn initSpin(v: []const u8, min: i32, max: i32) Option {
-        return Option{ .type = "spin", .default_value = v, .current_value = v, .max = max, .min = min };
+    pub inline fn initSpin(allocator: std.mem.Allocator, v: []const u8, min: i32, max: i32) !Option {
+        return Option{ .type = "spin", .default_value = try allocator.dupe(u8, v), .current_value = try allocator.dupe(u8, v), .max = max, .min = min };
     }
 
-    pub inline fn initCheck(default: []const u8, current: []const u8) Option {
-        return Option{ .type = "check", .default_value = default, .current_value = current };
+    pub inline fn initCheck(allocator: std.mem.Allocator, default: []const u8, current: []const u8) !Option {
+        return Option{ .type = "check", .default_value = try allocator.dupe(u8, default), .current_value = try allocator.dupe(u8, current) };
     }
 };
 
 pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
-    try options.put(allocator, "Hash", Option.initSpin("256", 0, 65535));
-    try options.put(allocator, "Threads", Option.initSpin("1", 1, 1));
-    try options.put(allocator, "Evaluation", Option.initCombo("PSQ var PSQ var Shannon", "PSQ"));
-    try options.put(allocator, "Search", Option.initCombo("NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
-    try options.put(allocator, "UCI_Chess960", Option.initCheck("false", "false"));
+    try options.put(allocator, "Hash", try Option.initSpin(allocator, "256", 0, 65535));
+    try options.put(allocator, "Threads", try Option.initSpin(allocator, "1", 1, 1));
+    try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "PSQ var PSQ var Shannon", "PSQ"));
+    try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
+    try options.put(allocator, "UCI_Chess960", try Option.initCheck(allocator, "false", "false"));
     for (variable.tunables) |tunable| {
         const min: i32 = @intCast(tunable.min orelse std.math.minInt(types.Value));
         const max: i32 = @intCast(tunable.min orelse std.math.maxInt(types.Value));
@@ -63,8 +63,18 @@ pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMa
         var buffer: [32]u8 = undefined;
         const slice = try std.fmt.bufPrint(&buffer, "{d}", .{tunable.default});
 
-        try options.put(allocator, tunable.name, Option.initSpin(slice, min, max));
+        try options.put(allocator, tunable.name, try Option.initSpin(allocator, slice, min, max));
     }
+}
+
+pub fn deinitOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) void {
+    const keys = options.keys();
+    for (keys) |key| {
+        const option: Option = options.get(key).?;
+        allocator.free(option.current_value);
+        allocator.free(option.default_value);
+    }
+    options.deinit(allocator);
 }
 
 pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnmanaged(Option)) void {
@@ -81,7 +91,7 @@ pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnman
 
 pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io.Writer) !void {
     var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
-    defer options.deinit(allocator);
+    defer deinitOptions(allocator, &options);
     try initOptions(allocator, &options);
 
     var states: StateList = .empty;
@@ -513,7 +523,7 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer) anyerror!
 
     for (list.items) |fen| {
         var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
-        defer options.deinit(allocator);
+        defer deinitOptions(allocator, &options);
         try initOptions(allocator, &options);
 
         var states: StateList = .empty;
