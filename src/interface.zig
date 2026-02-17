@@ -356,7 +356,6 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
     limits.start = types.now();
 
     while (tokens.next()) |token_name| {
-        std.debug.print("token_name {s}\n", .{token_name});
         // Needs to be the last command on the line
         if (std.ascii.eqlIgnoreCase("searchmoves", token_name)) {
             // TODO
