@@ -58,7 +58,7 @@ pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMa
     try options.put(allocator, "UCI_Chess960", try Option.initCheck(allocator, "false", "false"));
     for (variable.tunables) |tunable| {
         const min: i32 = @intCast(tunable.min orelse std.math.minInt(types.Value));
-        const max: i32 = @intCast(tunable.min orelse std.math.maxInt(types.Value));
+        const max: i32 = @intCast(tunable.max orelse std.math.maxInt(types.Value));
 
         var buffer: [32]u8 = undefined;
         const slice = try std.fmt.bufPrint(&buffer, "{d}", .{tunable.default});
@@ -297,7 +297,16 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
             } else if (value_parsed < option.min) {
                 return error.LowerBoundBreached;
             }
+
+            // If option name is tunable edit variable.tunables
+            // tunables are only spin
+            inline for (&variable.tunables) |*tunable| {
+                if (std.ascii.eqlIgnoreCase(tunable.name, name)) {
+                    tunable.default = @intCast(value_parsed);
+                }
+            }
         }
+
         try options.put(allocator, name, option);
     } else {
         return error.UnknownOption;
