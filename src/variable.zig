@@ -32,18 +32,16 @@ pub const bishop_pair: Value = 10;
 pub const rook_open_files: Value = 40;
 pub const rook_semi_open_files: Value = 20;
 
-//    4,    2,    0,    2,  -10,    9,    8,    9,  187,   23,   25,   21,
-//   +5,   +3,   -1,   +3,  -11,   +8,   +9,  +12,  +34,  +20,  +28,  +18,
 pub var tunables = [_]Tunable{
     .{ .name = "knight_mobility", .default = knight_mobility, .min = 0, .max = 50 },
     .{ .name = "bishop_mobility", .default = bishop_mobility, .min = 0, .max = 50 },
     .{ .name = "rook_mobility", .default = rook_mobility, .min = 0, .max = 50 },
     .{ .name = "queen_mobility", .default = queen_mobility, .min = 0, .max = 50 },
-    // .{ .name = "king_mobility", .default = king_mobility },
-    // .{ .name = "pawn_threat_knight", .default = pawn_threat_knight },
-    // .{ .name = "pawn_threat_bishop", .default = pawn_threat_bishop },
-    // .{ .name = "pawn_threat_rook", .default = pawn_threat_rook },
-    // .{ .name = "pawn_threat_queen", .default = pawn_threat_queen },
+    // .{ .name = "king_mobility", .default = king_mobility, .min = -50, .max = 50 },
+    // .{ .name = "pawn_threat_knight", .default = pawn_threat_knight, .min = 0, .max = 50 },
+    // .{ .name = "pawn_threat_bishop", .default = pawn_threat_bishop, .min = 0, .max = 50 },
+    // .{ .name = "pawn_threat_rook", .default = pawn_threat_rook, .min = 0, .max = 50 },
+    // .{ .name = "pawn_threat_queen", .default = pawn_threat_queen, .min = 0, .max = 50 },
     .{ .name = "pawn_defend_king", .default = pawn_defend_king, .min = 0, .max = 50 },
     .{ .name = "pawn_isolated", .default = pawn_isolated, .min = 0, .max = 50 },
     .{ .name = "pawn_doubled", .default = pawn_doubled, .min = 0, .max = 50 },
@@ -61,7 +59,7 @@ pub fn getValues(buffer: []types.Value) void {
     }
 }
 
-pub fn getValue(name: []const u8) types.Value {
+pub fn getValue(comptime name: []const u8) types.Value {
     inline for (tunables) |tunable| {
         if (std.ascii.eqlIgnoreCase(tunable.name, name)) {
             return tunable.default;
