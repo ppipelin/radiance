@@ -4,6 +4,7 @@ const position = @import("position.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
+const variable = @import("variable.zig");
 
 var root_moves: std.ArrayListUnmanaged(RootMove) = .empty;
 
@@ -393,14 +394,14 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
         // Reverse Futility Pruning
         if (!pv_node and depth <= 8 and beta < types.value_mate_in_max_depth) {
-            const futility_margin: types.Value = @as(types.Value, depth) * 80;
+            const futility_margin: types.Value = @as(types.Value, depth) * variable.getValue("futility_factor");
             if (static_eval - futility_margin >= beta)
                 return beta;
         }
 
         // Null move pruning
         if (!is_nmr and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and static_eval > beta) {
-            const tapered: u8 = @intCast(@min(@divTrunc(static_eval -| beta, 200), 6));
+            const tapered: u8 = @intCast(@min(@divTrunc(static_eval -| beta, variable.getValue("null_move_taper")), 6));
             const r: u8 = tapered + @divTrunc(depth, 3) + 5;
             try pos.moveNull(&s);
             const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, depth -| r, is_960, true);
@@ -639,7 +640,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
     }
 
     // Delta pruning margin
-    const margin: types.Value = 200;
+    const margin: types.Value = variable.getValue("delta_pruning");
 
     if (!pos.endgame(pos.state.turn)) {
         const best_capture: types.Value = tables.material[types.PieceType.queen.index()];
@@ -671,7 +672,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
             // if ((if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w) +| capture_value < alpha -| margin)
             //     continue;
 
-            if (!seeGreaterEqual(pos.*, move, -40))
+            if (!seeGreaterEqual(pos.*, move, variable.getValue("see_qs")))
                 continue;
         }
 

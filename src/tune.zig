@@ -129,7 +129,7 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
     var delta: [variable.tunables.len]f32 = @splat(0);
 
     // Fit parameters
-    const batch: usize = 1e4;
+    const batch: usize = 1e5;
     const print_step: usize = @max(@divTrunc(iterations, 10), 1);
     var plateau_counter: usize = 0;
 
