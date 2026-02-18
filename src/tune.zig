@@ -87,6 +87,17 @@ fn eval(book: []const Triplet) !f32 {
     return difference;
 }
 
+fn collectBounds(bound_lower: *@Vector(variable.tunables.len, f32), bound_upper: *@Vector(variable.tunables.len, f32)) void {
+    var bound_upper_array: [variable.tunables.len]f32 = undefined;
+    var bound_lower_array: [variable.tunables.len]f32 = undefined;
+    for (variable.tunables, 0..) |tunable, i| {
+        bound_lower_array[i] = @floatFromInt(tunable.min orelse std.math.maxInt(types.Value));
+        bound_upper_array[i] = @floatFromInt(tunable.max orelse std.math.minInt(types.Value));
+    }
+    bound_lower.* = bound_lower_array;
+    bound_upper.* = bound_upper_array;
+}
+
 fn updateVariable(variable_new_: @Vector(variable.tunables.len, f32)) void {
     const variable_new: [variable.tunables.len]f32 = variable_new_;
     for (variable_new, 0..) |variable_current, i| {
@@ -128,10 +139,16 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
     var initial_delta_minus = initial_f;
     var delta: [variable.tunables.len]f32 = @splat(0);
 
+    var bound_lower: @Vector(variable.tunables.len, f32) = undefined;
+    var bound_upper: @Vector(variable.tunables.len, f32) = undefined;
+    collectBounds(&bound_lower, &bound_upper);
+
     // Fit parameters
     const batch: usize = 1e5;
     const print_step: usize = @max(@divTrunc(iterations, 10), 1);
     var plateau_counter: usize = 0;
+
+    std.debug.assert(batch <= book.items.len);
 
     // Hyper parameters
     const alpha: f32 = 0.602; // Learning rate decay
@@ -142,9 +159,6 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
     const A: f32 = 0.1 * @as(f32, @floatFromInt(iterations)); // Stability delay, should remain < 10% of iterations
 
     updateVariable(initial_f);
-    const initial_eval: f32 = try eval(book.items[0..batch]);
-    try stdout.print("Initial error: {d}\n", .{initial_eval});
-    try stdout.flush();
 
     var prng = std.Random.DefaultPrng.init(seed: {
         var seed: u64 = undefined;
@@ -153,6 +167,13 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
     });
     const rand = prng.random();
 
+    // This variable allows to have random positions of size batch from within the book
+    var batch_min_idx: usize = rand.intRangeAtMost(usize, 0, book.items.len - batch);
+
+    const initial_eval: f32 = try eval(book.items[batch_min_idx..(batch_min_idx + batch)]);
+    try stdout.print("Initial error: {d}\n", .{initial_eval});
+    try stdout.flush();
+
     for (0..iterations) |k_| {
         const k: f32 = @floatFromInt(k_);
         const ak = a / std.math.pow(f32, k + 1 + A, alpha);
@@ -160,21 +181,26 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
 
         try computeDelta(rand, &delta, ck);
 
+        batch_min_idx = rand.intRangeAtMost(usize, 0, book.items.len - batch);
+
         initial_delta_plus = initial_f;
         initial_delta_minus = initial_f;
 
         applyDelta(&initial_delta_plus, delta);
+        initial_delta_plus = std.math.clamp(initial_delta_plus, bound_lower, bound_upper);
         updateVariable(initial_delta_plus);
-        const v1: f32 = try eval(book.items[0..batch]);
+        const v1: f32 = try eval(book.items[batch_min_idx..(batch_min_idx + batch)]);
 
         applyDeltaNegative(&initial_delta_minus, delta);
         updateVariable(initial_delta_minus);
-        const v2: f32 = try eval(book.items[0..batch]);
+        initial_delta_minus = std.math.clamp(initial_delta_minus, bound_lower, bound_upper);
+        const v2: f32 = try eval(book.items[batch_min_idx..(batch_min_idx + batch)]);
 
         const match: f32 = v1 - v2;
 
         const variation: @Vector(variable.tunables.len, f32) = @as(@Vector(variable.tunables.len, f32), @splat(ak)) * (@as(@Vector(variable.tunables.len, f32), @splat(match)) / @as(@Vector(variable.tunables.len, f32), delta));
         initial_f -= variation;
+        initial_f = std.math.clamp(initial_f, bound_lower, bound_upper);
 
         if (std.math.approxEqAbs(f32, variation[0], 0, 1e-6)) {
             if (k > A)
@@ -197,16 +223,7 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
     }
 
     updateVariable(initial_f);
-    const final_eval: f32 = try eval(book.items[0..batch]);
-
+    const final_eval: f32 = try eval(book.items[batch_min_idx..(batch_min_idx + batch)]);
     try stdout.print("Error went from {d} to {d}\n", .{ initial_eval, final_eval });
-
-    try stdout.print("Found variables:\n", .{});
-
-    const initial_f_array: [variable.tunables.len]f32 = initial_f;
-    for (initial_f_array) |param| {
-        const param_i: types.Value = @intFromFloat(std.math.clamp(param, std.math.minInt(types.Value), std.math.maxInt(types.Value)));
-        try stdout.print("{:>4}, ", .{param_i});
-    }
-    try stdout.print("\n", .{});
+    try stdout.print("Found variables: {any:>4.0}\n", .{initial_f});
 }
