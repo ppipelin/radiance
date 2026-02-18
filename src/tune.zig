@@ -186,6 +186,7 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
         if (k_ % print_step == 0) {
             try stdout.print("variation {}\n", .{@abs(variation[0])});
             try stdout.print("mean {d:.3} with param {any:>4.0}\n", .{ (v1 + v2) / 2.0, initial_f });
+            try stdout.flush();
         }
 
         // Break if 50 iterations without improvements
