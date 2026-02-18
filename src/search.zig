@@ -365,12 +365,10 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         interface.transposition_used += 1;
     }
 
-    // Pruning
-    if (alpha >= beta) return alpha;
-
+    // Static evaluation
+    // TODO: Put static eval in state so we can have improving and oponent_worsening
+    var static_eval: types.Value = -types.value_none;
     if (pos.state.checkers == 0) {
-        var static_eval: types.Value = -types.value_none;
-
         if (tt_hit) {
             // TODO: Handle bound if needed
             // switch (tt_bound) {
@@ -381,8 +379,14 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             static_eval = tt_value;
         } else {
             static_eval = eval(pos.*);
+            // TODO: Store evaluation in tt?
         }
+    }
 
+    // Prunings before move loop
+    if (alpha >= beta) return alpha;
+
+    if (pos.state.checkers == 0) {
         // Razoring for non_pv where material difference is more than q+r+b
         // const razoring_threshold: types.Value = tables.material[types.PieceType.queen.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
         const razoring_threshold: types.Value = alpha -| tables.material[types.PieceType.rook.index()] -| tables.material[types.PieceType.pawn.index()] *| depth *| depth;
@@ -450,7 +454,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             ss[1].pv = null;
         }
 
-        // Prunings per move
+        // Prunings in move loop
         // Mate pruning, we cannot get a better mate at this ply
         if (beta < -types.value_mate + ss[0].ply + 1) {
             continue;
@@ -479,7 +483,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                     is_passed_pawn = (tables.passed_pawn[pos.state.turn.index()][move.getFrom().index()] & bb_them_pawn) == 0;
                 }
 
-                // Late moves reduction (LMR) before full
+                // Late moves reduction (LMR) before full search
                 if (depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
                     // Reduced LMR
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth_reduced_lmr - 1, is_960, false);
