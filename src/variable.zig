@@ -10,6 +10,7 @@ pub const Tunable = struct {
     max: ?Value = null,
 };
 
+////// Evaluation tunables //////
 pub const knight_mobility: Value = 5;
 pub const bishop_mobility: Value = 5;
 pub const rook_mobility: Value = 5;
@@ -32,6 +33,13 @@ pub const bishop_pair: Value = 10;
 pub const rook_open_files: Value = 40;
 pub const rook_semi_open_files: Value = 20;
 
+////// Search tunables //////
+
+pub const see_qs: Value = -40;
+pub const delta_pruning: Value = 200;
+pub const futility_factor: Value = 80;
+pub const null_move_taper: Value = 200;
+
 pub var tunables = [_]Tunable{
     .{ .name = "knight_mobility", .default = knight_mobility, .min = 0, .max = 50 },
     .{ .name = "bishop_mobility", .default = bishop_mobility, .min = 0, .max = 50 },
@@ -50,6 +58,11 @@ pub var tunables = [_]Tunable{
     .{ .name = "bishop_pair", .default = bishop_pair, .min = -100, .max = 100 },
     .{ .name = "rook_open_files", .default = rook_open_files, .min = 0, .max = 100 },
     .{ .name = "rook_semi_open_files", .default = rook_semi_open_files, .min = 0, .max = 100 },
+
+    .{ .name = "see_qs", .default = see_qs, .min = -100, .max = 0 },
+    .{ .name = "delta_pruning", .default = delta_pruning, .min = 0, .max = 500 },
+    .{ .name = "futility_factor", .default = futility_factor, .min = 0, .max = 200 },
+    .{ .name = "null_move_taper", .default = null_move_taper, .min = 0, .max = 500 },
 };
 
 pub fn getValues(buffer: []types.Value) void {
