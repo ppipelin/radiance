@@ -6,6 +6,7 @@ const utils = @import("utils.zig");
 
 const Bitboard = types.Bitboard;
 const Color = types.Color;
+const Depth = types.Depth;
 const File = types.File;
 const Move = types.Move;
 const Piece = types.Piece;
@@ -30,7 +31,7 @@ pub fn initAll(allocator: std.mem.Allocator) void {
 
 pub const Key = u64;
 
-pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, u8, Move, TableBound })) = .empty;
+pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, Depth, Move, TableBound })) = .empty;
 // Will store pawn structures once computed
 // Computed every pawn move/capture
 pub var pawn_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{Value})) = .empty;
