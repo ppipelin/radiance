@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pawn structure evaluation
 - Expose tunable parameters to UCI
 - `tune` option for tuning evaluation parameters
+- Outpost for knight bonus with test
 
 ### Changed
 

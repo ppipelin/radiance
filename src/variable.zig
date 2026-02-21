@@ -22,6 +22,8 @@ pub const pawn_threat_bishop: Value = 0;
 pub const pawn_threat_rook: Value = 0;
 pub const pawn_threat_queen: Value = 0;
 
+pub const outpost: Value = 10;
+
 pub const pawn_defend_king: Value = 5;
 pub const pawn_isolated: Value = 30;
 pub const pawn_doubled: Value = 15;
@@ -50,6 +52,7 @@ pub var tunables = [_]Tunable{
     // .{ .name = "pawn_threat_bishop", .default = pawn_threat_bishop, .min = 0, .max = 50 },
     // .{ .name = "pawn_threat_rook", .default = pawn_threat_rook, .min = 0, .max = 50 },
     // .{ .name = "pawn_threat_queen", .default = pawn_threat_queen, .min = 0, .max = 50 },
+    .{ .name = "outpost", .default = outpost, .min = 0, .max = 50 },
     .{ .name = "pawn_defend_king", .default = pawn_defend_king, .min = 0, .max = 50 },
     .{ .name = "pawn_isolated", .default = pawn_isolated, .min = 0, .max = 50 },
     .{ .name = "pawn_doubled", .default = pawn_doubled, .min = 0, .max = 50 },
