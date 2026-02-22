@@ -45,10 +45,12 @@ inline fn outOfTime(limits: interface.Limits) bool {
         return true;
     if (limits.infinite or interface.remaining == 0) return false;
 
-    const remaining_float: f128 = @floatFromInt(interface.remaining);
-    const increment_float: f128 = @floatFromInt(interface.increment);
-    const remaining_computed: types.TimePoint = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
-    return elapsed(limits) > remaining_computed;
+    if (interface.remaining_computed == 0) {
+        const remaining_float: f128 = @floatFromInt(interface.remaining);
+        const increment_float: f128 = @floatFromInt(interface.increment);
+        interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
+    }
+    return elapsed(limits) > interface.remaining_computed;
 }
 
 pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, depth: types.Depth, comptime is_960: bool, verbose: bool) !u64 {
@@ -176,6 +178,8 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
         interface.remaining = if (pos.state.turn.isWhite()) limits.time[types.Color.white.index()] else limits.time[types.Color.black.index()];
         interface.increment = if (pos.state.turn.isWhite()) limits.inc[types.Color.white.index()] else limits.inc[types.Color.black.index()];
     }
+
+    interface.remaining_computed = 0;
 
     var stack: [200 + 10]Stack = @splat(Stack{});
     var pv: [200]types.Move = @splat(.none); // useless
