@@ -32,6 +32,7 @@ pub const pawn_blocked: Value = 15;
 pub const pawn_protection: Value = 40;
 
 pub const bishop_pair: Value = 26;
+pub const bishop_opposite_pawn: Value = 5;
 
 pub const rook_open_files: Value = 30;
 pub const rook_semi_open_files: Value = 15;
@@ -60,6 +61,7 @@ pub var tunables = [_]Tunable{
     .{ .name = "pawn_blocked", .default = pawn_blocked, .min = 0, .max = 50, .step = 1 },
     .{ .name = "pawn_protection", .default = pawn_protection, .min = 0, .max = 50, .step = 1 },
     .{ .name = "bishop_pair", .default = bishop_pair, .min = -100, .max = 100, .step = 1 },
+    .{ .name = "bishop_opposite_pawn", .default = bishop_opposite_pawn, .min = -100, .max = 100, .step = 1 },
     .{ .name = "rook_open_files", .default = rook_open_files, .min = 0, .max = 100, .step = 1 },
     .{ .name = "rook_semi_open_files", .default = rook_semi_open_files, .min = 0, .max = 100, .step = 1 },
 
