@@ -18,6 +18,7 @@ const RootMove = struct {
     score: types.Value = -types.value_infinite,
     previous_score: types.Value = -types.value_infinite,
     average_score: types.Value = -types.value_infinite,
+    average_score_squared: types.ValueExtended = @as(types.ValueExtended, @intCast(-types.value_infinite)) * types.value_infinite,
     pv: std.ArrayListUnmanaged(types.Move) = .empty,
 
     fn sort(context: void, a: RootMove, b: RootMove) bool {
@@ -245,10 +246,10 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
         }
 
         // Reset aspiration window starting size
-        const prev: types.Value = root_moves.items[0].average_score;
-        var delta: types.Value = @intCast(@abs(@divTrunc(prev, 2)) + 10);
-        var alpha: types.Value = @max(prev -| delta, -types.value_infinite);
-        var beta: types.Value = @min(prev +| delta, types.value_infinite);
+        const prev: types.ValueExtended = @intCast(@abs(root_moves.items[0].average_score_squared));
+        var delta: types.Value = std.math.lossyCast(types.Value, 5 + @divTrunc(prev, 10000));
+        var alpha: types.Value = @max(root_moves.items[0].average_score -| delta, -types.value_infinite);
+        var beta: types.Value = @min(root_moves.items[0].average_score +| delta, types.value_infinite);
         var failed_high_cnt: u32 = 0;
 
         // Aspiration window
@@ -529,6 +530,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                     continue;
 
                 root_move.average_score = if (root_move.average_score == -types.value_infinite) score else @divTrunc(score, 2) + @divTrunc(root_move.average_score, 2);
+                const score_extended: types.ValueExtended = @intCast(score);
+                root_move.average_score_squared = if (root_move.average_score_squared == @as(types.ValueExtended, @intCast(-types.value_infinite)) * types.value_infinite) score_extended * @as(types.ValueExtended, @intCast(@abs(score_extended))) else @divTrunc(score_extended * @as(types.ValueExtended, @intCast(@abs(score_extended))), 2) + @divTrunc(root_move.average_score_squared, 2);
 
                 if (move_count == 1 or score > alpha) {
                     root_move.score = score;
