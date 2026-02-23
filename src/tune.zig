@@ -159,6 +159,11 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
     const A: f32 = 0.1 * @as(f32, @floatFromInt(iterations)); // Stability delay, should remain < 10% of iterations
 
     updateVariable(initial_f);
+    var steps_array: [variable.tunables.len]f32 = undefined;
+    for (&steps_array, 0..) |*step, i| {
+        step.* = variable.tunables[i].step orelse 1.0;
+    }
+    const steps: @Vector(variable.tunables.len, f32) = steps_array;
 
     var prng = std.Random.DefaultPrng.init(seed: {
         var seed: u64 = undefined;
@@ -187,18 +192,18 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
         initial_delta_minus = initial_f;
 
         applyDelta(&initial_delta_plus, delta);
-        initial_delta_plus = std.math.clamp(initial_delta_plus, bound_lower, bound_upper);
+        initial_delta_plus = std.math.clamp(initial_delta_plus, bound_lower, bound_upper) * steps;
         updateVariable(initial_delta_plus);
         const v1: f32 = try eval(book.items[batch_min_idx..(batch_min_idx + batch)]);
 
         applyDeltaNegative(&initial_delta_minus, delta);
+        initial_delta_minus = std.math.clamp(initial_delta_minus, bound_lower, bound_upper) * steps;
         updateVariable(initial_delta_minus);
-        initial_delta_minus = std.math.clamp(initial_delta_minus, bound_lower, bound_upper);
         const v2: f32 = try eval(book.items[batch_min_idx..(batch_min_idx + batch)]);
 
         const match: f32 = v1 - v2;
 
-        const variation: @Vector(variable.tunables.len, f32) = @as(@Vector(variable.tunables.len, f32), @splat(ak)) * (@as(@Vector(variable.tunables.len, f32), @splat(match)) / @as(@Vector(variable.tunables.len, f32), delta));
+        const variation: @Vector(variable.tunables.len, f32) = @as(@Vector(variable.tunables.len, f32), @splat(ak)) * steps * (@as(@Vector(variable.tunables.len, f32), @splat(match)) / @as(@Vector(variable.tunables.len, f32), delta));
         initial_f -= variation;
         initial_f = std.math.clamp(initial_f, bound_lower, bound_upper);
 

@@ -8,6 +8,7 @@ pub const Tunable = struct {
     default: Value,
     min: ?Value = null,
     max: ?Value = null,
+    step: ?f32 = null,
 };
 
 ////// Evaluation tunables //////
@@ -76,10 +77,16 @@ pub fn getValues(buffer: []types.Value) void {
 }
 
 pub fn getValue(comptime name: []const u8) types.Value {
+    // Look for tunable if exists
     inline for (tunables) |tunable| {
         if (std.ascii.eqlIgnoreCase(tunable.name, name)) {
             return tunable.default;
         }
     }
+
+    if (@hasDecl(@This(), name)) {
+        return @field(@This(), name);
+    }
+
     unreachable;
 }
