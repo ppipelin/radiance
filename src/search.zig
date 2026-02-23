@@ -501,9 +501,15 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                 else if (!pv_node or move_count > 1) {
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
                 }
-                // Full-depth search
+
+                // Full-depth regular search
                 // Only for first move (PVS) or after a fail high
                 if (pv_node and (move_count == 1 or score > alpha)) {
+                    // Extension if tt_hit and if was last node
+                    // Could be more specific : assert tt_depth > 1 or @abs(tt_value) > types.value_mate_in_max_depth
+                    if (tt_move == move and depth == 1) {
+                        depth += 1;
+                    }
                     score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
                     // Let's assert we don't store draw (repetition)
                     if (score != types.value_draw) {
