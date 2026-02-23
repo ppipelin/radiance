@@ -146,3 +146,21 @@ test "EvaluateOutpostBonus" {
     try std.testing.expectEqual(1, evaluate.outpostBonus(bb_white_knight, bb_white_pawn, bb_black_pawn, .white));
     try std.testing.expectEqual(1, evaluate.outpostBonus(bb_black_knight, bb_black_pawn, bb_white_pawn, .black));
 }
+
+test "EvaluateBishopOppositePawnBonus" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    const fen: []const u8 = "3k4/6p1/1p1p1p2/p1pPp1b1/PpP1P2B/1P3PBB/8/3K4 w";
+
+    var s: position.State = position.State{};
+    const pos: position.Position = try position.Position.setFen(&s, fen);
+
+    const bb_white_bishop: types.Bitboard = pos.bb_pieces[types.PieceType.bishop.index()] & pos.bb_colors[types.Color.white.index()];
+    const bb_black_bishop: types.Bitboard = pos.bb_pieces[types.PieceType.bishop.index()] & pos.bb_colors[types.Color.black.index()];
+    const bb_white_pawn: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
+    const bb_black_pawn: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
+
+    try std.testing.expectEqual(6, evaluate.bishopOppositePawnBonus(bb_white_bishop, bb_white_pawn));
+    try std.testing.expectEqual(-8, evaluate.bishopOppositePawnBonus(bb_black_bishop, bb_black_pawn));
+}

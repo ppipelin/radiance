@@ -208,6 +208,26 @@ pub fn outpostBonus(knights_: types.Bitboard, pawns: types.Bitboard, pawns_them:
     return count;
 }
 
+pub fn bishopOppositePawnBonus(bishops: types.Bitboard, pawns: types.Bitboard) types.Value {
+    if (bishops == 0 or pawns == 0)
+        return 0;
+
+    var bonus: types.Value = 0;
+
+    const bishops_on_light: types.Value = @popCount(bishops & types.mask_light_square);
+    const bishops_on_dark: types.Value = @popCount(bishops & types.mask_dark_square);
+    const pawns_on_light: types.Value = @popCount(pawns & types.mask_light_square);
+    const pawns_on_dark: types.Value = @popCount(pawns & types.mask_dark_square);
+
+    bonus += bishops_on_light * pawns_on_dark;
+    bonus -= bishops_on_dark * pawns_on_dark;
+
+    bonus += bishops_on_dark * pawns_on_light;
+    bonus -= bishops_on_light * pawns_on_light;
+
+    return bonus;
+}
+
 // TODO: Add pawn structure hash
 pub fn evaluateTable(pos: position.Position) types.Value {
     var score: types.Value = pos.score_material_w - pos.score_material_b;
@@ -282,6 +302,8 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     const white_pair: types.Value = @intFromBool(@popCount(bishops_white) >= 2);
     const black_pair: types.Value = @intFromBool(@popCount(bishops_black) >= 2);
     score +|= variable.getValue("bishop_pair") * (white_pair - black_pair);
+
+    score +|= variable.getValue("bishop_opposite_pawn") * (bishopOppositePawnBonus(bishops_white, bb_white_pawn_) - bishopOppositePawnBonus(bishops_black, bb_black_pawn_));
 
     if (endgame) {
         if (score > 0) {
