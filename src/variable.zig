@@ -38,10 +38,10 @@ pub const rook_semi_open_files: Value = 20;
 
 ////// Search tunables //////
 
-pub const see_qs: Value = -40;
-pub const delta_pruning: Value = 200;
-pub const futility_factor: Value = 80;
-pub const null_move_taper: Value = 200;
+pub const see_qs: Value = -45;
+pub const delta_pruning: Value = 180;
+pub const futility_factor: Value = 70;
+pub const null_move_taper: Value = 320;
 
 pub var tunables = [_]Tunable{
     .{ .name = "knight_mobility", .default = knight_mobility, .min = 0, .max = 50 },
