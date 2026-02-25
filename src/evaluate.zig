@@ -174,18 +174,19 @@ pub fn spaceBonus(pos: position.Position) types.Value {
     return bonus;
 }
 
-pub fn outpostBonus(pos: position.Position, comptime color: types.Color) types.Value {
+pub fn outpostBonus(knights_: types.Bitboard, pawns: types.Bitboard, pawns_them: types.Bitboard, comptime color: types.Color) types.Value {
+    if (knights_ == 0 or pawns == 0)
+        return 0;
+
     var count: types.Value = 0;
-    var knights: types.Bitboard = pos.bb_colors[color.index()] & pos.bb_pieces[types.PieceType.knight.index()];
-    const pawns: types.Bitboard = pos.bb_colors[color.index()] & pos.bb_pieces[types.PieceType.pawn.index()];
-    const pawns_them: types.Bitboard = pos.bb_colors[color.invert().index()] & pos.bb_pieces[types.PieceType.pawn.index()];
+    var knights = knights_;
 
     // Remove unprotected knights
     var knight_diagonal_left: types.Bitboard = undefined;
     var knight_diagonal_right: types.Bitboard = undefined;
     if (color.isWhite()) {
-        knight_diagonal_right = (knights & ~types.mask_file[0]) >> (types.board_size - 1);
-        knight_diagonal_left = (knights & ~types.mask_file[types.board_size - 1]) >> (types.board_size + 1);
+        knight_diagonal_right = (knights & ~types.mask_file[types.board_size - 1]) >> (types.board_size - 1);
+        knight_diagonal_left = (knights & ~types.mask_file[0]) >> (types.board_size + 1);
         const to_keep: types.Bitboard = (knight_diagonal_right & pawns) << (types.board_size - 1) | (knight_diagonal_left & pawns) << (types.board_size + 1);
         knights &= to_keep;
     } else {
@@ -242,13 +243,6 @@ pub fn evaluateTable(pos: position.Position) types.Value {
 
     score +|= spaceBonus(pos);
 
-    score +|= variable.getValue("outpost") *| (outpostBonus(pos, .white) - outpostBonus(pos, .white));
-
-    const bishops: types.Bitboard = pos.bb_pieces[types.PieceType.bishop.index()];
-    const white_pair: types.Value = @intFromBool(@popCount(bb_white & bishops) >= 2);
-    const black_pair: types.Value = @intFromBool(@popCount(bb_black & bishops) >= 2);
-    score +|= variable.getValue("bishop_pair") * (white_pair - black_pair);
-
     const bb_white_pawn_: types.Bitboard = bb_white & pos.bb_pieces[types.PieceType.pawn.index()];
     const bb_black_pawn_: types.Bitboard = bb_black & pos.bb_pieces[types.PieceType.pawn.index()];
 
@@ -274,6 +268,20 @@ pub fn evaluateTable(pos: position.Position) types.Value {
             score -|= tables.passed_pawn_table[sq.rank().relativeRank(types.Color.black).index()];
         }
     }
+
+    const knights: types.Bitboard = pos.bb_pieces[types.PieceType.knight.index()];
+    const knights_white: types.Bitboard = bb_white & knights;
+    const knights_black: types.Bitboard = bb_black & knights;
+
+    score +|= variable.getValue("outpost") * (outpostBonus(knights_white, bb_white_pawn_, bb_black_pawn_, .white) - outpostBonus(knights_black, bb_black_pawn_, bb_white_pawn_, .black));
+
+    const bishops: types.Bitboard = pos.bb_pieces[types.PieceType.bishop.index()];
+    const bishops_white: types.Bitboard = bb_white & bishops;
+    const bishops_black: types.Bitboard = bb_black & bishops;
+
+    const white_pair: types.Value = @intFromBool(@popCount(bishops_white) >= 2);
+    const black_pair: types.Value = @intFromBool(@popCount(bishops_black) >= 2);
+    score +|= variable.getValue("bishop_pair") * (white_pair - black_pair);
 
     if (endgame) {
         if (score > 0) {

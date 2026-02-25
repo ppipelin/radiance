@@ -127,11 +127,22 @@ test "EvaluateOutpostBonus" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, fen);
 
-    try std.testing.expectEqual(0, evaluate.outpostBonus(pos, .white));
-    try std.testing.expectEqual(1, evaluate.outpostBonus(pos, .black));
+    var bb_white_knight: types.Bitboard = pos.bb_pieces[types.PieceType.knight.index()] & pos.bb_colors[types.Color.white.index()];
+    var bb_black_knight: types.Bitboard = pos.bb_pieces[types.PieceType.knight.index()] & pos.bb_colors[types.Color.black.index()];
+    var bb_white_pawn: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
+    var bb_black_pawn: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
+
+    try std.testing.expectEqual(0, evaluate.outpostBonus(bb_white_knight, bb_white_pawn, bb_black_pawn, .white));
+    try std.testing.expectEqual(1, evaluate.outpostBonus(bb_black_knight, bb_black_pawn, bb_white_pawn, .black));
 
     fen = "4k1n1/2n4p/1p1p1nP1/n1n2N2/5N2/4P1N1/P2P3P/4K3 w";
     pos = try position.Position.setFen(&s, fen);
-    try std.testing.expectEqual(1, evaluate.outpostBonus(pos, .white));
-    try std.testing.expectEqual(1, evaluate.outpostBonus(pos, .black));
+
+    bb_white_knight = pos.bb_pieces[types.PieceType.knight.index()] & pos.bb_colors[types.Color.white.index()];
+    bb_black_knight = pos.bb_pieces[types.PieceType.knight.index()] & pos.bb_colors[types.Color.black.index()];
+    bb_white_pawn = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
+    bb_black_pawn = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
+
+    try std.testing.expectEqual(1, evaluate.outpostBonus(bb_white_knight, bb_white_pawn, bb_black_pawn, .white));
+    try std.testing.expectEqual(1, evaluate.outpostBonus(bb_black_knight, bb_black_pawn, bb_white_pawn, .black));
 }
