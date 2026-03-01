@@ -38,7 +38,15 @@ const Wdl = enum(u2) {
     }
 };
 
-fn readBook(allocator: std.mem.Allocator) !std.ArrayList(Triplet) {
+pub fn readBook(allocator: std.mem.Allocator) !std.ArrayList(Triplet) {
+    if (@import("builtin").os.tag == .windows) {
+        return readBookWindows(allocator);
+    } else {
+        return readBookLinux(allocator);
+    }
+}
+
+fn readBookWindows(allocator: std.mem.Allocator) !std.ArrayList(Triplet) {
     const file_handle = std.os.windows.kernel32.CreateFileW(
         // File containing row of "fen [score]" where socre is win (1.0), draw (0.5) or loss (0.0)
         std.unicode.utf8ToUtf16LeStringLiteral("data.book"),
@@ -54,6 +62,28 @@ fn readBook(allocator: std.mem.Allocator) !std.ArrayList(Triplet) {
     defer allocator.free(buffer);
 
     const len = try std.os.windows.ReadFile(file_handle, buffer, null);
+
+    var list: std.ArrayList(Triplet) = .empty;
+
+    var it = std.mem.splitScalar(u8, buffer[0..len], '\n');
+    while (it.next()) |token| {
+        if (std.mem.endsWith(u8, token[0..(token.len - 1)], "]")) {
+            const wdl = try std.fmt.parseFloat(f16, token[(token.len - 5)..(token.len - 2)]);
+            const copy = try allocator.dupe(u8, token[0..(token.len - 7)]);
+            try list.append(allocator, .{ copy, Wdl.init(wdl) });
+        }
+    }
+    return list;
+}
+
+fn readBookLinux(allocator: std.mem.Allocator) !std.ArrayList(Triplet) {
+    const file = try std.fs.cwd().openFile("data.book", .{});
+    defer file.close();
+
+    var buffer: []u8 = try allocator.alloc(u8, 1_000_000 * 64);
+    defer allocator.free(buffer);
+
+    const len = try file.readAll(buffer);
 
     var list: std.ArrayList(Triplet) = .empty;
 
