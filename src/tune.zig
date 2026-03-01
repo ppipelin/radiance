@@ -38,22 +38,29 @@ const Wdl = enum(u2) {
     }
 };
 
+/// Reads a file containing rows of "fen [score]" where score is win (1.0), draw (0.5) or loss (0.0)
 fn readBook(allocator: std.mem.Allocator) !std.ArrayList(Triplet) {
-    const file_handle = std.os.windows.kernel32.CreateFileW(
-        // File containing row of "fen [score]" where socre is win (1.0), draw (0.5) or loss (0.0)
-        std.unicode.utf8ToUtf16LeStringLiteral("data.book"),
-        std.os.windows.GENERIC_READ,
-        std.os.windows.FILE_SHARE_READ | std.os.windows.FILE_SHARE_WRITE, // Allow others to access
-        null,
-        std.os.windows.OPEN_EXISTING,
-        std.os.windows.FILE_ATTRIBUTE_NORMAL,
-        null,
-    );
-
     var buffer: []u8 = try allocator.alloc(u8, 1_000_000 * 64);
     defer allocator.free(buffer);
 
-    const len = try std.os.windows.ReadFile(file_handle, buffer, null);
+    var len: usize = 0;
+    if (@import("builtin").os.tag == .windows) {
+        const file = std.os.windows.kernel32.CreateFileW(
+            std.unicode.utf8ToUtf16LeStringLiteral("data.book"),
+            std.os.windows.GENERIC_READ,
+            std.os.windows.FILE_SHARE_READ | std.os.windows.FILE_SHARE_WRITE, // Allow others to access
+            null,
+            std.os.windows.OPEN_EXISTING,
+            std.os.windows.FILE_ATTRIBUTE_NORMAL,
+            null,
+        );
+        defer std.os.windows.CloseHandle(file);
+        len = try std.os.windows.ReadFile(file, buffer, null);
+    } else {
+        const file = try std.fs.cwd().openFile("data.book", .{});
+        defer file.close();
+        len = try file.readAll(buffer);
+    }
 
     var list: std.ArrayList(Triplet) = .empty;
 
