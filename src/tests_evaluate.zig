@@ -117,3 +117,32 @@ test "EvaluateSpaceBonus" {
 
     try std.testing.expectEqual(variable.rook_open_files * (2 - 1) + variable.rook_semi_open_files * (1 - 1), evaluate.spaceBonus(pos));
 }
+
+test "EvaluateOutpostBonus" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var fen: []const u8 = "4k3/P1Ppp3/1Ppn2pP/1n3NNp/1P2P3/6n1/5P2/4K3 w";
+
+    var s: position.State = position.State{};
+    var pos: position.Position = try position.Position.setFen(&s, fen);
+
+    var bb_white_knight: types.Bitboard = pos.bb_pieces[types.PieceType.knight.index()] & pos.bb_colors[types.Color.white.index()];
+    var bb_black_knight: types.Bitboard = pos.bb_pieces[types.PieceType.knight.index()] & pos.bb_colors[types.Color.black.index()];
+    var bb_white_pawn: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
+    var bb_black_pawn: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
+
+    try std.testing.expectEqual(0, evaluate.outpostBonus(bb_white_knight, bb_white_pawn, bb_black_pawn, .white));
+    try std.testing.expectEqual(1, evaluate.outpostBonus(bb_black_knight, bb_black_pawn, bb_white_pawn, .black));
+
+    fen = "4k1n1/2n4p/1p1p1nP1/n1n2N2/5N2/4P1N1/P2P3P/4K3 w";
+    pos = try position.Position.setFen(&s, fen);
+
+    bb_white_knight = pos.bb_pieces[types.PieceType.knight.index()] & pos.bb_colors[types.Color.white.index()];
+    bb_black_knight = pos.bb_pieces[types.PieceType.knight.index()] & pos.bb_colors[types.Color.black.index()];
+    bb_white_pawn = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
+    bb_black_pawn = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
+
+    try std.testing.expectEqual(1, evaluate.outpostBonus(bb_white_knight, bb_white_pawn, bb_black_pawn, .white));
+    try std.testing.expectEqual(1, evaluate.outpostBonus(bb_black_knight, bb_black_pawn, bb_white_pawn, .black));
+}
