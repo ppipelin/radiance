@@ -1,6 +1,8 @@
+const search = @import("search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
+const variable = @import("variable.zig");
 
 const Bitboard = types.Bitboard;
 const Color = types.Color;
@@ -59,7 +61,8 @@ pub const State = struct {
     full_move: u32 = 1,
     en_passant: Square = Square.none,
     checkers: Bitboard = 0, // Bitboard of checkers on our king for current turn
-    pinned: [Color.nb()]Bitboard = .{ 0, 0 },
+    pinned: [Color.nb()]Bitboard = @splat(0),
+    check_square: [Color.nb()][PieceType.nb()]Bitboard = @splat(@splat(0)), // [attacked_king_color][attacking_piecetype]
     attacked: Bitboard = 0,
     attacked_horizontal: Bitboard = 0,
     last_captured_piece: Piece = Piece.none,
@@ -427,13 +430,28 @@ pub const Position = struct {
         self.state = self.state.previous.?;
     }
 
+    // Finds pieces of specified color thats attacks king
+    pub fn updateCheckSquare(noalias self: *Position, comptime king_color: Color, king: Square, blockers: Bitboard) void {
+        self.state.check_square[king_color.index()][PieceType.pawn.index()] = tables.getAttacks(.pawn, king_color, king, blockers);
+        self.state.check_square[king_color.index()][PieceType.knight.index()] = tables.getAttacks(.knight, king_color, king, blockers);
+        self.state.check_square[king_color.index()][PieceType.bishop.index()] = tables.getAttacks(.bishop, king_color, king, blockers);
+        self.state.check_square[king_color.index()][PieceType.rook.index()] = tables.getAttacks(.rook, king_color, king, blockers);
+        self.state.check_square[king_color.index()][PieceType.queen.index()] = self.state.check_square[king_color.index()][PieceType.bishop.index()] | self.state.check_square[king_color.index()][PieceType.rook.index()];
+    }
+
     pub fn updateCheckersPinned(noalias self: *Position) void {
         const bb_us: Bitboard = self.bb_colors[self.state.turn.index()];
         const bb_them: Bitboard = self.bb_colors[self.state.turn.invert().index()];
+        const bb_all: Bitboard = bb_us | bb_them;
 
         const king_us: Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[PieceType.king.index()]));
         const king_them: Square = @enumFromInt(types.lsb(bb_them & self.bb_pieces[PieceType.king.index()]));
 
+        // Compute squares that check based on PieceType
+        updateCheckSquare(self, .white, if (self.state.turn == .white) king_us else king_them, bb_all);
+        updateCheckSquare(self, .black, if (self.state.turn == .black) king_us else king_them, bb_all);
+
+        // Compute checkers, (pinners) and pinned
         self.state.pinned = .{ 0, 0 };
 
         // Compute checkers from non blockables piece types
@@ -788,6 +806,11 @@ pub const Position = struct {
                 scores[i] += castle_bonus;
 
                 scores[i] += tables.history[self.state.turn.index()][move.getFromTo()];
+
+                // Bonus for giving check (and not too compromizing)
+                // const condition: bool = (self.state.check_square[self.state.turn.invert().index()][from_piece.index()] & move.getTo().sqToBB()) > 0;
+                // if (condition and search.seeGreaterEqual(self, move, variable.getValue("check_bonus_threshold")))
+                //     scores[i] += variable.getValue("check_bonus");
             }
 
             scores[i] += @as(Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
