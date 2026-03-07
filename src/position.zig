@@ -799,13 +799,11 @@ pub const Position = struct {
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
-                var castle_bonus: Value = 0;
                 if (move.isCastle()) {
-                    castle_bonus = 50;
+                    scores[i] += variable.getValue("castle_bonus");
                 }
-                scores[i] += castle_bonus;
 
-                scores[i] += tables.history[self.state.turn.index()][move.getFromTo()];
+                scores[i] += @divTrunc(variable.getValue("history") *| tables.history[self.state.turn.index()][move.getFromTo()], 10);
 
                 // Bonus for giving check (and not too compromizing)
                 // const condition: bool = (self.state.check_square[self.state.turn.invert().index()][from_piece.index()] & move.getTo().sqToBB()) > 0;
