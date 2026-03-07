@@ -7,7 +7,7 @@ const variable = @import("variable.zig");
 
 const allocator = std.testing.allocator;
 
-test "EvaluateFlip" {
+test "EvaluateFlipAndSymmetry" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
@@ -19,8 +19,17 @@ test "EvaluateFlip" {
     var s_b: position.State = position.State{};
     var pos_b: position.Position = try position.Position.setFen(&s_b, fen_b);
 
+    var eval_w = evaluate.evaluateTable(pos_w);
+    var eval_b = evaluate.evaluateTable(pos_b);
+    pos_w.state.turn = pos_w.state.turn.invert();
+    pos_b.state.turn = pos_b.state.turn.invert();
+    var eval_w_symmetry = -evaluate.evaluateTable(pos_w);
+    var eval_b_symmetry = -evaluate.evaluateTable(pos_b);
+
     try std.testing.expectEqual(evaluate.evaluateShannon(pos_w), evaluate.evaluateShannon(pos_b));
-    try std.testing.expectEqual(evaluate.evaluateTable(pos_w), evaluate.evaluateTable(pos_b));
+    try std.testing.expectEqual(eval_w, eval_b);
+    try std.testing.expectEqual(eval_w, eval_w_symmetry);
+    try std.testing.expectEqual(eval_b, eval_b_symmetry);
 
     fen_w = "5k2/2p1pp2/p7/8/8/PPPPPPPP/PPPPPPPP/bnnb1K1b w - - 0 1";
     fen_b = "BNNB1k1B/pppppppp/pppppppp/8/8/P7/2P1PP2/5K2 b - - 0 1";
@@ -28,8 +37,17 @@ test "EvaluateFlip" {
     pos_w = try position.Position.setFen(&s_w, fen_w);
     pos_b = try position.Position.setFen(&s_b, fen_b);
 
+    eval_w = evaluate.evaluateTable(pos_w);
+    eval_b = evaluate.evaluateTable(pos_b);
+    pos_w.state.turn = pos_w.state.turn.invert();
+    pos_b.state.turn = pos_b.state.turn.invert();
+    eval_w_symmetry = -evaluate.evaluateTable(pos_w);
+    eval_b_symmetry = -evaluate.evaluateTable(pos_b);
+
     try std.testing.expectEqual(evaluate.evaluateShannon(pos_w), evaluate.evaluateShannon(pos_b));
-    try std.testing.expectEqual(evaluate.evaluateTable(pos_w), evaluate.evaluateTable(pos_b));
+    try std.testing.expectEqual(eval_w, eval_b);
+    try std.testing.expectEqual(eval_w, eval_w_symmetry);
+    try std.testing.expectEqual(eval_b, eval_b_symmetry);
 
     fen_w = "r1bq1r1k/pp1npp1p/2np2p1/2p5/4P3/2bPBNP1/PPP2PBP/R2Q1R1K w - - 0 1";
     fen_b = "r2q1r1k/ppp2pbp/2Bpbnp1/4p3/2P5/2NP2P1/PP1NPP1P/R1BQ1R1K b - - 0 1";
@@ -37,8 +55,17 @@ test "EvaluateFlip" {
     pos_w = try position.Position.setFen(&s_w, fen_w);
     pos_b = try position.Position.setFen(&s_b, fen_b);
 
+    eval_w = evaluate.evaluateTable(pos_w);
+    eval_b = evaluate.evaluateTable(pos_b);
+    pos_w.state.turn = pos_w.state.turn.invert();
+    pos_b.state.turn = pos_b.state.turn.invert();
+    eval_w_symmetry = -evaluate.evaluateTable(pos_w);
+    eval_b_symmetry = -evaluate.evaluateTable(pos_b);
+
     try std.testing.expectEqual(evaluate.evaluateShannon(pos_w), evaluate.evaluateShannon(pos_b));
-    try std.testing.expectEqual(evaluate.evaluateTable(pos_w), evaluate.evaluateTable(pos_b));
+    try std.testing.expectEqual(eval_w, eval_b);
+    try std.testing.expectEqual(eval_w, eval_w_symmetry);
+    try std.testing.expectEqual(eval_b, eval_b_symmetry);
 
     fen_w = "6k1/5p2/p1p2Bp1/P4n1p/1P2p3/6PP/3R2PK/2r5 b - -";
     fen_b = "2R5/3r2pk/6pp/1p2P3/p4N1P/P1P2bP1/5P2/6K1 w - -";
@@ -46,8 +73,17 @@ test "EvaluateFlip" {
     pos_w = try position.Position.setFen(&s_w, fen_w);
     pos_b = try position.Position.setFen(&s_b, fen_b);
 
+    eval_w = evaluate.evaluateTable(pos_w);
+    eval_b = evaluate.evaluateTable(pos_b);
+    pos_w.state.turn = pos_w.state.turn.invert();
+    pos_b.state.turn = pos_b.state.turn.invert();
+    eval_w_symmetry = -evaluate.evaluateTable(pos_w);
+    eval_b_symmetry = -evaluate.evaluateTable(pos_b);
+
     try std.testing.expectEqual(evaluate.evaluateShannon(pos_w), evaluate.evaluateShannon(pos_b));
-    try std.testing.expectEqual(evaluate.evaluateTable(pos_w), evaluate.evaluateTable(pos_b));
+    try std.testing.expectEqual(eval_w, eval_b);
+    try std.testing.expectEqual(eval_w, eval_w_symmetry);
+    try std.testing.expectEqual(eval_b, eval_b_symmetry);
 }
 
 test "EvaluateTable" {
