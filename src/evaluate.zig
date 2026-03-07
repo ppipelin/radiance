@@ -307,12 +307,14 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     score +|= variable.getValue("bishop_opposite_pawn") * (bishopOppositePawnBonus(bishops_white, bb_white_pawn_) - bishopOppositePawnBonus(bishops_black, bb_black_pawn_));
 
     if (endgame) {
+        // King score is more important in endgame
+        score +|= pos.score_king_w - pos.score_king_b;
+        // Favour having kings close
         if (score > 0) {
-            score +|= -pos.score_king_b;
-        } else if (score < 0) {
-            score +|= pos.score_king_w;
+            score +|= -distanceKings(pos);
+        } else {
+            score +|= distanceKings(pos);
         }
-        score +|= if (pos.state.turn.isWhite()) distanceKings(pos) else -distanceKings(pos);
     } else {
         // Pawn bonus when in side of king
         const filter_left = types.file | types.file >> 1 | types.file >> 2 | types.file >> 3;
