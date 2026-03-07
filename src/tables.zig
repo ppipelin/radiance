@@ -290,6 +290,7 @@ pub fn deinitAll(allocator: std.mem.Allocator) void {
         moves_rook[sq].deinit(allocator);
     }
     transposition_table.clearAndFree(allocator);
+    pawn_table.clearAndFree(allocator);
 }
 
 pub fn getAttacks(comptime pt: PieceType, comptime color: Color, sq: Square, blockers: Bitboard) Bitboard {
