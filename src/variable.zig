@@ -27,7 +27,7 @@ pub const pawn_defend_king: Value = 3;
 pub const pawn_isolated: Value = 10;
 pub const pawn_doubled: Value = 11;
 pub const pawn_blocked: Value = 15;
-pub const pawn_protection: Value = 40;
+pub const pawn_protection: Value = 2;
 
 pub const bishop_pair: Value = 26;
 pub const bishop_opposite_pawn: Value = 5;
