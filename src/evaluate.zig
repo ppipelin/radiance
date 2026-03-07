@@ -39,11 +39,19 @@ pub fn computeIsolatedPawns(bb_pawn: types.Bitboard) types.Value {
 }
 
 // Protecting pawns are mutual so color does not matter
-pub fn pawnStructure(bb_pawn: types.Bitboard) types.Value {
-    const pawn_diagonal_left = (bb_pawn & ~types.mask_file[0]) << (types.board_size - 1);
-    const pawn_diagonal_right = (bb_pawn & ~types.mask_file[types.board_size - 1]) << (types.board_size + 1);
-
-    return @popCount((pawn_diagonal_right | pawn_diagonal_left) & bb_pawn);
+pub fn pawnStructure(bb_pawn: types.Bitboard, comptime color: types.Color) types.Value {
+    switch (color) {
+        .white => {
+            const pawn_diagonal_left = (bb_pawn & ~types.mask_file[0]) << (types.board_size - 1);
+            const pawn_diagonal_right = (bb_pawn & ~types.mask_file[types.board_size - 1]) << (types.board_size + 1);
+            return @popCount((pawn_diagonal_right | pawn_diagonal_left) & bb_pawn);
+        },
+        .black => {
+            const pawn_diagonal_left = (bb_pawn & ~types.mask_file[0]) >> (types.board_size + 1);
+            const pawn_diagonal_right = (bb_pawn & ~types.mask_file[types.board_size - 1]) >> (types.board_size - 1);
+            return @popCount((pawn_diagonal_right | pawn_diagonal_left) & bb_pawn);
+        },
+    }
 }
 
 // Chebyshev distance of kings
@@ -265,7 +273,7 @@ pub fn evaluateTable(pos: position.Position) types.Value {
         variable.getValue("pawn_doubled") *| (computeDoubledPawns(bb_white_pawn_) - computeDoubledPawns(bb_black_pawn_)) +|
         variable.getValue("pawn_blocked") *| (computeBlockedPawns(bb_white_pawn_, types.Color.white, bb_black) - computeBlockedPawns(bb_black_pawn_, types.Color.black, bb_white));
 
-    score +|= variable.getValue("pawn_protection") * (pawnStructure(bb_white_pawn_) - pawnStructure(bb_white_pawn_));
+    score +|= variable.getValue("pawn_protection") * (pawnStructure(bb_white_pawn_, .white) - pawnStructure(bb_black_pawn_, .black));
 
     var bb_white_pawn: types.Bitboard = bb_white_pawn_;
     while (bb_white_pawn != 0) {
