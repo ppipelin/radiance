@@ -41,6 +41,12 @@ inline fn elapsed(limits: interface.Limits) types.TimePoint {
     return (types.now() - limits.start);
 }
 
+/// This won't return true at first call
+inline fn shouldCheckTime() bool {
+    interface.g_nodes_since_check +%= 1;
+    return interface.g_nodes_since_check % 2048 == 0;
+}
+
 inline fn outOfTime(limits: interface.Limits) bool {
     if (interface.g_stop)
         return true;
@@ -51,7 +57,11 @@ inline fn outOfTime(limits: interface.Limits) bool {
         const increment_float: f128 = @floatFromInt(interface.increment);
         interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
     }
-    return elapsed(limits) > interface.remaining_computed;
+
+    if (!shouldCheckTime()) return interface.out_of_time;
+
+    interface.out_of_time = elapsed(limits) > interface.remaining_computed;
+    return interface.out_of_time;
 }
 
 pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, depth: types.Depth, comptime is_960: bool, verbose: bool) !u64 {
@@ -181,6 +191,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     }
 
     interface.remaining_computed = 0;
+    interface.out_of_time = false;
 
     var stack: [200 + 10]Stack = @splat(Stack{});
     var pv: [200]types.Move = @splat(.none); // useless
