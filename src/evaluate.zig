@@ -16,7 +16,7 @@ pub fn computeDoubledPawns(bb_pawn: types.Bitboard) types.Value {
 
 pub inline fn computeBlockedPawns(bb_pawn: types.Bitboard, comptime col: types.Color, blockers: types.Bitboard) types.Value {
     if (col.isWhite()) {
-        return @popCount((bb_pawn <<| types.board_size) & blockers);
+        return @popCount((bb_pawn << types.board_size) & blockers);
     } else {
         return @popCount((bb_pawn >> types.board_size) & blockers);
     }
@@ -163,9 +163,13 @@ pub fn spaceBonus(pos: position.Position) types.Value {
     const semi_open_files_white: types.Bitboard = ~(vertical_white) & vertical_black;
     const semi_open_files_black: types.Bitboard = ~(vertical_black) & vertical_white;
 
-    bonus += variable.getValue("rook_open_files") * (@as(types.Value, @popCount(open_files & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.white.index()])) - @as(types.Value, @popCount(open_files & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.black.index()])));
+    const bb_rooks = pos.bb_pieces[types.PieceType.rook.index()];
+    const bb_white_rooks = bb_rooks & pos.bb_colors[types.Color.white.index()];
+    const bb_black_rooks = bb_rooks & pos.bb_colors[types.Color.black.index()];
 
-    bonus += variable.getValue("rook_semi_open_files") * (@as(types.Value, @popCount(semi_open_files_white & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.white.index()])) - @as(types.Value, @popCount(semi_open_files_black & pos.bb_pieces[types.PieceType.rook.index()] & pos.bb_colors[types.Color.black.index()])));
+    bonus += variable.getValue("rook_open_files") * (@as(types.Value, @popCount(open_files & bb_white_rooks)) - @as(types.Value, @popCount(open_files & bb_black_rooks)));
+
+    bonus += variable.getValue("rook_semi_open_files") * (@as(types.Value, @popCount(semi_open_files_white & bb_white_rooks)) - @as(types.Value, @popCount(semi_open_files_black & bb_black_rooks)));
 
     // Horizontal bonus
 
@@ -219,11 +223,8 @@ pub fn bishopOppositePawnBonus(bishops: types.Bitboard, pawns: types.Bitboard) t
     const pawns_on_light: types.Value = @popCount(pawns & types.mask_light_square);
     const pawns_on_dark: types.Value = @popCount(pawns & types.mask_dark_square);
 
-    bonus += bishops_on_light * pawns_on_dark;
-    bonus -= bishops_on_dark * pawns_on_dark;
-
-    bonus += bishops_on_dark * pawns_on_light;
-    bonus -= bishops_on_light * pawns_on_light;
+    bonus += bishops_on_light * (pawns_on_dark - pawns_on_light);
+    bonus += bishops_on_dark * (pawns_on_light - pawns_on_dark);
 
     return bonus;
 }
