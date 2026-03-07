@@ -102,8 +102,24 @@ test "EvaluatePawnStructure" {
     const bb_white: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
     const bb_black: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
 
-    try std.testing.expectEqual(2, evaluate.pawnStructure(bb_white));
-    try std.testing.expectEqual(4, evaluate.pawnStructure(bb_black));
+    try std.testing.expectEqual(2, evaluate.pawnStructure(bb_white, .white));
+    try std.testing.expectEqual(4, evaluate.pawnStructure(bb_black, .black));
+}
+
+test "EvaluatePawnStructure2" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    const fen: []const u8 = "r1bq1r1k/pp1npp1p/2np2p1/2p5/4P3/2bPBNP1/PPP2PBP/R2Q1R1K w - - 0 1";
+
+    var s: position.State = position.State{};
+    const pos: position.Position = try position.Position.setFen(&s, fen);
+
+    const bb_white: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.white.index()];
+    const bb_black: types.Bitboard = pos.bb_pieces[types.PieceType.pawn.index()] & pos.bb_colors[types.Color.black.index()];
+
+    try std.testing.expectEqual(3, evaluate.pawnStructure(bb_white, .white));
+    try std.testing.expectEqual(3, evaluate.pawnStructure(bb_black, .black));
 }
 
 test "EvaluateSpaceBonus" {
