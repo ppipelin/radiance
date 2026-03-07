@@ -1,6 +1,7 @@
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
+const variable = @import("variable.zig");
 
 const Bitboard = types.Bitboard;
 const Color = types.Color;
@@ -778,7 +779,7 @@ pub const Position = struct {
                 if (move.getFlags() != MoveFlags.en_passant) {
                     const capture_delta: Value = tables.material[to_piece.index()] - tables.material[from_piece.index()];
                     scores[i] += capture_delta;
-                    scores[i] += tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()];
+                    scores[i] += @divTrunc(variable.history_capture, 1024) * tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()];
                     // scores[i] += tables.material[to_piece.index()] - tables.material[from_piece.index()] + tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()];
                     // std.debug.print("{}\n", .{5 * tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()]});
                     // std.debug.print("move {} history {}\n", .{ move, tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()] });

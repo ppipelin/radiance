@@ -37,6 +37,9 @@ pub const bishop_opposite_pawn: Value = 5;
 pub const rook_open_files: Value = 30;
 pub const rook_semi_open_files: Value = 15;
 
+////// Histories //////
+pub const history_capture: Value = 1024;
+
 ////// Search tunables //////
 
 pub const see_qs: Value = -45;
@@ -69,6 +72,8 @@ pub var tunables = [_]Tunable{
     .{ .name = "delta_pruning", .default = delta_pruning, .min = 0, .max = 500, .step = 10 },
     .{ .name = "futility_factor", .default = futility_factor, .min = 0, .max = 200, .step = 10 },
     .{ .name = "null_move_taper", .default = null_move_taper, .min = 0, .max = 500, .step = 10 },
+
+    .{ .name = "history_capture", .default = history_capture, .min = 0, .max = 8192, .step = 100 },
 };
 
 pub fn getValues(buffer: []types.Value) void {
