@@ -49,6 +49,9 @@ pub const delta_pruning: Value = 180;
 pub const reverse_futility_factor: Value = 70;
 pub const null_move_taper: Value = 320;
 
+pub const check_bonus: Value = 25;
+pub const check_bonus_threshold: Value = -75;
+
 pub var tunables = [_]Tunable{
     .{ .name = "knight_mobility", .default = knight_mobility, .min = 0, .max = 50, .step = 5 },
     .{ .name = "bishop_mobility", .default = bishop_mobility, .min = 0, .max = 50, .step = 5 },
@@ -76,6 +79,8 @@ pub var tunables = [_]Tunable{
     .{ .name = "rook_semi_open_files", .default = rook_semi_open_files, .min = 0, .max = 100, .step = 10 },
 
     .{ .name = "castle_bonus", .default = castle_bonus, .min = 0, .max = 100, .step = 10 },
+    .{ .name = "check_bonus", .default = check_bonus, .min = 0, .max = 100, .step = 10 },
+    .{ .name = "check_bonus_threshold", .default = check_bonus_threshold, .min = -300, .max = 0, .step = 100 },
 
     .{ .name = "see_qs", .default = see_qs, .min = -100, .max = 0, .step = 10 },
     .{ .name = "delta_pruning", .default = delta_pruning, .min = 0, .max = 500, .step = 50 },
