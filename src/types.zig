@@ -630,6 +630,9 @@ pub const mask_anti_diagonal = [_]Bitboard{
     0x2040800000000000, 0x4080000000000000, 0x8000000000000000,
 };
 
+pub const mask_light_square: Bitboard = 0x55AA55AA55AA55AA;
+pub const mask_dark_square: Bitboard = ~mask_light_square;
+
 pub fn printBitboardDebug(b: Bitboard) void {
     var i: i32 = board_size2 - board_size;
     while (i >= 0) : (i -= board_size) {
