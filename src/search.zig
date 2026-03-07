@@ -520,10 +520,10 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                     score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
                     // Let's assert we don't store draw (repetition)
                     if (score != types.value_draw) {
-                        if (found == null or tt_depth <= depth -| 1) {
+                        if (found == null or tt_depth <= depth) {
                             const tt_flag: types.TableBound = if (score >= beta) .lowerbound else if (alpha != alpha_) .exact else .upperbound;
 
-                            try tables.transposition_table.put(allocator, key, .{ types.valueToTT(score, ss[0].ply), depth - 1, move, tt_flag });
+                            try tables.transposition_table.put(allocator, key, .{ types.valueToTT(score, ss[0].ply), depth, move, tt_flag });
                         }
                     }
                 }
