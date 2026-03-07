@@ -399,7 +399,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
         // Reverse Futility Pruning
         if (!pv_node and depth <= 8 and beta < types.value_mate_in_max_depth) {
-            const futility_margin: types.Value = @as(types.Value, depth) * variable.getValue("futility_factor");
+            const futility_margin: types.Value = @as(types.Value, depth) * variable.getValue("reverse_futility_factor");
             if (static_eval - futility_margin >= beta)
                 return beta;
         }
