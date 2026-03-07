@@ -6,11 +6,13 @@ const types = @import("types.zig");
 const variable = @import("variable.zig");
 
 pub var g_stop = false;
+pub var g_nodes_since_check: usize = 0;
 pub var search_thread: ?std.Thread = null;
 pub var limits: Limits = Limits{};
 pub var remaining: types.TimePoint = 0;
 pub var increment: types.TimePoint = 0;
 pub var remaining_computed: types.TimePoint = 0;
+pub var out_of_time: bool = false;
 pub var nodes_searched: u64 = 0;
 pub var seldepth: u64 = 0;
 pub var transposition_used: u64 = 0;
