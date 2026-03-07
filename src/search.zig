@@ -250,7 +250,6 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
         var delta: types.Value = std.math.lossyCast(types.Value, 5 + @divTrunc(prev, 10000));
         var alpha: types.Value = @max(root_moves.items[0].average_score -| delta, -types.value_infinite);
         var beta: types.Value = @min(root_moves.items[0].average_score +| delta, types.value_infinite);
-        var failed_high_cnt: u32 = 0;
 
         // Aspiration window
         // Disable by alpha = -types.value_infinite; beta = types.value_infinite;
@@ -269,10 +268,8 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
             if (score <= alpha) {
                 beta = @divTrunc(alpha, 2) + @divTrunc(beta, 2);
                 alpha = @max(score -| delta, -types.value_infinite);
-                failed_high_cnt = 0;
             } else if (score >= beta) {
                 beta = @min(score +| delta, types.value_infinite);
-                failed_high_cnt += 1;
             } else {
                 break;
             }
@@ -289,7 +286,6 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
             break;
         }
 
-        try stdout.print("info failedHighCnt {} alpha {} beta {}\n", .{ failed_high_cnt, alpha, beta });
         try info(stdout, limits, depth, root_moves.items[0].score, options);
         try stdout.flush();
     }
@@ -527,7 +523,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         try pos.unMovePiece(move);
 
         // Useless ?
-        if (depth > 1 and outOfTime(interface.limits))
+        if (depth > 1 and outOfTime(limits))
             return -types.value_none;
 
         if (root_node) {

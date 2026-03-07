@@ -94,5 +94,5 @@ pub fn getValue(comptime name: []const u8) types.Value {
         return @field(@This(), name);
     }
 
-    unreachable;
+    @compileError("Unknown variable in variable.getValue():  '" ++ name ++ "'");
 }
