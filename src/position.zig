@@ -769,17 +769,18 @@ pub const Position = struct {
             scores[i] = 0;
 
             var from_piece: PieceType = self.board[move.getFrom().index()].pieceToPieceType();
-            const to_piece: PieceType = self.board[move.getTo().index()].pieceToPieceType();
+            var to_piece: PieceType = self.board[move.getTo().index()].pieceToPieceType();
 
             if (move.isPromotion()) {
                 from_piece = MoveFlags.promoteType(move.getFlags());
             }
 
             if (flag == .capture or flag == .all and move.isCapture()) {
-                if (move.getFlags() != MoveFlags.en_passant) {
-                    scores[i] += @divTrunc(variable.getValue("capture_factor") *| tables.material[to_piece.index()], 10);
-                    scores[i] += @divTrunc(variable.getValue("history_capture") *| tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()], 10);
+                if (move.getFlags() == MoveFlags.en_passant) {
+                    to_piece = .pawn;
                 }
+                scores[i] += @divTrunc(variable.getValue("capture_factor") *| tables.material[to_piece.index()], 10);
+                scores[i] += @divTrunc(variable.getValue("history_capture") *| tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()], 10);
             } else {
                 // Castle (bonus and 960 specific cases)
                 if (move.isCastle()) {

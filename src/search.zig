@@ -580,6 +580,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                     } else {
                         var from_piece: types.PieceType = pos.board[move.getFrom().index()].pieceToPieceType();
                         var to_piece: types.PieceType = pos.board[move.getTo().index()].pieceToPieceType();
+                        if (move.isEnPassant()) {
+                            to_piece = .pawn;
+                        }
                         tables.updateHistory(&tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()], bonus);
                         // Apply maluses to previous moves
                         // for (previous_captures[0..(move_count_captures - 1)]) |malus_move| {
