@@ -93,7 +93,7 @@ pub const Square = enum(u8) {
     }
 
     pub inline fn sqToBB(self: Square) Bitboard {
-        const sq: u6 = @truncate(@intFromEnum(self));
+        const sq: u6 = @intCast(@intFromEnum(self));
         return intToBB(sq);
     }
 
@@ -326,7 +326,7 @@ pub const Move = packed struct {
     };
 
     pub inline fn init(flags: MoveFlags, from: Square, to: Square) Move {
-        return Move{ .flags = flags.index(), .from = @truncate(from.index()), .to = @truncate(to.index()) };
+        return Move{ .flags = flags.index(), .from = @intCast(from.index()), .to = @intCast(to.index()) };
     }
 
     pub inline fn initFromStr(pos: position.Position, str: []const u8) !Move {

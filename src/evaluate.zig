@@ -33,7 +33,7 @@ pub fn computeIsolatedPawns(bb_pawn: types.Bitboard) types.Value {
     const is_isolated_file: @Vector(types.board_size, u3) = @intFromBool((types.mask_file & adjacent_pawns_vec) == condition_vec);
 
     // There needs to be at least a pawn in the column for it to be isolated
-    const is_pawn_file: @Vector(types.board_size, u3) = @truncate(@popCount(types.mask_file & bb_pawn_vec));
+    const is_pawn_file: @Vector(types.board_size, u3) = @intCast(@popCount(types.mask_file & bb_pawn_vec));
 
     return @reduce(.Add, is_pawn_file * is_isolated_file);
 }

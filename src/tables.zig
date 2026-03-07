@@ -136,14 +136,14 @@ pub inline fn filterMovesRook(sq: Square) Bitboard {
 }
 
 pub fn computeBlockers(mask_: Bitboard, list: []Bitboard) usize {
-    const bit_indices_size: u4 = @truncate(@popCount(mask_)); // Max is (types.board_size)*2-3
+    const bit_indices_size: u4 = @intCast(@popCount(mask_)); // Max is (types.board_size)*2-3
     var count: usize = 1;
     for (1..(@as(u16, 1) << bit_indices_size)) |blocker_configuration| {
         var mask: Bitboard = mask_;
         var currentBlockerBB: Bitboard = 0;
         var cnt: u6 = 0;
         while (mask != 0) : (cnt += 1) {
-            const bit_idx: u6 = @truncate(types.popLsb(&mask).index());
+            const bit_idx: u6 = @intCast(types.popLsb(&mask).index());
 
             const current_bit: Bitboard = (@as(u64, blocker_configuration) >> cnt) & 1; // Is the shifted bit in blocker_configuration activated
             currentBlockerBB |= current_bit << bit_idx; // Shift it back to its position
