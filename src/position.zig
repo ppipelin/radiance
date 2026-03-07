@@ -1,6 +1,7 @@
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
+const variable = @import("variable.zig");
 
 const Bitboard = types.Bitboard;
 const Color = types.Color;
@@ -781,13 +782,11 @@ pub const Position = struct {
                 }
             } else {
                 // Castle (bonus and 960 specific cases)
-                var castle_bonus: Value = 0;
                 if (move.isCastle()) {
-                    castle_bonus = 50;
+                    scores[i] += variable.getValue("castle_bonus");
                 }
-                scores[i] += castle_bonus;
 
-                scores[i] += tables.history[self.state.turn.index()][move.getFromTo()];
+                scores[i] += @divTrunc(variable.getValue("history") *| tables.history[self.state.turn.index()][move.getFromTo()], 10);
             }
 
             scores[i] += @as(Value, @intFromBool(move.getFrom().sqToBB() & self.state.attacked != 0)) - @as(Value, @intFromBool(move.getTo().sqToBB() & self.state.attacked != 0));
