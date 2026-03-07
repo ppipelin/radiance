@@ -271,7 +271,6 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
 
     // Read the option name (can contain spaces) until value
     while (tokens.next()) |token_in| {
-        std.debug.print("token_in {s}\n", .{token_in});
         if (std.ascii.eqlIgnoreCase("value", token_in))
             break;
         if (list.items.len != 0)
@@ -279,6 +278,7 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
         try list.appendSlice(allocator, token_in);
     }
     name = try list.toOwnedSlice(allocator);
+    defer allocator.free(name);
 
     // Read the option value (can contain spaces)
     while (tokens.next()) |token_in| {
@@ -287,6 +287,7 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
         try list.appendSlice(allocator, token_in);
     }
     value = try list.toOwnedSlice(allocator);
+    defer allocator.free(value);
 
     if (options.contains(name)) {
         var option = options.get(name).?;
@@ -384,7 +385,6 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
             }
         } else if (std.ascii.eqlIgnoreCase("winc", token_name)) {
             if (tokens.next()) |token_value| {
-                std.debug.print("token value {s}\n", .{token_value});
                 limits.inc[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
             } else {
                 return error.MissingParameter;
