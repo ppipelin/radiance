@@ -23,19 +23,26 @@ pub const pawn_threat_bishop: Value = 0;
 pub const pawn_threat_rook: Value = 0;
 pub const pawn_threat_queen: Value = 0;
 
-pub const outpost: Value = 15;
-
 pub const pawn_defend_king: Value = 3;
 pub const pawn_isolated: Value = 10;
 pub const pawn_doubled: Value = 11;
 pub const pawn_blocked: Value = 15;
 pub const pawn_protection: Value = 2;
 
+pub const outpost: Value = 15;
+
 pub const bishop_pair: Value = 26;
 pub const bishop_opposite_pawn: Value = 5;
 
 pub const rook_open_files: Value = 30;
 pub const rook_semi_open_files: Value = 15;
+
+pub const castle_bonus: Value = 50;
+pub const check_bonus: Value = 40;
+pub const check_bonus_threshold: Value = -100;
+
+////// Histories //////
+pub const history: Value = 10;
 
 ////// Search tunables //////
 
@@ -44,35 +51,42 @@ pub const delta_pruning: Value = 180;
 pub const futility_factor: Value = 70;
 pub const null_move_taper: Value = 320;
 
-pub const check_bonus: Value = 40;
-pub const check_bonus_threshold: Value = -100;
-
 pub var tunables = [_]Tunable{
-    .{ .name = "knight_mobility", .default = knight_mobility, .min = 0, .max = 50, .step = 1 },
-    .{ .name = "bishop_mobility", .default = bishop_mobility, .min = 0, .max = 50, .step = 1 },
-    .{ .name = "rook_mobility", .default = rook_mobility, .min = 0, .max = 50, .step = 1 },
-    .{ .name = "queen_mobility", .default = queen_mobility, .min = 0, .max = 50, .step = 1 },
-    // .{ .name = "king_mobility", .default = king_mobility, .min = -50, .max = 50, .step = 1},
-    // .{ .name = "pawn_threat_knight", .default = pawn_threat_knight, .min = 0, .max = 50, .step = 1},
-    // .{ .name = "pawn_threat_bishop", .default = pawn_threat_bishop, .min = 0, .max = 50, .step = 1},
-    // .{ .name = "pawn_threat_rook", .default = pawn_threat_rook, .min = 0, .max = 50, .step = 1},
-    // .{ .name = "pawn_threat_queen", .default = pawn_threat_queen, .min = 0, .max = 50, .step = 1},
-    .{ .name = "outpost", .default = outpost, .min = 0, .max = 50, .step = 1 },
-    .{ .name = "pawn_defend_king", .default = pawn_defend_king, .min = 0, .max = 50, .step = 1 },
-    .{ .name = "pawn_isolated", .default = pawn_isolated, .min = 0, .max = 50, .step = 1 },
-    .{ .name = "pawn_doubled", .default = pawn_doubled, .min = 0, .max = 50, .step = 1 },
-    .{ .name = "pawn_blocked", .default = pawn_blocked, .min = 0, .max = 50, .step = 1 },
-    .{ .name = "pawn_protection", .default = pawn_protection, .min = 0, .max = 50, .step = 1 },
-    .{ .name = "bishop_pair", .default = bishop_pair, .min = -100, .max = 100, .step = 1 },
-    .{ .name = "bishop_opposite_pawn", .default = bishop_opposite_pawn, .min = -100, .max = 100, .step = 1 },
-    .{ .name = "rook_open_files", .default = rook_open_files, .min = 0, .max = 100, .step = 1 },
-    .{ .name = "rook_semi_open_files", .default = rook_semi_open_files, .min = 0, .max = 100, .step = 1 },
-    .{ .name = "see_qs", .default = see_qs, .min = -100, .max = 0, .step = 5 },
-    .{ .name = "delta_pruning", .default = delta_pruning, .min = 0, .max = 500, .step = 10 },
-    .{ .name = "futility_factor", .default = futility_factor, .min = 0, .max = 200, .step = 10 },
-    .{ .name = "null_move_taper", .default = null_move_taper, .min = 0, .max = 500, .step = 10 },
+    .{ .name = "knight_mobility", .default = knight_mobility, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "bishop_mobility", .default = bishop_mobility, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "rook_mobility", .default = rook_mobility, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "queen_mobility", .default = queen_mobility, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "king_mobility", .default = king_mobility, .min = -50, .max = 50, .step = 10 },
+
+    .{ .name = "pawn_threat_knight", .default = pawn_threat_knight, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "pawn_threat_bishop", .default = pawn_threat_bishop, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "pawn_threat_rook", .default = pawn_threat_rook, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "pawn_threat_queen", .default = pawn_threat_queen, .min = 0, .max = 50, .step = 5 },
+
+    .{ .name = "pawn_defend_king", .default = pawn_defend_king, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "pawn_isolated", .default = pawn_isolated, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "pawn_doubled", .default = pawn_doubled, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "pawn_blocked", .default = pawn_blocked, .min = 0, .max = 50, .step = 5 },
+    .{ .name = "pawn_protection", .default = pawn_protection, .min = 0, .max = 50, .step = 5 },
+
+    .{ .name = "outpost", .default = outpost, .min = 0, .max = 50, .step = 5 },
+
+    .{ .name = "bishop_pair", .default = bishop_pair, .min = -100, .max = 100, .step = 20 },
+    .{ .name = "bishop_opposite_pawn", .default = bishop_opposite_pawn, .min = -100, .max = 100, .step = 20 },
+
+    .{ .name = "rook_open_files", .default = rook_open_files, .min = 0, .max = 100, .step = 10 },
+    .{ .name = "rook_semi_open_files", .default = rook_semi_open_files, .min = 0, .max = 100, .step = 10 },
+
+    .{ .name = "castle_bonus", .default = castle_bonus, .min = 0, .max = 100, .step = 10 },
     .{ .name = "check_bonus", .default = check_bonus, .min = 0, .max = 100, .step = 10 },
     .{ .name = "check_bonus_threshold", .default = check_bonus_threshold, .min = -300, .max = 0, .step = 100 },
+
+    .{ .name = "see_qs", .default = see_qs, .min = -100, .max = 0, .step = 10 },
+    .{ .name = "delta_pruning", .default = delta_pruning, .min = 0, .max = 500, .step = 50 },
+    .{ .name = "futility_factor", .default = futility_factor, .min = 0, .max = 200, .step = 20 },
+    .{ .name = "null_move_taper", .default = null_move_taper, .min = 0, .max = 500, .step = 50 },
+
+    .{ .name = "history", .default = history, .min = 0, .max = 100, .step = 10 },
 };
 
 pub fn getValues(buffer: []types.Value) void {
