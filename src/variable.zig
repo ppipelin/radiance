@@ -48,7 +48,7 @@ pub const history: Value = 10;
 
 pub const see_qs: Value = -45;
 pub const delta_pruning: Value = 180;
-pub const futility_factor: Value = 70;
+pub const reverse_futility_factor: Value = 70;
 pub const null_move_taper: Value = 320;
 
 pub var tunables = [_]Tunable{
@@ -83,7 +83,7 @@ pub var tunables = [_]Tunable{
 
     .{ .name = "see_qs", .default = see_qs, .min = -100, .max = 0, .step = 10 },
     .{ .name = "delta_pruning", .default = delta_pruning, .min = 0, .max = 500, .step = 50 },
-    .{ .name = "futility_factor", .default = futility_factor, .min = 0, .max = 200, .step = 20 },
+    .{ .name = "reverse_futility_factor", .default = reverse_futility_factor, .min = 0, .max = 200, .step = 20 },
     .{ .name = "null_move_taper", .default = null_move_taper, .min = 0, .max = 500, .step = 50 },
 
     .{ .name = "history", .default = history, .min = 0, .max = 100, .step = 10 },
