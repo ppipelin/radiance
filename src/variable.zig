@@ -43,6 +43,8 @@ pub const check_bonus_threshold: Value = -100;
 
 ////// Histories //////
 pub const history: Value = 10;
+pub const history_capture: Value = 10;
+pub const capture_factor: Value = 40;
 
 ////// Search tunables //////
 

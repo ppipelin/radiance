@@ -786,21 +786,18 @@ pub const Position = struct {
             scores[i] = 0;
 
             var from_piece: PieceType = self.board[move.getFrom().index()].pieceToPieceType();
-            const to_piece: PieceType = self.board[move.getTo().index()].pieceToPieceType();
+            var to_piece: PieceType = self.board[move.getTo().index()].pieceToPieceType();
 
             if (move.isPromotion()) {
                 from_piece = MoveFlags.promoteType(move.getFlags());
             }
 
             if (flag == .capture or flag == .all and move.isCapture()) {
-                if (move.getFlags() != MoveFlags.en_passant) {
-                    const capture_delta: Value = tables.material[to_piece.index()] - tables.material[from_piece.index()];
-                    scores[i] += capture_delta;
-                    scores[i] += tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()];
-                    // scores[i] += tables.material[to_piece.index()] - tables.material[from_piece.index()] + tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()];
-                    // std.debug.print("{}\n", .{5 * tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()]});
-                    // std.debug.print("move {} history {}\n", .{ move, tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()] });
+                if (move.getFlags() == MoveFlags.en_passant) {
+                    to_piece = .pawn;
                 }
+                scores[i] += @divTrunc(variable.getValue("capture_factor") *| tables.material[to_piece.index()], 10);
+                scores[i] += @divTrunc(variable.getValue("history_capture") *| tables.history_capture[from_piece.index()][move.getTo().index()][to_piece.index()], 10);
             } else {
                 // Castle (bonus and 960 specific cases)
                 if (move.isCastle()) {
