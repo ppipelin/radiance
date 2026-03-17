@@ -310,25 +310,25 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
     interface.nodes_searched += 1;
 
-    // Quiescence search at depth 0
+    // 1. Quiescence search at depth 0
     if (depth <= 0) {
         // return eval(pos.*);
         return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_nmr);
     }
 
-    // Initialize data
+    // 2. Initialize data
     var s: position.State = position.State{};
     var pv: [200]types.Move = @splat(.none);
     var score: types.Value = -types.value_none;
     var best_score: types.Value = -types.value_none;
     var best_move: types.Move = types.Move.none;
 
-    // Initialize node
+    // 3. Initialize node
     var move_count: u16 = 0;
     var move_count_quiets: u16 = 0;
     var move_count_captures: u16 = 0;
 
-    // Transposition table probe
+    // 4. Transposition table probe
     const key: tables.Key = pos.state.material_key;
     const found: ?std.meta.Tuple(&[_]type{ types.Value, types.Depth, types.Move, types.TableBound }) = tables.transposition_table.get(key);
     const tt_hit: bool = found != null;
@@ -366,32 +366,32 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         interface.transposition_used += 1;
     }
 
-    // Static evaluation
-    // TODO: Put static eval in state so we can have improving and oponent_worsening
-    var static_eval: types.Value = -types.value_none;
+    // 5. Static evaluation
     if (pos.state.checkers == 0) {
         if (tt_hit) {
             // TODO: Handle bound if needed
             // switch (tt_bound) {
-            //     .exact => static_eval = tt_value,
+            //     .exact => pos.state.static_eval = tt_value,
             //     .lowerbound =>,
             //     .upperbound =>,
             // }
-            static_eval = tt_value;
+            pos.state.static_eval = tt_value;
         } else {
-            static_eval = eval(pos.*);
+            pos.state.static_eval = eval(pos.*);
             // TODO: Store evaluation in tt?
         }
     }
+    // const improving: bool = pos.state.static_eval > pos.state.previous.?.previous.?.static_eval;
+    // const opponent_worsening: bool = pos.state.static_eval > -pos.state.previous.?.static_eval;
 
-    // Prunings before move loop
+    // 6. Prunings before move loop
     if (alpha >= beta) return alpha;
 
     if (pos.state.checkers == 0) {
         // Razoring for non_pv where material difference is more than q+r+b
         // const razoring_threshold: types.Value = tables.material[types.PieceType.queen.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
         const razoring_threshold: types.Value = alpha -| tables.material[types.PieceType.rook.index()] -| tables.material[types.PieceType.pawn.index()] *| depth *| depth;
-        const razoring: bool = static_eval < razoring_threshold;
+        const razoring: bool = pos.state.static_eval < razoring_threshold;
         if (!pv_node and razoring) {
             // return eval(pos.*);
             return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_nmr);
@@ -401,13 +401,13 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         // Not better: and (!tt_hit or !tt_move.isCapture())
         if (!pv_node and depth <= 8 and beta < types.value_mate_in_max_depth) {
             const futility_margin: types.Value = @as(types.Value, depth) * variable.getValue("reverse_futility_factor");
-            if (static_eval - futility_margin >= beta)
+            if (pos.state.static_eval - futility_margin >= beta)
                 return beta;
         }
 
         // Null move pruning
-        if (!is_nmr and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and static_eval > beta) {
-            const tapered: types.Depth = @min(@divTrunc(static_eval -| beta, variable.getValue("null_move_taper")), 6);
+        if (!is_nmr and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and pos.state.static_eval > beta) {
+            const tapered: types.Depth = @min(@divTrunc(pos.state.static_eval -| beta, variable.getValue("null_move_taper")), 6);
             const r: types.Depth = tapered + @divTrunc(depth, 3) + 5;
             try pos.moveNull(&s);
             const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, depth -| r, is_960, true);
@@ -435,7 +435,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         pv_move = root_moves.items[0].pv.items[0];
     }
 
-    // Loop over all legal moves
+    // 7. Loop over all legal moves
     var previous_quiets: [types.max_moves]types.Move = @splat(.none);
     var previous_captures: [types.max_moves]types.Move = @splat(.none);
     var move: types.Move = try mp.nextMove(pos, pv_move, is_960);
@@ -456,7 +456,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             ss[1].pv = null;
         }
 
-        // Prunings in move loop
+        // 7.1. Prunings in move loop
         // Mate pruning, we cannot get a better mate at this ply
         if (beta < -types.value_mate + ss[0].ply + 1) {
             continue;
@@ -485,7 +485,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                     is_passed_pawn = (tables.passed_pawn[pos.state.turn.index()][move.getFrom().index()] & bb_them_pawn) == 0;
                 }
 
-                // Late moves reduction (LMR) before full search
+                // 7.2. Late moves reduction (LMR) before full search
                 if (depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
                     // Reduced LMR
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth_reduced_lmr - 1, is_960, false);
@@ -499,7 +499,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
                 }
 
-                // Full-depth regular search
+                // 7.3. Full-depth regular search
                 // Only for first move (PVS) or after a fail high
                 if (pv_node and (move_count == 1 or score > alpha)) {
                     // // Extension if tt_hit and if was last node
@@ -554,7 +554,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             }
         }
 
-        // Update ss->pv
+        // 8. Update ss->pv
         if (score > best_score) {
             best_score = score;
             if (score > alpha) {

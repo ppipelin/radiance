@@ -576,16 +576,20 @@ pub const value_mated_in_max_depth: Value = -value_mate_in_max_depth;
 pub const value_infinite: Value = value_mate + 1;
 pub const value_none: Value = value_mate + 2;
 
-pub fn valueToTT(v: Value, ply: u8) Value {
+pub inline fn valueToTT(v: Value, ply: u8) Value {
     if (v > value_mate_in_max_depth) return v +| ply;
     if (v < value_mated_in_max_depth) return v -| ply;
     return v;
 }
 
-pub fn valueFromTT(v: Value, ply: u8) Value {
+pub inline fn valueFromTT(v: Value, ply: u8) Value {
     if (v > value_mate_in_max_depth) return v -| ply;
     if (v < value_mated_in_max_depth) return v +| ply;
     return v;
+}
+
+pub inline fn isValueMate(score: Value) bool {
+    return @abs(score) > value_mate_in_max_depth;
 }
 
 ////// Interface //////
