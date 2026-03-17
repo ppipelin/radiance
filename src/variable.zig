@@ -39,6 +39,8 @@ pub const castle_bonus: Value = 50;
 
 ////// Histories //////
 pub const history: Value = 10;
+pub const history_capture: Value = 10;
+pub const capture_factor: Value = 40;
 
 ////// Search tunables //////
 
@@ -79,6 +81,8 @@ pub var tunables = [_]Tunable{
     .{ .name = "null_move_taper", .default = null_move_taper, .min = 0, .max = 500, .step = 50 },
 
     .{ .name = "history", .default = history, .min = 0, .max = 100, .step = 10 },
+    .{ .name = "history_capture", .default = history_capture, .min = 0, .max = 100, .step = 10 },
+    .{ .name = "capture_factor", .default = capture_factor, .min = 0, .max = 100, .step = 10 },
 };
 
 pub fn getValues(buffer: []types.Value) void {
