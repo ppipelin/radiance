@@ -387,9 +387,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     // 6. Prunings before move loop
     if (alpha >= beta) return alpha;
 
-    if (pos.state.checkers == 0) {
-        // Razoring for non_pv where material difference is more than q+r+b
-        // const razoring_threshold: types.Value = tables.material[types.PieceType.queen.index()] + tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.bishop.index()];
+    if (!pv_node and !types.isValueMate(beta) and !types.isValueMate(alpha) and pos.state.checkers == 0) {
+        // Razoring for non_pv where material difference is more than rook+pawn*depth^2
         const razoring_threshold: types.Value = alpha -| tables.material[types.PieceType.rook.index()] -| tables.material[types.PieceType.pawn.index()] *| depth *| depth;
         const razoring: bool = pos.state.static_eval < razoring_threshold;
         if (!pv_node and razoring) {
@@ -399,7 +398,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
         // Reverse Futility Pruning
         // Not better: and (!tt_hit or !tt_move.isCapture())
-        if (!pv_node and depth <= 8 and beta < types.value_mate_in_max_depth) {
+        if (depth <= 8) {
             const futility_margin: types.Value = @as(types.Value, depth) * variable.getValue("reverse_futility_factor");
             if (pos.state.static_eval - futility_margin >= beta)
                 return beta;
