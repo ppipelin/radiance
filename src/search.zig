@@ -411,6 +411,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         }
 
         // Reverse Futility Pruning
+        // Not better: and (!tt_hit or !tt_move.isCapture())
         if (depth <= 8) {
             const futility_margin: types.Value = @as(types.Value, depth) * variable.getValue("reverse_futility_factor");
             if (pos.state.static_eval - futility_margin >= beta)
