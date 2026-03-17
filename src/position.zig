@@ -64,6 +64,7 @@ pub const State = struct {
     attacked: Bitboard = 0,
     attacked_horizontal: Bitboard = 0,
     last_captured_piece: Piece = Piece.none,
+    static_eval: Value = types.value_none,
     material_key: Key = 0,
     previous: ?*State = null,
 };
@@ -174,6 +175,7 @@ pub const Position = struct {
         state.checkers = self.state.checkers;
         state.pinned = self.state.pinned;
         state.last_captured_piece = Piece.none;
+        state.static_eval = types.value_none;
         state.material_key = self.state.material_key;
         state.previous = self.state;
         self.state = state;
@@ -408,6 +410,7 @@ pub const Position = struct {
         state.checkers = self.state.checkers;
         state.pinned = self.state.pinned;
         state.last_captured_piece = Piece.none;
+        state.static_eval = types.value_none;
         state.material_key = self.state.material_key;
         state.previous = self.state;
         self.state = state;
@@ -793,7 +796,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn endgame(self: Position, col: Color) bool {
+    pub inline fn endgame(self: Position, col: Color) bool {
         // Compute score based on the endgame condition
         // Once ennemy has less pieces our king attacks the other one
         // King, seven pawns a rook and a bishop
