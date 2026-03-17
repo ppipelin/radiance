@@ -381,8 +381,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             // TODO: Store evaluation in tt?
         }
     }
-    // const improving: bool = pos.state.static_eval > pos.state.previous.?.previous.?.static_eval;
-    // const opponent_worsening: bool = pos.state.static_eval > -pos.state.previous.?.static_eval;
+
+    const improving: bool = if (pos.state.previous == null or pos.state.previous.?.previous == null) false else pos.state.static_eval > pos.state.previous.?.previous.?.static_eval;
+    const opponent_worsening: bool = if (pos.state.previous == null) false else pos.state.static_eval > -pos.state.previous.?.static_eval;
 
     // 6. Prunings before move loop
     if (alpha >= beta) return alpha;
@@ -399,8 +400,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         // Reverse Futility Pruning
         // Not better: and (!tt_hit or !tt_move.isCapture())
         if (depth <= 8) {
-            const futility_margin: types.Value = @as(types.Value, depth) * variable.getValue("reverse_futility_factor");
-            if (pos.state.static_eval - futility_margin >= beta)
+            const futility_margin: types.Value = @intCast(@divTrunc(@as(i32, variable.getValue("reverse_futility_factor")) * depth + @as(i32, variable.getValue("reverse_futility_factor_quad")) * depth * depth, 100));
+            const futility_margin_conditional: types.Value = variable.getValue("reverse_futility_improving") * @intFromBool(improving) + variable.getValue("reverse_futility_opponent_worsening") * @intFromBool(opponent_worsening);
+            if (pos.state.static_eval - futility_margin - futility_margin_conditional >= beta)
                 return beta;
         }
 
