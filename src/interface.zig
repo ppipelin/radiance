@@ -278,6 +278,7 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
         try list.appendSlice(allocator, token_in);
     }
     name = try list.toOwnedSlice(allocator);
+    list.clearRetainingCapacity();
     defer allocator.free(name);
 
     // Read the option value (can contain spaces)
@@ -287,11 +288,11 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
         try list.appendSlice(allocator, token_in);
     }
     value = try list.toOwnedSlice(allocator);
+    list.clearRetainingCapacity();
     defer allocator.free(value);
 
     if (options.contains(name)) {
-        var option = options.get(name).?;
-        option.current_value = value;
+        var option = options.getPtr(name).?;
         if (std.ascii.eqlIgnoreCase(option.type, "spin")) {
             const value_parsed = try std.fmt.parseInt(i64, value, 10);
             if (value_parsed > option.max) {
@@ -308,8 +309,10 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
                 }
             }
         }
+        allocator.free(option.current_value);
+        option.current_value = try allocator.dupe(u8, value);
 
-        try options.put(allocator, name, option);
+        std.debug.print("value {s}\n", .{option.current_value});
     } else {
         return error.UnknownOption;
     }
