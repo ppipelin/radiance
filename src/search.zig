@@ -827,7 +827,7 @@ fn info(stdout: *std.Io.Writer, limits: interface.Limits, depth: types.Depth, sc
 
     const hash_size: u16 = try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10);
     var hashfull: u128 = 0;
-    if (hash_size > 1) {
+    if (hash_size > 0) {
         hashfull = @divTrunc(@as(u128, tables.transposition_table.size) * (@sizeOf(tables.Key) + @sizeOf(std.meta.Tuple(&[_]type{ types.Value, types.Depth, types.Move, types.TableBound })) + @sizeOf(u32)) * 1000, @as(u128, hash_size) * 1000000);
     }
 
