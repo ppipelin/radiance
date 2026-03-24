@@ -7,22 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3] - 2026-03-25
+
 ### Added
 
-- Bishop pair bonus in evaluation
-- Pawn structure evaluation
-- Expose tunable parameters to UCI
+- Bishop bonus based on pawns square color
+- Expose tunable parameters to UCI with bounds and step
 - `tune` option for tuning evaluation parameters
+- Pawn structure evaluation
+- Space bonus for rooks
+- Bishop pair bonus in evaluation
+
+### Fixed
+
+- `setoption`
+- SEE to use rook and bishop for queen instead of only bishop
 
 ### Changed
 
+- Increased depth of transposition table
+- History update formula
+- Aspiration window use squared average
+- Precompute remaining usable time
 - Overflow handling for big scores and fixed pv display for mate
 - Resolve depth of mates from transposition table
-- Use SIMD operations for pawn heuristics
+- Pawn heuristics uses SIMD
+- Compute magic number and save more reliably
+- Mobility Bonus uses opponent pieces
 
 ### Removed
 
-- Allocator removed in move generation and search
+- `distanceKings()` in endgame
+- Allocator in move generation and search
 
 ## [4.2] - 2026-01-17
 
@@ -339,7 +355,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - UCI `position` command
 - `Random` search
 
-[Unreleased]: https://github.com/ppipelin/radiance/compare/4.2...HEAD
+[Unreleased]: https://github.com/ppipelin/radiance/compare/4.3...HEAD
+[4.3]: https://github.com/ppipelin/radiance/compare/4.2...4.3
 [4.2]: https://github.com/ppipelin/radiance/compare/4.1...4.2
 [4.1]: https://github.com/ppipelin/radiance/compare/4.0.1...4.1
 [4.0.1]: https://github.com/ppipelin/radiance/compare/4.0...4.0.1

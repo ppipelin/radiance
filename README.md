@@ -55,17 +55,18 @@ CCRL [blitz benchmark](https://computerchess.org.uk/ccrl/404/cgi/compare_engines
 
 | Rank | Name             | CCRL  |  Elo |  + |  - | games | score | oppo. | draws |
 | ---- | ---------------- | ----- | ---- | -- | -- | ----- | ----- | ----- | ----- |
-|    1 | [radiance_4.2]   |       | 1844 | 10 | 10 |  4096 |   81% |  1594 |   22% |
-|    2 | [radiance_4.1]   |  1674 | 1673 | 10 | 10 |  5371 |   65% |  1489 |   18% |
-|    3 | [radiance_4.0.1] |       | 1514 |  8 |  8 | 12264 |   75% |  1165 |    8% |
-|    4 | [radiance_3.5]   |  1321 | 1256 |  8 |  7 | 10216 |   66% |  1059 |   11% |
-|    5 | [radiance_3.4]   |  1300 | 1232 |  8 |  8 | 10218 |   64% |  1062 |   11% |
-|    6 | [radiance_3.3]   |       | 1180 |  8 |  8 | 10216 |   59% |  1068 |   11% |
-|    7 | [radiance_3.2]   |       | 1169 |  8 |  7 | 10215 |   58% |  1070 |   11% |
-|    8 | [radiance_3.1.1] |  1114 |  999 |  8 |  8 |  9552 |   45% |  1049 |    9% |
-|    9 | [radiance_3.0.1] |       |  722 |  9 |  9 |  9552 |   20% |  1084 |    9% |
-|   10 | [radiance_2.4]   |       |  681 |  9 |  9 |  9552 |   16% |  1089 |   10% |
-|   11 | [radiance_2.3]   |   864 |  636 |  9 |  9 |  9552 |   13% |  1095 |    9% |
+|    1 | [radiance_4.3]   |       | 1961 | 10 | 10 |  6144 |   84% |  1641 |   12% |
+|    2 | [radiance_4.2]   |  1803 | 1803 |  8 |  8 |  6144 |   64% |  1693 |   21% |
+|    3 | [radiance_4.1]   |  1675 | 1640 |  8 |  9 |  7419 |   51% |  1593 |   16% |
+|    4 | [radiance_4.0.1] |       | 1480 |  8 |  8 | 14312 |   65% |  1249 |    8% |
+|    5 | [radiance_3.5]   |  1322 | 1222 |  8 |  8 | 10216 |   66% |  1025 |   11% |
+|    6 | [radiance_3.4]   |  1300 | 1198 |  8 |  7 | 10218 |   64% |  1028 |   11% |
+|    7 | [radiance_3.3]   |       | 1146 |  8 |  8 | 10216 |   59% |  1034 |   11% |
+|    8 | [radiance_3.2]   |       | 1135 |  8 |  8 | 10215 |   58% |  1036 |   11% |
+|    9 | [radiance_3.1.1] |  1119 | 965  |  8 |  8 |  9552 |   45% |  1015 |    9% |
+|   10 | [radiance_3.0.1] |       | 689  |  9 |  9 |  9552 |   20% |  1050 |    9% |
+|   11 | [radiance_2.4]   |       | 647  |  9 |  9 |  9552 |   16% |  1055 |   10% |
+|   12 | [radiance_2.3]   |   874 | 602  |  9 | 10 |  9552 |   13% |  1061 |    9% |
 
 
 ## Getting started
@@ -124,6 +125,7 @@ This project was originaly written in C++ before 4.0 version and archived under 
 
 _I'm radiant!_
 
+[radiance_4.3]: https://github.com/ppipelin/radiance/releases/tag/4.3
 [radiance_4.2]: https://github.com/ppipelin/radiance/releases/tag/4.2
 [radiance_4.1]: https://github.com/ppipelin/radiance/releases/tag/4.1
 [radiance_4.0.1]: https://github.com/ppipelin/radiance/releases/tag/4.0.1
