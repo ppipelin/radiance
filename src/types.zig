@@ -614,6 +614,8 @@ pub const file: Bitboard = 0x0101010101010101; // A file
 pub const rank: Bitboard = 0xFF; // First rank
 pub const diagonal_clockwise: Bitboard = 0b1000000001000000001000000001000000001000000001000000001000000001;
 pub const diagonal_counter_clockwise: Bitboard = 0b0000000100000010000001000000100000010000001000000100000010000000;
+pub const filter_left = file | file >> 1 | file >> 2 | file >> 3;
+pub const filter_right = file >> 4 | file >> 5 | file >> 6 | file >> 7;
 
 pub const mask_file = [_]Bitboard{ file, file << 1, file << 2, file << 3, file << 4, file << 5, file << 6, file << 7 };
 pub const mask_rank = [_]Bitboard{ rank, rank << board_size * 1, rank << board_size * 2, rank << board_size * 3, rank << board_size * 4, rank << board_size * 5, rank << board_size * 6, rank << board_size * 7 };

@@ -172,7 +172,7 @@ pub const MovePick = struct {
         return types.Move.none;
     }
 
-    pub fn deinit(noalias self: *MovePick) void {
+    pub fn reset(noalias self: *MovePick) void {
         self.moves_capture = @splat(.none);
         self.moves_quiet = @splat(.none);
         self.capture_len = 0;
