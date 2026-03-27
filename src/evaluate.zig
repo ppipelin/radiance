@@ -276,17 +276,15 @@ pub fn evaluateTable(pos: position.Position) types.Value {
 
     if (!endgame) {
         // Pawn bonus when in side of king
-        const filter_left = types.file | types.file >> 1 | types.file >> 2 | types.file >> 3;
-        const filter_right = types.file >> 4 | types.file >> 5 | types.file >> 6 | types.file >> 7;
         if (white_king.file().index() < 4) {
-            score +|= variable.getValue("pawn_defend_king") *| @popCount(filter_left & bb_white_pawn_);
+            score +|= variable.getValue("pawn_defend_king") *| @popCount(types.filter_left & bb_white_pawn_);
         } else {
-            score +|= variable.getValue("pawn_defend_king") *| @popCount(filter_right & bb_white_pawn_);
+            score +|= variable.getValue("pawn_defend_king") *| @popCount(types.filter_right & bb_white_pawn_);
         }
         if (black_king.file().index() < 4) {
-            score -|= variable.getValue("pawn_defend_king") *| @popCount(filter_left & bb_black_pawn_);
+            score -|= variable.getValue("pawn_defend_king") *| @popCount(types.filter_left & bb_black_pawn_);
         } else {
-            score -|= variable.getValue("pawn_defend_king") *| @popCount(filter_right & bb_black_pawn_);
+            score -|= variable.getValue("pawn_defend_king") *| @popCount(types.filter_right & bb_black_pawn_);
         }
     }
 

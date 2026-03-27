@@ -79,15 +79,15 @@ pub fn deinitOptions(allocator: std.mem.Allocator, options: *std.StringArrayHash
     options.deinit(allocator);
 }
 
-pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnmanaged(Option)) void {
+pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnmanaged(Option)) !void {
     const keys = options.keys();
     for (keys) |key| {
         const option: Option = options.get(key).?;
-        writer.print("option name {s} type {s} default {s} ", .{ key, option.type, option.default_value }) catch unreachable;
+        try writer.print("option name {s} type {s} default {s} ", .{ key, option.type, option.default_value });
         if (std.ascii.eqlIgnoreCase(option.type, "spin")) {
-            writer.print("min {} max {}", .{ option.min, option.max }) catch unreachable;
+            try writer.print("min {} max {}", .{ option.min, option.max });
         }
-        writer.print("\n", .{}) catch unreachable;
+        try writer.print("\n", .{});
     }
 }
 
@@ -145,7 +145,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
                 \\id author Paul-Elie Pipelin (ppipelin)
                 \\
             , .{types.computeVersion()});
-            printOptions(stdout, options);
+            try printOptions(stdout, options);
             try stdout.print(
                 \\uciok
                 \\

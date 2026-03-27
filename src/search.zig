@@ -427,7 +427,6 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     }
 
     var mp: movepick.MovePick = .{ .tt_move = tt_move };
-    defer mp.deinit();
 
     var pv_move: types.Move = types.Move.none;
     if (root_node and root_moves.items[0].pv.items.len > 0) {
@@ -664,7 +663,6 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
 
     // Loop over all legal captures
     var mp: movepick.MovePick = .{ .stage = 10 };
-    defer mp.deinit();
 
     // Loop over all legal moves
     var move: types.Move = try mp.nextMove(pos, types.Move.none, false);
