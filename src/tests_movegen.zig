@@ -351,7 +351,6 @@ test "MovepickMvvLva" {
     var stdout = std.Io.Writer.fixed(&output);
 
     var mp: movepick.MovePick = .{};
-    defer mp.deinit();
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "4k3/8/7p/3q2B1/8/8/1K6/2rR2p1 w - -");
@@ -366,7 +365,7 @@ test "MovepickMvvLva" {
 
     // Reset
     _ = stdout.consumeAll();
-    mp.deinit();
+    mp.reset();
     mp = .{};
 
     pos = try position.Position.setFen(&s, "3k4/8/6rn/8/6p1/5P2/4Q3/3K2R1 w");
@@ -389,7 +388,6 @@ test "MovepickSee" {
     var stdout = std.Io.Writer.fixed(&output);
 
     var mp: movepick.MovePick = .{};
-    defer mp.deinit();
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "3kr3/8/4r1rn/8/4p1p1/5B1P/4Q3/3K2R1 w"); // win with second pawn
@@ -405,8 +403,7 @@ test "MovepickSee" {
 
     pos = try position.Position.setFen(&s, "3k1r2/5r2/8/5n2/4b1B1/7B/5R2/3K1R2 w");
 
-    mp.deinit();
-    mp = .{};
+    mp.reset();
     _ = stdout.consumeAll();
 
     move = try mp.nextMove(&pos, .none, false);
@@ -418,8 +415,7 @@ test "MovepickSee" {
 
     pos = try position.Position.setFen(&s, "3k1r2/5r2/5r2/5n2/4b1B1/7B/5R2/3K1R2 w");
 
-    mp.deinit();
-    mp = .{};
+    mp.reset();
     _ = stdout.consumeAll();
 
     move = try mp.nextMove(&pos, .none, false);
