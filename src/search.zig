@@ -42,7 +42,7 @@ inline fn elapsed(limits: interface.Limits) types.TimePoint {
 }
 
 inline fn outOfTime(limits: interface.Limits) bool {
-    if (interface.g_stop)
+    if (interface.g_stop.load(.acquire))
         return true;
     if (limits.infinite or interface.remaining == 0) return false;
 
@@ -59,7 +59,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: 
     var move_list: [types.max_moves]types.Move = @splat(.none);
     var move_len: usize = 0;
 
-    if (depth == 0 or interface.g_stop) {
+    if (depth == 0 or interface.g_stop.load(.acquire)) {
         return 1;
     }
 

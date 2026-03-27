@@ -5,7 +5,7 @@ const std = @import("std");
 const types = @import("types.zig");
 const variable = @import("variable.zig");
 
-pub var g_stop = false;
+pub var g_stop: std.atomic.Value(bool) = .init(false);
 pub var search_thread: ?std.Thread = null;
 pub var limits: Limits = Limits{};
 pub var remaining: types.TimePoint = 0;
@@ -116,13 +116,13 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
 
         if (std.ascii.eqlIgnoreCase("quit", primary_token) or std.ascii.eqlIgnoreCase("exit", primary_token)) {
             existing_command = true;
-            g_stop = true;
+            g_stop.store(true, .release);
             break;
         }
 
         if (std.ascii.eqlIgnoreCase("stop", primary_token)) {
             existing_command = true;
-            g_stop = true;
+            g_stop.store(true, .release);
             try stdout.print("Stopped search\n", .{});
         }
 
@@ -170,7 +170,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
             existing_command = true;
 
             if (search_thread != null) {
-                g_stop = true;
+                g_stop.store(true, .release);
                 search_thread.?.join();
                 search_thread = null;
             }
@@ -251,7 +251,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
         try stdout.flush();
     }
     if (search_thread != null) {
-        g_stop = true;
+        g_stop.store(true, .release);
         search_thread.?.join();
         search_thread = null;
     }
@@ -365,7 +365,7 @@ fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states
 
 fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
     limits = Limits{};
-    g_stop = false;
+    g_stop.store(false, .release);
 
     limits.start = types.now();
 
