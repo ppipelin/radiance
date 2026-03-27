@@ -570,8 +570,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                         }
                     }
                     if (score != types.value_draw) {
-                        if (found == null or tt_depth <= depth - 1) {
-                            try tables.transposition_table.put(allocator, key, .{ types.valueToTT(score, ss[0].ply), depth - 1, move, .lowerbound });
+                        if (found == null or tt_depth <= depth) {
+                            try tables.transposition_table.put(allocator, key, .{ types.valueToTT(score, ss[0].ply), depth, move, .lowerbound });
                         }
                     }
                     return best_score;
