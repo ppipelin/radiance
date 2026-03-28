@@ -16,9 +16,6 @@ pub fn main() !void {
     var stdout_writer: std.fs.File.Writer = std.fs.File.stdout().writerStreaming(&stdout_buffer); // Can use &.{} for no buffer
     const stdout: *std.Io.Writer = &stdout_writer.interface;
 
-    try stdout.print("Radiance {s} by Paul-Elie Pipelin (ppipelin)\n", .{types.computeVersion()});
-    try stdout.flush();
-
     var stdin_buffer: [16 * 1024]u8 = undefined;
     var stdin_reader: std.fs.File.Reader = std.fs.File.stdin().readerStreaming(&stdin_buffer); // Can use &.{} for no buffer
     const stdin: *std.Io.Reader = &stdin_reader.interface;
@@ -40,6 +37,8 @@ pub fn main() !void {
     } else if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "bench")) {
         try interface.cmd_bench(allocator, stdout);
     } else {
+        try stdout.print("Radiance {s} by Paul-Elie Pipelin (ppipelin)\n", .{types.computeVersion()});
+        try stdout.flush();
         try interface.loop(allocator, stdin, stdout);
     }
 
