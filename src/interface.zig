@@ -1,4 +1,5 @@
 const evaluate = @import("evaluate.zig");
+const interface = @import("interface.zig");
 const position = @import("position.zig");
 const search = @import("search.zig");
 const std = @import("std");
@@ -486,6 +487,13 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer) anyerror!
     var list: std.ArrayListUnmanaged([]const u8) = .empty;
     defer list.deinit(allocator);
 
+    var buffer: [64]u8 = undefined;
+    const w: std.Io.Writer.Discarding = .init(&buffer);
+    var stdout_discarding: std.Io.Writer = w.writer;
+    try stdout_discarding.print("this is ignored: {d}\n", .{123});
+
+    var total_nodes: u64 = 0;
+
     try list.append(allocator, "fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     try list.append(allocator, "fen r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10");
     try list.append(allocator, "fen 8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11");
@@ -547,11 +555,14 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer) anyerror!
         var pos: position.Position = undefined;
         try cmd_position(&pos, &tokens_fen, &states);
 
-        const input = "depth 13";
+        const input = "depth 11";
         var tokens = std.mem.tokenizeScalar(u8, input, ' ');
 
-        try cmd_go(allocator, stdout, &pos, &tokens, options);
+        try cmd_go(allocator, &stdout_discarding, &pos, &tokens, options);
+        total_nodes += interface.nodes_searched;
     }
 
-    stdout.print("Time elapsed: {D}\n", .{t.read()}) catch unreachable;
+    try stdout.print("{d} nodes {d:.0} nps\n", .{ total_nodes, (@as(f32, @floatFromInt(total_nodes)) / @as(f32, @floatFromInt(t.read())) * 1e9) });
+    // try stdout.print("Time elapsed: {D}\n", .{t.read()});
+    try stdout.flush();
 }
