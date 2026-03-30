@@ -206,7 +206,6 @@ pub fn bishopOppositePawnBonus(bishops: types.Bitboard, pawns: types.Bitboard) t
 // TODO: Add pawn structure hash
 pub fn evaluateTable(pos: position.Position) types.Value {
     var score: types.Value = pos.score_material_w - pos.score_material_b;
-    const endgame: bool = pos.endgame(pos.state.turn);
 
     const bb_white: types.Bitboard = pos.bb_colors[types.Color.white.index()];
     const bb_black: types.Bitboard = pos.bb_colors[types.Color.black.index()];
@@ -275,21 +274,19 @@ pub fn evaluateTable(pos: position.Position) types.Value {
 
     score +|= variable.getValue("bishop_opposite_pawn") * (bishopOppositePawnBonus(bishops_white, bb_white_pawn_) - bishopOppositePawnBonus(bishops_black, bb_black_pawn_));
 
-    if (!endgame) {
-        // Pawn bonus when in side of king
-        if (white_king.file().index() < 4) {
-            score +|= variable.getValue("pawn_defend_king") *| @popCount(types.filter_left & bb_white_pawn_);
-        } else {
-            score +|= variable.getValue("pawn_defend_king") *| @popCount(types.filter_right & bb_white_pawn_);
-        }
-        if (black_king.file().index() < 4) {
-            score -|= variable.getValue("pawn_defend_king") *| @popCount(types.filter_left & bb_black_pawn_);
-        } else {
-            score -|= variable.getValue("pawn_defend_king") *| @popCount(types.filter_right & bb_black_pawn_);
-        }
+    // Pawn bonus when in side of king
+    if (white_king.file().index() < 4) {
+        score +|= @intCast(@max(0, @divTrunc(phase_value_white * variable.getValue("pawn_defend_king") *| @popCount(types.filter_left & bb_white_pawn_), phase_divider)));
+    } else {
+        score +|= @intCast(@max(0, @divTrunc(phase_value_white * variable.getValue("pawn_defend_king") *| @popCount(types.filter_right & bb_white_pawn_), phase_divider)));
+    }
+    if (black_king.file().index() < 4) {
+        score -|= @intCast(@max(0, @divTrunc(phase_value_black * variable.getValue("pawn_defend_king") *| @popCount(types.filter_left & bb_black_pawn_), phase_divider)));
+    } else {
+        score -|= @intCast(@max(0, @divTrunc(phase_value_black * variable.getValue("pawn_defend_king") *| @popCount(types.filter_right & bb_black_pawn_), phase_divider)));
     }
 
-    const tapered: i32 = pos.state.phase[types.Color.white.index()] + pos.state.phase[types.Color.black.index()];
+    const tapered: i64 = pos.state.phase[types.Color.white.index()] + pos.state.phase[types.Color.black.index()];
     score +|= @truncate(@divTrunc(tapered * pos.score_mg, tables.phase_total_2));
     score +|= @truncate(@divTrunc((tables.phase_total_2 - tapered) * pos.score_eg, tables.phase_total_2));
 
