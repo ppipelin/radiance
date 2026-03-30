@@ -35,7 +35,11 @@ pub const bishop_opposite_pawn: Value = 5;
 pub const rook_open_files: Value = 30;
 pub const rook_semi_open_files: Value = 15;
 
+pub const king_moveset: Value = 7;
 pub const castle_bonus: Value = 50;
+
+pub const phase_offset: Value = 2;
+pub const phase_mult: Value = 5;
 
 ////// Histories //////
 pub const history: Value = 10;
@@ -71,7 +75,11 @@ pub var tunables = [_]Tunable{
     .{ .name = "rook_open_files", .default = rook_open_files, .min = 0, .max = 100, .step = 10 },
     .{ .name = "rook_semi_open_files", .default = rook_semi_open_files, .min = 0, .max = 100, .step = 10 },
 
+    .{ .name = "king_moveset", .default = king_moveset, .min = -50, .max = 50, .step = 10 },
     .{ .name = "castle_bonus", .default = castle_bonus, .min = 0, .max = 100, .step = 10 },
+
+    .{ .name = "phase_offset", .default = phase_offset, .min = -10, .max = 10, .step = 1 },
+    .{ .name = "phase_mult", .default = phase_mult, .min = 0, .max = 10, .step = 0.5 },
 
     .{ .name = "see_qs", .default = see_qs, .min = -100, .max = 0, .step = 10 },
     .{ .name = "delta_pruning", .default = delta_pruning, .min = 0, .max = 500, .step = 50 },

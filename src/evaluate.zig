@@ -218,15 +218,16 @@ pub fn evaluateTable(pos: position.Position) types.Value {
     const white_king: types.Square = @enumFromInt(types.lsb(bb_white & pos.bb_pieces[types.PieceType.king.index()]));
     const black_king: types.Square = @enumFromInt(types.lsb(bb_black & pos.bb_pieces[types.PieceType.king.index()]));
 
-    if (endgame) {
-        const moveset_white_king = tables.getAttacks(.king, .white, white_king, bb_all) & ~bb_white;
-        const moveset_black_king = tables.getAttacks(.king, .black, black_king, bb_all) & ~bb_black;
-        score +|= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
-    } else {
-        const moveset_white_king = tables.getAttacks(.queen, .white, white_king, bb_all) & ~bb_white;
-        const moveset_black_king = tables.getAttacks(.queen, .black, black_king, bb_all) & ~bb_black;
-        score -|= @as(types.Value, @popCount(moveset_white_king)) - @as(types.Value, @popCount(moveset_black_king));
-    }
+    const moveset_white_king = tables.getAttacks(.king, .white, white_king, bb_all) & ~bb_white;
+    const moveset_black_king = tables.getAttacks(.king, .black, black_king, bb_all) & ~bb_black;
+
+    // The closer phase is to zero, the bigger has to be moveset
+    // Phase offset allows a big moveset to be a bonus
+    const phase_value_white: i64 = (@as(i64, pos.state.phase[types.Color.white.index()]) - tables.phase_total + variable.getValue("phase_offset")) * variable.getValue("phase_mult");
+    const phase_value_black: i64 = (@as(i64, pos.state.phase[types.Color.black.index()]) - tables.phase_total + variable.getValue("phase_offset")) * variable.getValue("phase_mult");
+    const phase_divider: i64 = tables.phase_total * variable.getValue("phase_mult");
+    score -|= @intCast(@divTrunc(phase_value_white * @as(i64, @popCount(moveset_white_king)), phase_divider) * variable.getValue("king_moveset"));
+    score +|= @intCast(@divTrunc(phase_value_black * @as(i64, @popCount(moveset_black_king)), phase_divider) * variable.getValue("king_moveset"));
 
     // Evaluate space with open files (and some ranks ?)
 
