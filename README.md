@@ -103,10 +103,10 @@ zig build test --release=safe
 
 - `uci`
 - `isready`
-- `setoption name <id> [value <x>]`
-- `position [fen <string> | startpos | kiwi | lasker] [moves <string>...]`
+- `setoption name <string> [value <string>]`
+- `position [(fen <string> | startpos | kiwi | lasker) [moves <string>...]]`
 - `eval`
-- `go [movetime <int> | [wtime <int>] [btime <int>] [winc <int>] [binc <int>] | depth <int> | infinite | perft <int>]`
+- `go [movetime <int> | wtime <int> | btime <int> | winc <int> | binc <int> | nodes <int> | depth <int> | infinite | perft <int>]`
 - `bench`
 - `stop`
 - `quit`
