@@ -44,12 +44,24 @@ inline fn elapsed(limits: interface.Limits) types.TimePoint {
 inline fn outOfTime(limits: interface.Limits) bool {
     if (interface.g_stop.load(.acquire))
         return true;
-    if (limits.infinite or interface.remaining == 0) return false;
+
+    const uninitialized: bool = interface.remaining == 0 and limits.nodes == 0;
+    if (limits.infinite or uninitialized) return false;
+
+    const is_limit_nodes: bool = limits.nodes != 0;
 
     if (interface.remaining_computed == 0) {
-        const remaining_float: f128 = @floatFromInt(interface.remaining);
-        const increment_float: f128 = @floatFromInt(interface.increment);
-        interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
+        if (is_limit_nodes) {
+            interface.remaining_computed = @intFromFloat(@as(f32, @floatFromInt(limits.nodes)) * 0.95);
+        } else {
+            const remaining_float: f128 = @floatFromInt(interface.remaining);
+            const increment_float: f128 = @floatFromInt(interface.increment);
+            interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
+        }
+    }
+
+    if (is_limit_nodes) {
+        return interface.nodes_searched >= interface.remaining_computed;
     }
     return elapsed(limits) > interface.remaining_computed;
 }
@@ -173,14 +185,19 @@ pub fn searchRandom(noalias pos: *position.Position, comptime is_960: bool) !typ
 pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !types.Move {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
+    interface.remaining = 0;
+    interface.increment = 0;
+    interface.remaining_computed = 0;
+    interface.nodes_searched = 0;
+    interface.seldepth = 0;
+    interface.transposition_used = 0;
+
     if (limits.movetime > 0) {
         interface.remaining = limits.movetime * 30;
     } else {
         interface.remaining = if (pos.state.turn.isWhite()) limits.time[types.Color.white.index()] else limits.time[types.Color.black.index()];
         interface.increment = if (pos.state.turn.isWhite()) limits.inc[types.Color.white.index()] else limits.inc[types.Color.black.index()];
     }
-
-    interface.remaining_computed = 0;
 
     var stack: [200 + 10]Stack = @splat(Stack{});
     var pv: [200]types.Move = @splat(.none); // useless
@@ -232,10 +249,6 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
         pv_rm.appendAssumeCapacity(move);
         root_moves.appendAssumeCapacity(RootMove{ .pv = pv_rm });
     }
-
-    interface.nodes_searched = 0;
-    interface.seldepth = 0;
-    interface.transposition_used = 0;
 
     var depth: types.Depth = 1;
     while (depth <= limits.depth) : (depth += 1) {
