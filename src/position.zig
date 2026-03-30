@@ -66,6 +66,7 @@ pub const State = struct {
     last_captured_piece: Piece = Piece.none,
     static_eval: Value = types.value_none,
     material_key: Key = 0,
+    phase: [Color.nb()]u8 = .{ 0, 0 }, // Opponent phase, 0 is king + pawns endgame
     previous: ?*State = null,
 };
 
@@ -110,10 +111,12 @@ pub const Position = struct {
             self.score_mg -= tables.psq[p.pieceToPieceType().index()][0][sq.index() ^ 56];
             self.score_eg -= tables.psq[p.pieceToPieceType().index()][1][sq.index() ^ 56];
             self.score_material_w -= tables.material[p.pieceToPieceType().index()];
+            self.state.phase[Color.white.index()] -= tables.phase_inc[p.pieceToPieceType().index()];
         } else {
             self.score_mg -= -tables.psq[p.pieceToPieceType().index()][0][sq.index()];
             self.score_eg -= -tables.psq[p.pieceToPieceType().index()][1][sq.index()];
             self.score_material_b -= tables.material[p.pieceToPieceType().index()];
+            self.state.phase[Color.black.index()] -= tables.phase_inc[p.pieceToPieceType().index()];
         }
     }
 
@@ -131,6 +134,7 @@ pub const Position = struct {
             if (p.pieceToPieceType() == PieceType.king) {
                 self.score_king_w = tables.psq[p.pieceToPieceType().index()][1][sq.index() ^ 56];
             }
+            self.state.phase[Color.white.index()] += tables.phase_inc[p.pieceToPieceType().index()];
         } else {
             self.score_mg += -tables.psq[p.pieceToPieceType().index()][0][sq.index()];
             self.score_eg += -tables.psq[p.pieceToPieceType().index()][1][sq.index()];
@@ -138,6 +142,7 @@ pub const Position = struct {
             if (p.pieceToPieceType() == PieceType.king) {
                 self.score_king_b = tables.psq[p.pieceToPieceType().index()][1][sq.index()];
             }
+            self.state.phase[Color.black.index()] += tables.phase_inc[p.pieceToPieceType().index()];
         }
     }
 
@@ -177,6 +182,7 @@ pub const Position = struct {
         state.last_captured_piece = Piece.none;
         state.static_eval = types.value_none;
         state.material_key = self.state.material_key;
+        state.phase = self.state.phase;
         state.previous = self.state;
         self.state = state;
 
@@ -412,6 +418,7 @@ pub const Position = struct {
         state.last_captured_piece = Piece.none;
         state.static_eval = types.value_none;
         state.material_key = self.state.material_key;
+        state.phase = self.state.phase;
         state.previous = self.state;
         self.state = state;
 
@@ -828,6 +835,8 @@ pub const Position = struct {
         writer.print("fen: {s}\n", .{fen}) catch unreachable;
 
         writer.print("zobrist: {}\n", .{self.state.material_key}) catch unreachable;
+
+        writer.print("game phases: {d} - {d}\n", .{ self.state.phase[0], self.state.phase[1] }) catch unreachable;
     }
 
     pub fn printDebug(self: Position) void {
