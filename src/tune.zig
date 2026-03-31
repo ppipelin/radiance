@@ -98,8 +98,8 @@ fn collectBounds(bound_lower: *@Vector(variable.tunables.len, f32), bound_upper:
     var bound_upper_array: [variable.tunables.len]f32 = undefined;
     var bound_lower_array: [variable.tunables.len]f32 = undefined;
     for (variable.tunables, 0..) |tunable, i| {
-        bound_lower_array[i] = @floatFromInt(tunable.min orelse std.math.minInt(types.Value));
-        bound_upper_array[i] = @floatFromInt(tunable.max orelse std.math.maxInt(types.Value));
+        bound_lower_array[i] = @floatFromInt(tunable.min);
+        bound_upper_array[i] = @floatFromInt(tunable.max);
     }
     bound_lower.* = bound_lower_array;
     bound_upper.* = bound_upper_array;
@@ -168,7 +168,7 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
     updateVariable(initial_f);
     var steps_array: [variable.tunables.len]f32 = undefined;
     for (&steps_array, 0..) |*step, i| {
-        step.* = variable.tunables[i].step orelse 1.0;
+        step.* = variable.tunables[i].step;
     }
     const steps: @Vector(variable.tunables.len, f32) = steps_array;
 
