@@ -29,6 +29,7 @@ pub const Limits = struct {
     inc: [types.Color.nb()]types.TimePoint = @splat(0),
     start: types.TimePoint = 0,
     movetime: types.TimePoint = 0,
+    searchmoves: std.ArrayListUnmanaged(types.Move) = .empty,
 };
 
 pub const Option = struct {
@@ -380,8 +381,14 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
     while (tokens.next()) |token_name| {
         // Needs to be the last command on the line
         if (std.ascii.eqlIgnoreCase("searchmoves", token_name)) {
-            // TODO
-            break;
+            var has_param: bool = false;
+            while (tokens.next()) |token_value| {
+                has_param = true;
+                try limits.searchmoves.append(allocator, try types.Move.initFromStr(pos.*, token_value));
+            }
+            if (!has_param) {
+                return error.MissingParameter;
+            }
         } else if (std.ascii.eqlIgnoreCase("wtime", token_name)) {
             if (tokens.next()) |token_value| {
                 limits.time[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
