@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Skip during rebase
+git_dir=$(git rev-parse --git-dir)
+if [ -d "$git_dir/rebase-merge" ] || [ -d "$git_dir/rebase-apply" ]; then
+  exit 0
+fi
+
+echo "Running benchmark to append onto commit message"
+BENCH_OUTPUT=$(zig build --release=fast run -- bench | awk '/nodes/ {print $1}')
+echo "bench: $BENCH_OUTPUT" >> "$1"
+echo "Benchmark complete: $BENCH_OUTPUT"
