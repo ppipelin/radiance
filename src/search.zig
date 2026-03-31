@@ -316,7 +316,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     const root_node: bool = nodetype == NodeType.root;
 
     var alpha = alpha_;
-    var beta = beta_;
+    const beta = beta_;
     var depth = depth_;
 
     interface.nodes_searched += 1;
@@ -354,14 +354,14 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         tt_value = types.valueFromTT(tt_value, ss[0].ply);
 
         if (!is_null_move and !pv_node and tt_depth > depth - @intFromBool(tt_value <= beta)) {
-            switch (tt_bound) {
-                .exact => score = tt_value,
-                .lowerbound => alpha = @max(alpha, tt_value),
-                .upperbound => beta = @min(beta, tt_value),
-            }
-            if (alpha >= beta) {
-                return alpha;
-            }
+            // switch (tt_bound) {
+            //     .exact => score = tt_value,
+            //     .lowerbound => alpha = @max(alpha, tt_value),
+            //     .upperbound => beta = @min(beta, tt_value),
+            // }
+            // if (alpha >= beta) {
+            //     return alpha;
+            // }
 
             // At non-PV nodes check for early transposition table cutoff
             if (tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
