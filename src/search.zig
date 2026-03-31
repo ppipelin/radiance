@@ -241,9 +241,12 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     defer root_moves.clearAndFree(allocator);
     root_moves.clearRetainingCapacity();
 
-    // limits.searchmoves here
-
     for (move_list[0..move_len]) |move| {
+        // searchmove constraint if exists
+        if (limits.searchmoves.items.len > 0) {
+            if (std.mem.indexOfScalar(types.Move, limits.searchmoves.items, move) == null)
+                continue;
+        }
         var pv_rm: std.ArrayListUnmanaged(types.Move) = .empty;
         try pv_rm.ensureTotalCapacity(allocator, 200);
         pv_rm.appendAssumeCapacity(move);
