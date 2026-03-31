@@ -412,7 +412,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         if (depth <= 8) {
             const futility_margin: types.Value = @as(types.Value, depth) * variable.getValue("reverse_futility_factor");
             if (pos.state.static_eval - futility_margin >= beta)
-                return beta;
+                return @intCast(@divTrunc(2 * @as(i32, beta) + pos.state.static_eval, 3));
         }
 
         // Null move pruning
