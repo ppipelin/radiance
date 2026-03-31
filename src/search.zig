@@ -416,7 +416,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         }
 
         // Null move pruning
-        if (!is_null_move and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and pos.state.static_eval > beta) {
+        if (!is_null_move and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and pos.state.static_eval > beta and !types.isValueMate(beta)) {
             const tapered: types.Depth = @min(@divTrunc(pos.state.static_eval -| beta, variable.getValue("null_move_taper")), 6);
             const r: types.Depth = tapered + @divTrunc(depth, 3) + 5;
             try pos.moveNull(&s);
