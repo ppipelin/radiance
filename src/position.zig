@@ -830,6 +830,36 @@ pub const Position = struct {
         writer.print("zobrist: {}\n", .{self.state.material_key}) catch unreachable;
     }
 
+    pub fn drawByMaterial(pos: Position) bool {
+        if (pos.bb_pieces[types.PieceType.pawn.index()] | pos.bb_pieces[types.PieceType.rook.index()] | pos.bb_pieces[types.PieceType.queen.index()] != 0)
+            return false;
+
+        const piece_nb: u8 = @popCount(pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]);
+        if (piece_nb != 4)
+            return piece_nb < 4;
+
+        // Two minors on the board
+
+        // One side has either a single bishop or a single knight
+        if (@popCount(pos.bb_colors[types.Color.white.index()] & (pos.bb_pieces[types.PieceType.knight.index()] | pos.bb_pieces[types.PieceType.knight.index()])) == 1) {
+            return true;
+        }
+
+        if (pos.bb_pieces[types.PieceType.knight.index()] != 0)
+            return false;
+
+        // Draw if bishops are on the same color
+        return @popCount(pos.bb_pieces[types.PieceType.bishop.index()] & types.mask_light_square) != 1;
+    }
+
+    pub fn drawByFifty(pos: Position) bool {
+        return pos.state.half_move >= 100;
+    }
+
+    pub inline fn isDraw(pos: Position) bool {
+        return drawByMaterial(pos) or pos.state.repetition < 0 or drawByFifty(pos);
+    }
+
     pub fn printDebug(self: Position) void {
         var buffer: [512]u8 = undefined;
         const writer = std.debug.lockStderrWriter(&buffer);
