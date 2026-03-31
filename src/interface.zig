@@ -325,8 +325,6 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
         }
         allocator.free(option.current_value);
         option.current_value = try allocator.dupe(u8, value);
-
-        std.debug.print("value {s}\n", .{option.current_value});
     } else {
         return error.UnknownOption;
     }
