@@ -30,6 +30,7 @@ const RootMove = struct {
     }
 };
 
+// Keep the informations between nodes at different depth
 const Stack = struct {
     // pv: [200]types.Move = @splat(.none),
     pv: ?*[200]types.Move = null,
@@ -48,19 +49,7 @@ inline fn outOfTime(limits: interface.Limits) bool {
     const uninitialized: bool = interface.remaining == 0 and limits.nodes == 0;
     if (limits.infinite or uninitialized) return false;
 
-    const is_limit_nodes: bool = limits.nodes != 0;
-
-    if (interface.remaining_computed == 0) {
-        if (is_limit_nodes) {
-            interface.remaining_computed = @intFromFloat(@as(f32, @floatFromInt(limits.nodes)) * 0.95);
-        } else {
-            const remaining_float: f128 = @floatFromInt(interface.remaining);
-            const increment_float: f128 = @floatFromInt(interface.increment);
-            interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
-        }
-    }
-
-    if (is_limit_nodes) {
+    if (limits.nodes != 0) {
         return interface.nodes_searched >= interface.remaining_computed;
     }
     return elapsed(limits) > interface.remaining_computed;
@@ -191,21 +180,27 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     interface.nodes_searched = 0;
     interface.seldepth = 0;
     interface.transposition_used = 0;
+    tables.history = @splat(@splat(0));
+    tables.transposition_table.clearRetainingCapacity();
 
     if (limits.movetime > 0) {
         interface.remaining = limits.movetime * 30;
     } else {
         interface.remaining = if (pos.state.turn.isWhite()) limits.time[types.Color.white.index()] else limits.time[types.Color.black.index()];
         interface.increment = if (pos.state.turn.isWhite()) limits.inc[types.Color.white.index()] else limits.inc[types.Color.black.index()];
+        if (limits.nodes != 0) {
+            interface.remaining_computed = @intFromFloat(@as(f32, @floatFromInt(limits.nodes)) * 0.95);
+        } else {
+            const remaining_float: f128 = @floatFromInt(interface.remaining);
+            const increment_float: f128 = @floatFromInt(interface.increment);
+            interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
+        }
     }
 
     var stack: [200 + 10]Stack = @splat(Stack{});
     var pv: [200]types.Move = @splat(.none); // useless
     var ss: [*]Stack = &stack;
     ss = ss + 7;
-
-    tables.history = @splat(@splat(0));
-    tables.transposition_table.clearRetainingCapacity();
 
     for (0..200) |i| {
         ss[i].ply = @intCast(i);
@@ -215,19 +210,17 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     var move_list: [types.max_moves]types.Move = @splat(.none);
     var move_len: usize = 0;
 
-    if (is_960) {
-        pos.updateAttacked(true);
-    } else {
-        pos.updateAttacked(false);
-    }
     switch (is_960) {
-        inline else => |is_960_current| switch (pos.state.turn) {
-            inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, is_960_current),
+        inline else => |is_960_current| {
+            pos.updateAttacked(is_960_current);
+            switch (pos.state.turn) {
+                inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, is_960_current),
+            }
         },
     }
 
     if (move_len == 0) {
-        return error.Checkmated;
+        return error.NoMove;
     } else if (move_len == 1) {
         return move_list[0];
     }
@@ -272,11 +265,12 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
         // alpha = -types.value_infinite; beta = types.value_infinite;
         while (true) {
             var score: types.Value = 0;
-            if (is_960) {
-                score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, true, false);
-            } else {
-                score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, false, false);
+            switch (is_960) {
+                inline else => |is_960_current| {
+                    score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, is_960_current, false);
+                },
             }
+
             if (depth > 1 and outOfTime(limits))
                 break;
 
@@ -317,7 +311,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     return move;
 }
 
-fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_nmr: bool) !types.Value {
+fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
@@ -330,7 +324,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     // 1. Quiescence search at depth 0
     if (depth <= 0) {
         // return eval(pos.*);
-        return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_nmr);
+        return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_null_move);
     }
 
     // 2. Initialize data
@@ -359,7 +353,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         // Update the mate score retrieved from the table to consider the current ply
         tt_value = types.valueFromTT(tt_value, ss[0].ply);
 
-        if (!is_nmr and !pv_node and tt_depth > depth - @intFromBool(tt_value <= beta)) {
+        if (!is_null_move and !pv_node and tt_depth > depth - @intFromBool(tt_value <= beta)) {
             switch (tt_bound) {
                 .exact => score = tt_value,
                 .lowerbound => alpha = @max(alpha, tt_value),
@@ -411,7 +405,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         const razoring: bool = pos.state.static_eval < razoring_threshold;
         if (!pv_node and razoring) {
             // return eval(pos.*);
-            return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_nmr);
+            return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_null_move);
         }
 
         // Reverse Futility Pruning
@@ -422,7 +416,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         }
 
         // Null move pruning
-        if (!is_nmr and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and pos.state.static_eval > beta) {
+        if (!is_null_move and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and pos.state.static_eval > beta) {
             const tapered: types.Depth = @min(@divTrunc(pos.state.static_eval -| beta, variable.getValue("null_move_taper")), 6);
             const r: types.Depth = tapered + @divTrunc(depth, 3) + 5;
             try pos.moveNull(&s);
@@ -455,7 +449,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     var previous_captures: [types.max_moves]types.Move = @splat(.none);
     var move: types.Move = try mp.nextMove(pos, pv_move, is_960);
     while (move != types.Move.none) : (move = try mp.nextMove(pos, pv_move, is_960)) {
-        if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
+        if (is_null_move and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }
         score = -types.value_none;
@@ -614,7 +608,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     return best_score;
 }
 
-fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, is_nmr: bool) !types.Value {
+fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, is_null_move: bool) !types.Value {
     const pv_node: bool = nodetype == NodeType.pv;
 
     var alpha = alpha_;
@@ -657,7 +651,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
         tt_value = types.valueFromTT(tt_value, ss[0].ply);
 
         // At non-PV nodes check for early transposition table cutoff
-        if (!is_nmr and !pv_node and tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
+        if (!is_null_move and !pv_node and tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
             return tt_value;
         }
 
@@ -684,7 +678,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
     // Loop over all legal moves
     var move: types.Move = try mp.nextMove(pos, types.Move.none, false);
     while (move != types.Move.none) : (move = try mp.nextMove(pos, types.Move.none, false)) {
-        if (is_nmr and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
+        if (is_null_move and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }
 
