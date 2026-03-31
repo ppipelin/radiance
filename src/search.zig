@@ -282,9 +282,10 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
 
             // In case of failing low/high increase aspiration window and re-search, otherwise exit the loop.
             if (score <= alpha) {
-                beta = @divTrunc(alpha, 2) + @divTrunc(beta, 2);
+                beta = alpha;
                 alpha = @max(score -| delta, -types.value_infinite);
             } else if (score >= beta) {
+                alpha = @max(beta -| delta, alpha);
                 beta = @min(score +| delta, types.value_infinite);
             } else {
                 break;
