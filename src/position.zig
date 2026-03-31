@@ -939,13 +939,13 @@ pub const Position = struct {
     pub fn setFen(noalias state: *State, fen: []const u8) !Position {
         state.* = State{};
         var pos: Position = Position.init(state);
-        var sq: i32 = Square.a8.index();
+        var sq_int: i32 = Square.a8.index();
         var tokens = std.mem.tokenizeScalar(u8, fen, ' ');
         const token = tokens.next() orelse return error.MissingFen;
 
         const bd: []const u8 = token;
 
-        // Behavior is : take the farthest rook to king for castling
+        // Behavior is : take the farthest rook to king for castling and assert on first/last rank
         var passed_king_w: Square = .none;
         var passed_king_b: Square = .none;
         var found_rook_w: bool = false;
@@ -953,31 +953,32 @@ pub const Position = struct {
 
         for (bd) |ch| {
             if (std.ascii.isDigit(ch)) {
-                sq += @as(i32, ch - '0') * Direction.east.index();
+                sq_int += @as(i32, ch - '0') * Direction.east.index();
             } else if (ch == '/') {
-                sq += Direction.south.index() * 2;
+                sq_int += Direction.south.index() * 2;
             } else {
                 const p: Piece = try Piece.firstIndex(ch);
-                pos.add(p, @enumFromInt(sq));
-                pos.state.material_key ^= tables.hash_psq[p.index()][@intCast(sq)];
+                const sq: Square = @enumFromInt(sq_int);
+                pos.add(p, sq);
+                pos.state.material_key ^= tables.hash_psq[p.index()][@intCast(sq_int)];
 
                 if (p == Piece.w_king) {
-                    passed_king_w = @enumFromInt(sq);
+                    passed_king_w = sq;
                     found_rook_w = false;
                 }
                 if (p == Piece.b_king) {
-                    passed_king_b = @enumFromInt(sq);
+                    passed_king_b = sq;
                     found_rook_b = false;
                 }
-                if (ch == 'R' and (passed_king_w != .none or !found_rook_w)) {
-                    pos.rook_initial[@intFromBool(passed_king_w != .none)] = @enumFromInt(sq);
+                if (ch == 'R' and (passed_king_w != .none or !found_rook_w) and sq.rank() == .r1) {
+                    pos.rook_initial[@intFromBool(passed_king_w != .none)] = sq;
                     found_rook_w = true;
                 }
-                if (ch == 'r' and (passed_king_b != .none or !found_rook_b)) {
-                    pos.rook_initial[2 + @as(usize, @intFromBool(passed_king_b != .none))] = @enumFromInt(sq);
+                if (ch == 'r' and (passed_king_b != .none or !found_rook_b) and sq.rank() == .r8) {
+                    pos.rook_initial[2 + @as(usize, @intFromBool(passed_king_b != .none))] = sq;
                     found_rook_b = true;
                 }
-                sq += 1;
+                sq_int += 1;
             }
         }
 
