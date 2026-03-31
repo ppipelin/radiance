@@ -205,7 +205,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     ss = ss + 7;
 
     tables.history = @splat(@splat(0));
-    tables.transposition_table.clearRetainingCapacity();
+    // tables.transposition_table.clearRetainingCapacity();
 
     for (0..200) |i| {
         ss[i].ply = @intCast(i);
