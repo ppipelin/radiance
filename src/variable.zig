@@ -6,9 +6,9 @@ const Value = types.Value;
 pub const Tunable = struct {
     name: []const u8,
     default: Value,
-    min: ?Value = null,
-    max: ?Value = null,
-    step: ?f32 = null,
+    min: Value = 0,
+    max: Value = 0,
+    step: f32 = 0,
 };
 
 ////// Evaluation tunables //////

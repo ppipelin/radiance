@@ -59,8 +59,8 @@ pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMa
     try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
     try options.put(allocator, "UCI_Chess960", try Option.initCheck(allocator, "false", "false"));
     for (variable.tunables) |tunable| {
-        const min: i32 = @intCast(tunable.min orelse std.math.minInt(types.Value));
-        const max: i32 = @intCast(tunable.max orelse std.math.maxInt(types.Value));
+        const min: i32 = @intCast(tunable.min);
+        const max: i32 = @intCast(tunable.max);
 
         var buffer: [32]u8 = undefined;
         const slice = try std.fmt.bufPrint(&buffer, "{d}", .{tunable.default});
@@ -192,6 +192,13 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
         if (std.ascii.eqlIgnoreCase("bench", primary_token)) {
             existing_command = true;
             try cmd_bench(allocator, stdout);
+        }
+
+        if (std.ascii.eqlIgnoreCase("spsa", primary_token)) {
+            existing_command = true;
+            for (variable.tunables) |tunable| {
+                try stdout.print("{s}, int, {d}, {d}, {d}, {d}, 0.002\n", .{ tunable.name, tunable.default, tunable.min, tunable.max, tunable.step });
+            }
         }
 
         if (std.ascii.eqlIgnoreCase("isready", primary_token)) {
