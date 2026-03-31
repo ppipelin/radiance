@@ -484,7 +484,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         ss[1].pv = &pv;
         ss[1].pv.?[0] = types.Move.none;
 
-        if (pos.state.repetition < 0) {
+        if (pos.isDraw()) {
             score = types.value_draw;
         } else {
             if (score == -types.value_none) {
@@ -698,7 +698,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
 
         try pos.movePiece(move, &s);
 
-        if (pos.state.repetition < 0) {
+        if (pos.isDraw()) {
             score = types.value_draw;
         } else {
             score = -try quiesce(allocator, nodetype, ss + 1, pos, limits, eval, -beta, -alpha, false);
