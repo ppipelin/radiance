@@ -30,6 +30,7 @@ const RootMove = struct {
     }
 };
 
+// Keep the informations between nodes at different depth
 const Stack = struct {
     // pv: [200]types.Move = @splat(.none),
     pv: ?*[200]types.Move = null,
@@ -48,19 +49,7 @@ inline fn outOfTime(limits: interface.Limits) bool {
     const uninitialized: bool = interface.remaining == 0 and limits.nodes == 0;
     if (limits.infinite or uninitialized) return false;
 
-    const is_limit_nodes: bool = limits.nodes != 0;
-
-    if (interface.remaining_computed == 0) {
-        if (is_limit_nodes) {
-            interface.remaining_computed = @intFromFloat(@as(f32, @floatFromInt(limits.nodes)) * 0.95);
-        } else {
-            const remaining_float: f128 = @floatFromInt(interface.remaining);
-            const increment_float: f128 = @floatFromInt(interface.increment);
-            interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
-        }
-    }
-
-    if (is_limit_nodes) {
+    if (limits.nodes != 0) {
         return interface.nodes_searched >= interface.remaining_computed;
     }
     return elapsed(limits) > interface.remaining_computed;
@@ -191,21 +180,27 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     interface.nodes_searched = 0;
     interface.seldepth = 0;
     interface.transposition_used = 0;
+    tables.history = @splat(@splat(0));
+    tables.transposition_table.clearRetainingCapacity();
 
     if (limits.movetime > 0) {
         interface.remaining = limits.movetime * 30;
     } else {
         interface.remaining = if (pos.state.turn.isWhite()) limits.time[types.Color.white.index()] else limits.time[types.Color.black.index()];
         interface.increment = if (pos.state.turn.isWhite()) limits.inc[types.Color.white.index()] else limits.inc[types.Color.black.index()];
+        if (limits.nodes != 0) {
+            interface.remaining_computed = @intFromFloat(@as(f32, @floatFromInt(limits.nodes)) * 0.95);
+        } else {
+            const remaining_float: f128 = @floatFromInt(interface.remaining);
+            const increment_float: f128 = @floatFromInt(interface.increment);
+            interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
+        }
     }
 
     var stack: [200 + 10]Stack = @splat(Stack{});
     var pv: [200]types.Move = @splat(.none); // useless
     var ss: [*]Stack = &stack;
     ss = ss + 7;
-
-    tables.history = @splat(@splat(0));
-    tables.transposition_table.clearRetainingCapacity();
 
     for (0..200) |i| {
         ss[i].ply = @intCast(i);
@@ -215,19 +210,17 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     var move_list: [types.max_moves]types.Move = @splat(.none);
     var move_len: usize = 0;
 
-    if (is_960) {
-        pos.updateAttacked(true);
-    } else {
-        pos.updateAttacked(false);
-    }
     switch (is_960) {
-        inline else => |is_960_current| switch (pos.state.turn) {
-            inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, is_960_current),
+        inline else => |is_960_current| {
+            pos.updateAttacked(is_960_current);
+            switch (pos.state.turn) {
+                inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, is_960_current),
+            }
         },
     }
 
     if (move_len == 0) {
-        return error.Checkmated;
+        return error.NoMove;
     } else if (move_len == 1) {
         return move_list[0];
     }
@@ -272,11 +265,12 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
         // alpha = -types.value_infinite; beta = types.value_infinite;
         while (true) {
             var score: types.Value = 0;
-            if (is_960) {
-                score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, true, false);
-            } else {
-                score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, false, false);
+            switch (is_960) {
+                inline else => |is_960_current| {
+                    score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, is_960_current, false);
+                },
             }
+
             if (depth > 1 and outOfTime(limits))
                 break;
 
