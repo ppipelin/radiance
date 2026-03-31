@@ -39,8 +39,8 @@ pub const castle_bonus: Value = 50;
 
 ////// Histories //////
 pub const history: Value = 10;
-pub const history_capture: Value = 10;
-pub const capture_factor: Value = 40;
+pub const history_capture: Value = 3;
+pub const capture_factor: Value = 46;
 
 ////// Search tunables //////
 
