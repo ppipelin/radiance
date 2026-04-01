@@ -477,6 +477,41 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
         const depth_reduced_lmr: types.Depth = @max(1, depth - 4);
 
+        if (!root_node and !types.isValueMate(best_score)) {
+            // SEE pruning
+            if (move.isCapture()) {
+                // TODO: replace with capture history once settled
+                const capture_history_value: types.Value = 0;
+                // TODO TEST: Futility pruning on captures
+                // if (depth_reduced_lmr < 7) {
+                //     const to_piece: types.PieceType = pos.board[move.getFrom().index()].pieceToPieceType();
+                //     const futility_value: types.Value = pos.state.static_eval +| 200 *| (depth_reduced_lmr + 1) +| tables.material[to_piece.index()] +| capture_history_value *| 100;
+                //     if (futility_value <= alpha)
+                //         continue;
+                // }
+
+                // TODO: avoid pruning sacrifices of last piece for stalemate
+                const margin: types.Value = 200 * depth + capture_history_value / 30;
+                if (alpha >= types.value_draw and !seeGreaterEqual(pos.*, move, -margin))
+                    continue;
+            } else {
+                // TODO TEST: Futility pruning on quiets
+                // var futility_value: types.Value = pos.state.static_eval + 50 + 150 * depth_reduced_lmr;
+                // if (best_move != types.Move.none) {
+                //     futility_value += 150;
+                // }
+                // if (pos.state.static_eval > alpha) {
+                //     futility_value += 100;
+                // }
+                // if (pos.state.checkers == 0 and depth_reduced_lmr < 13 and futility_value <= alpha)
+                //     continue;
+
+                // TODO TEST: Prune negative SEE
+                // if (!seeGreaterEqual(pos.*, move, std.math.pow(types.Value, depth_reduced_lmr, 2) * -25))
+                //     continue;
+            }
+        }
+
         try pos.movePiece(move, &s);
 
         ss[1].pv = &pv;
