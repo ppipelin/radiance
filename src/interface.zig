@@ -192,7 +192,12 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
 
         if (std.ascii.eqlIgnoreCase("bench", primary_token)) {
             existing_command = true;
-            try cmd_bench(allocator, stdout);
+            try cmd_bench(allocator, stdout, false);
+        }
+
+        if (std.ascii.eqlIgnoreCase("benchv", primary_token)) {
+            existing_command = true;
+            try cmd_bench(allocator, stdout, true);
         }
 
         if (std.ascii.eqlIgnoreCase("spsa", primary_token)) {
@@ -495,7 +500,7 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
     }
 }
 
-pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer) anyerror!void {
+pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: bool) anyerror!void {
     var t = try std.time.Timer.start();
 
     var list: std.ArrayListUnmanaged([]const u8) = .empty;
@@ -577,6 +582,7 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer) anyerror!
     }
 
     try stdout.print("{d} nodes {d:.0} nps\n", .{ total_nodes, (@as(f32, @floatFromInt(total_nodes)) / @as(f32, @floatFromInt(t.read())) * 1e9) });
-    // try stdout.print("Time elapsed: {D}\n", .{t.read()});
+    if (verbose)
+        try stdout.print("Time elapsed: {D}\n", .{t.read()});
     try stdout.flush();
 }
