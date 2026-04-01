@@ -108,6 +108,7 @@ zig build test --release=safe
 - `eval`
 - `go [movetime <int> | wtime <int> | btime <int> | winc <int> | binc <int> | nodes <int> | depth <int> | infinite | perft <int>]`
 - `bench`
+- `benchv`
 - `stop`
 - `quit`
 - `ucinewgame`

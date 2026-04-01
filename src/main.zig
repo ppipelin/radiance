@@ -35,7 +35,9 @@ pub fn main() !void {
         }
         try tune.run(allocator, stdout, iterations);
     } else if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "bench")) {
-        try interface.cmd_bench(allocator, stdout);
+        try interface.cmd_bench(allocator, stdout, false);
+    } else if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "benchv")) {
+        try interface.cmd_bench(allocator, stdout, true);
     } else {
         try stdout.print("Radiance {s} by Paul-Elie Pipelin (ppipelin)\n", .{types.computeVersion()});
         try stdout.flush();
