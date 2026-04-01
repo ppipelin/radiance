@@ -477,6 +477,22 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
         const depth_reduced_lmr: types.Depth = @max(1, depth - 4);
 
+        if (!root_node and !types.isValueMate(best_score)) {
+            // SEE pruning
+            if (move.isCapture()) {} else {
+                // Futility pruning on quiets
+                var futility_value: types.Value = pos.state.static_eval + 50 + 150 * depth_reduced_lmr;
+                if (best_move != types.Move.none) {
+                    futility_value += 150;
+                }
+                if (pos.state.static_eval > alpha) {
+                    futility_value += 100;
+                }
+                if (pos.state.checkers == 0 and depth_reduced_lmr < 13 and futility_value <= alpha)
+                    continue;
+            }
+        }
+
         try pos.movePiece(move, &s);
 
         ss[1].pv = &pv;
