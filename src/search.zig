@@ -511,7 +511,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                 }
 
                 // 7.2. Late moves reduction (LMR) before full search
-                if (depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
+                if (depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isPromotion() and (!move.isCapture() or !seeGreaterEqual(pos.*, move, variable.getValue("see_lmr"))) and !is_passed_pawn) {
                     // Reduced LMR
                     score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth_reduced_lmr - 1, is_960, false);
                     // Failed so roll back to full-depth null window
