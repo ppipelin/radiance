@@ -533,7 +533,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                         if (found == null or tt_depth <= depth) {
                             const tt_flag: types.TableBound = if (score >= beta) .lowerbound else if (alpha != alpha_) .exact else .upperbound;
 
-                            try tables.transposition_table.put(allocator, key, .{ types.valueToTT(score, ss[0].ply), depth, move, tt_flag });
+                            try tables.transposition_table.put(allocator, key, .{ types.valueToTT(score, ss[0].ply), depth + @intFromBool(pos.state.checkers != 0), move, tt_flag });
                         }
                     }
                 }
