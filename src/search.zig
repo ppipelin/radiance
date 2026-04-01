@@ -432,7 +432,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         }
 
         // Internal iterative reductions
-        if (pv_node and depth >= 6 and !tt_hit) {
+        if (depth >= (4 + if (pv_node) 4 else 0) and !tt_hit) {
             depth -= 1;
         }
     }
