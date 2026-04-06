@@ -181,7 +181,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     interface.seldepth = 0;
     interface.transposition_used = 0;
     tables.history = @splat(@splat(0));
-    tables.transposition_table.clearRetainingCapacity();
+    try tables.setTranspositionTableSize(allocator, try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10));
 
     if (limits.movetime > 0) {
         interface.remaining = limits.movetime * 30;
@@ -341,14 +341,17 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
     // 4. Transposition table probe
     const key: tables.Key = pos.state.material_key;
-    const found: ?std.meta.Tuple(&[_]type{ types.Value, types.Depth, types.Move, types.TableBound }) = tables.transposition_table.get(key);
-    const tt_hit: bool = found != null;
+    const tt_data: tables.TranspositionData = tables.readTranspositionTable(key);
+    const tt_hit: bool = tt_data.exist;
     var tt_value: types.Value = -types.value_none;
     var tt_depth: types.Depth = 0;
     var tt_move: types.Move = .none;
     var tt_bound: types.TableBound = .upperbound;
     if (tt_hit) {
-        tt_value, tt_depth, tt_move, tt_bound = found.?;
+        tt_value = tt_data.tt_entry.value;
+        tt_depth = tt_data.tt_entry.depth;
+        tt_move = tt_data.tt_entry.move;
+        tt_bound = tt_data.tt_entry.bound;
 
         // Update the mate score retrieved from the table to consider the current ply
         tt_value = types.valueFromTT(tt_value, ss[0].ply);
@@ -530,10 +533,10 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                     score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
                     // Let's assert we don't store draw (repetition)
                     if (score != types.value_draw) {
-                        if (found == null or tt_depth <= depth) {
+                        if (!tt_hit or tt_depth <= depth) {
                             const tt_flag: types.TableBound = if (score >= beta) .lowerbound else if (alpha != alpha_) .exact else .upperbound;
 
-                            try tables.transposition_table.put(allocator, key, .{ types.valueToTT(score, ss[0].ply), depth, move, tt_flag });
+                            tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), depth, move, tt_flag);
                         }
                     }
                 }
@@ -596,8 +599,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                         }
                     }
                     if (score != types.value_draw) {
-                        if (found == null or tt_depth <= depth) {
-                            try tables.transposition_table.put(allocator, key, .{ types.valueToTT(score, ss[0].ply), depth, move, .lowerbound });
+                        if (!tt_hit or tt_depth <= depth) {
+                            tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), depth, move, .lowerbound);
                         }
                     }
                     return best_score;
@@ -655,14 +658,18 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
 
     // Transposition table probe
     const key: tables.Key = pos.state.material_key;
-    const found: ?std.meta.Tuple(&[_]type{ types.Value, types.Depth, types.Move, types.TableBound }) = tables.transposition_table.get(key);
-    const tt_hit: bool = found != null;
+    const tt_data: tables.TranspositionData = tables.readTranspositionTable(key);
+    const tt_hit: bool = tt_data.exist;
     var tt_value: types.Value = -types.value_none;
     var tt_depth: types.Depth = 0;
     var tt_move: types.Move = .none;
     var tt_bound: types.TableBound = .upperbound;
     if (tt_hit) {
-        tt_value, tt_depth, tt_move, tt_bound = found.?;
+        tt_value = tt_data.tt_entry.value;
+        tt_depth = tt_data.tt_entry.depth;
+        tt_move = tt_data.tt_entry.move;
+        tt_bound = tt_data.tt_entry.bound;
+
         // Update the mate score retrieved from the table to consider the current ply
         tt_value = types.valueFromTT(tt_value, ss[0].ply);
 
@@ -853,7 +860,7 @@ fn info(stdout: *std.Io.Writer, limits: interface.Limits, depth: types.Depth, sc
     const hash_size: u16 = try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10);
     var hashfull: u128 = 0;
     if (hash_size > 0) {
-        hashfull = @divTrunc(@as(u128, tables.transposition_table.size) * (@sizeOf(tables.Key) + @sizeOf(std.meta.Tuple(&[_]type{ types.Value, types.Depth, types.Move, types.TableBound })) + @sizeOf(u32)) * 1000, @as(u128, hash_size) * 1000000);
+        hashfull = @divTrunc(@as(u128, tables.transposition_table_size) * @sizeOf(tables.TranspositionEntry) * 1000, @as(u128, hash_size) * 1_000_000);
     }
 
     try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, interface.seldepth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, hashfull });
@@ -868,7 +875,7 @@ fn info(stdout: *std.Io.Writer, limits: interface.Limits, depth: types.Depth, sc
     try stdout.print("pv ", .{});
     try pvDisplay(stdout, root_moves.items[0].pv.items);
     try stdout.print("\n", .{});
-    try stdout.print("info hash {} hashused {}\n", .{ tables.transposition_table.size, interface.transposition_used });
+    try stdout.print("info hash {} hashused {}\n", .{ tables.transposition_table_size, interface.transposition_used });
 }
 
 fn pvDisplay(stdout: *std.Io.Writer, pv: []types.Move) !void {
