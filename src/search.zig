@@ -341,17 +341,17 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
     // 4. Transposition table probe
     const key: tables.Key = pos.state.material_key;
-    const tt_data: tables.TranspositionData = tables.readTranspositionTable(key);
-    const tt_hit: bool = tt_data.exist;
+    const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
+    const tt_hit: bool = tt_entry.occupied;
     var tt_value: types.Value = -types.value_none;
     var tt_depth: types.Depth = 0;
     var tt_move: types.Move = .none;
     var tt_bound: types.TableBound = .upperbound;
     if (tt_hit) {
-        tt_value = tt_data.tt_entry.value;
-        tt_depth = tt_data.tt_entry.depth;
-        tt_move = tt_data.tt_entry.move;
-        tt_bound = tt_data.tt_entry.bound;
+        tt_value = tt_entry.value;
+        tt_depth = tt_entry.depth;
+        tt_move = tt_entry.move;
+        tt_bound = tt_entry.bound;
 
         // Update the mate score retrieved from the table to consider the current ply
         tt_value = types.valueFromTT(tt_value, ss[0].ply);
@@ -658,17 +658,17 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
 
     // Transposition table probe
     const key: tables.Key = pos.state.material_key;
-    const tt_data: tables.TranspositionData = tables.readTranspositionTable(key);
-    const tt_hit: bool = tt_data.exist;
+    const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
+    const tt_hit: bool = tt_entry.occupied;
     var tt_value: types.Value = -types.value_none;
     var tt_depth: types.Depth = 0;
     var tt_move: types.Move = .none;
     var tt_bound: types.TableBound = .upperbound;
     if (tt_hit) {
-        tt_value = tt_data.tt_entry.value;
-        tt_depth = tt_data.tt_entry.depth;
-        tt_move = tt_data.tt_entry.move;
-        tt_bound = tt_data.tt_entry.bound;
+        tt_value = tt_entry.value;
+        tt_depth = tt_entry.depth;
+        tt_move = tt_entry.move;
+        tt_bound = tt_entry.bound;
 
         // Update the mate score retrieved from the table to consider the current ply
         tt_value = types.valueFromTT(tt_value, ss[0].ply);

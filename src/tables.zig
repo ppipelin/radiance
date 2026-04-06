@@ -40,6 +40,7 @@ pub const TranspositionEntry = struct {
     move: Move,
     bound: TableBound,
     key: Key, // Could be compressed to a smaller part of key
+    occupied: bool,
 
     pub const empty: @This() = .{
         .value = 0,
@@ -47,24 +48,25 @@ pub const TranspositionEntry = struct {
         .move = .none,
         .bound = .exact,
         .key = 0,
+        .occupied = false,
     };
-};
-
-pub const TranspositionData = struct {
-    tt_entry: TranspositionEntry,
-    exist: bool,
 };
 
 pub fn transpositionIndex(key: Key) usize {
     return @intCast(@as(u128, key) * transposition_table.len >> 64);
+    // return key % transposition_table.len;
 }
 
-pub fn readTranspositionTable(key: Key) TranspositionData {
+pub fn readTranspositionTable(key: Key) TranspositionEntry {
     if (transposition_table.len == 0)
-        return .{ .tt_entry = .empty, .exist = false };
+        return .empty;
 
     const entry: TranspositionEntry = transposition_table[transpositionIndex(key)];
-    return .{ .tt_entry = entry, .exist = entry.key == key };
+    if (entry.occupied and entry.key == key) {
+        return entry;
+    } else {
+        return .empty;
+    }
 }
 
 pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth, move: types.Move, bound: TableBound) void {
@@ -73,17 +75,26 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
 
     var entry: *TranspositionEntry = &transposition_table[transpositionIndex(key)];
 
+    if (!entry.occupied) {
+        transposition_table_size += 1;
+    }
+
     // Avoid replacing better entries
-    if (key == entry.key and bound == entry.bound and depth < entry.depth)
-        return;
+    if (entry.occupied and key != entry.key) {
+        std.debug.print("collision\n", .{});
+    }
 
-    entry.key = key;
-    entry.value = score;
-    entry.depth = depth;
-    entry.move = move;
-    entry.bound = bound;
+    // if (key == entry.key and bound == entry.bound and depth < entry.depth)
+    //     return;
 
-    transposition_table_size += 1;
+    if (entry.bound == .exact or key == entry.key) {
+        entry.key = key;
+        entry.value = score;
+        entry.depth = depth;
+        entry.move = move;
+        entry.bound = bound;
+        entry.occupied = true;
+    }
 }
 
 /// Allocates size of transposition table in Mega bytes
