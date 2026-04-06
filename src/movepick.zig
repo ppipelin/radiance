@@ -39,11 +39,11 @@ pub const MovePick = struct {
             if (self.tt_move != types.Move.none)
                 return self.tt_move;
 
-            const tt_data: tables.TranspositionData = tables.readTranspositionTable(pos.state.material_key);
-            const tt_hit: bool = tt_data.exist;
+            const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(pos.state.material_key);
+            const tt_hit: bool = tt_entry.occupied;
 
             if (tt_hit) {
-                const move: types.Move = tt_data.tt_entry.move;
+                const move: types.Move = tt_entry.move;
                 if (self.stage == 1 or (self.stage == 11 and move.isCapture())) {
                     // Guard from collisions
                     // Uncomment for high collision rate
