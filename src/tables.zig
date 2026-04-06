@@ -31,7 +31,70 @@ pub fn initAll(allocator: std.mem.Allocator) void {
 
 pub const Key = u64;
 
-pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, Depth, Move, TableBound })) = .empty;
+pub var transposition_table: []TranspositionEntry = undefined;
+pub var transposition_table_size: usize = 0;
+
+pub const TranspositionEntry = struct {
+    value: Value,
+    depth: Depth,
+    move: Move,
+    bound: TableBound,
+    key: Key, // Could be compressed to a smaller part of key
+
+    pub const empty: @This() = .{
+        .value = 0,
+        .depth = 0,
+        .move = .none,
+        .bound = .exact,
+        .key = 0,
+    };
+};
+
+pub const TranspositionData = struct {
+    tt_entry: TranspositionEntry,
+    exist: bool,
+};
+
+pub fn transpositionIndex(key: Key) usize {
+    return @intCast(@as(u128, key) * transposition_table.len >> 64);
+}
+
+pub fn readTranspositionTable(key: Key) TranspositionData {
+    if (transposition_table.len == 0)
+        return .{ .tt_entry = .empty, .exist = false };
+
+    const entry: TranspositionEntry = transposition_table[transpositionIndex(key)];
+    return .{ .tt_entry = entry, .exist = entry.key == key };
+}
+
+pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth, move: types.Move, bound: TableBound) void {
+    if (transposition_table.len == 0)
+        return;
+
+    var entry: *TranspositionEntry = &transposition_table[transpositionIndex(key)];
+
+    // Avoid replacing better entries
+    if (key == entry.key and bound == entry.bound and depth < entry.depth)
+        return;
+
+    entry.key = key;
+    entry.value = score;
+    entry.depth = depth;
+    entry.move = move;
+    entry.bound = bound;
+
+    transposition_table_size += 1;
+}
+
+/// Allocates size of transposition table in Mega bytes
+pub fn setTranspositionTableSize(allocator: std.mem.Allocator, size: usize) !void {
+    if (transposition_table.len > 0) {
+        allocator.free(transposition_table);
+        transposition_table_size = 0;
+    }
+    transposition_table = try allocator.alloc(TranspositionEntry, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
+}
+
 // Will store pawn structures once computed
 // Computed every pawn move/capture
 pub var pawn_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{Value})) = .empty;
@@ -289,7 +352,7 @@ pub fn deinitAll(allocator: std.mem.Allocator) void {
         moves_bishop[sq].deinit(allocator);
         moves_rook[sq].deinit(allocator);
     }
-    transposition_table.clearAndFree(allocator);
+    allocator.free(transposition_table);
     pawn_table.clearAndFree(allocator);
 }
 
