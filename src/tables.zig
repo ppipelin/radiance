@@ -53,7 +53,14 @@ pub const TranspositionEntry = struct {
 };
 
 pub fn transpositionIndex(key: Key) usize {
-    return @intCast(@as(u128, key) * transposition_table.len >> 64);
+    // Multiplicative hashing
+    return @intCast((@as(u128, key) * transposition_table.len) >> 64);
+
+    // Multiplicative hashing edited
+    // const key_ = @as(u128, key) ^ (@as(u128, key) >> 64);
+    // return @intCast(key_ * transposition_table.len >> 64);
+
+    // Division hashing
     // return key % transposition_table.len;
 }
 
@@ -80,21 +87,20 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
     }
 
     // Avoid replacing better entries
-    if (entry.occupied and key != entry.key) {
-        std.debug.print("collision\n", .{});
-    }
+    if (key == entry.key and bound == entry.bound and depth < entry.depth)
+        return;
 
-    // if (key == entry.key and bound == entry.bound and depth < entry.depth)
-    //     return;
+    // if (entry.occupied and key != entry.key) {
+    //     std.debug.print("collision\n", .{});
+    //     // std.debug.print("key {} {}\n", .{ key, entry.key });
+    // }
 
-    if (entry.bound == .exact or key == entry.key) {
-        entry.key = key;
-        entry.value = score;
-        entry.depth = depth;
-        entry.move = move;
-        entry.bound = bound;
-        entry.occupied = true;
-    }
+    entry.key = key;
+    entry.value = score;
+    entry.depth = depth;
+    entry.move = move;
+    entry.bound = bound;
+    entry.occupied = true;
 }
 
 /// Allocates size of transposition table in Mega bytes
@@ -104,11 +110,14 @@ pub fn setTranspositionTableSize(allocator: std.mem.Allocator, size: usize) !voi
         transposition_table_size = 0;
     }
     transposition_table = try allocator.alloc(TranspositionEntry, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
+    // transposition_table = @splat(.empty);
 }
 
 // Will store pawn structures once computed
 // Computed every pawn move/capture
 pub var pawn_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{Value})) = .empty;
+
+pub var hash_half_move: [256]Key = @splat(0);
 
 // pnbrqkPNBRQK
 pub var hash_psq: [types.Piece.nb()][types.board_size2]Key = @splat(@splat(0));
@@ -137,6 +146,10 @@ fn initZobrist() void {
 
     for (0..4) |i| {
         hash_castling[i] = prng.rand64();
+    }
+
+    for (0..hash_half_move.len) |i| {
+        hash_half_move[i] = prng.rand64();
     }
 }
 
