@@ -52,16 +52,16 @@ pub const TranspositionEntry = struct {
     };
 };
 
-pub fn transpositionIndex(key: Key) usize {
+pub inline fn transpositionIndex(key: Key) usize {
     // Multiplicative hashing
-    // return @intCast((@as(u128, key) * transposition_table.len) >> 64);
+    return @intCast((@as(u128, key) * transposition_table.len) >> 64);
 
     // Multiplicative hashing edited
     // const key_ = @as(u128, key) ^ (@as(u128, key) >> 64);
     // return @intCast(key_ * transposition_table.len >> 64);
 
     // Division hashing
-    return key % transposition_table.len;
+    // return key % transposition_table.len;
 }
 
 pub fn readTranspositionTable(key: Key) TranspositionEntry {
@@ -90,20 +90,23 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
     if (key == entry.key and bound == entry.bound and depth < entry.depth)
         return;
 
-    if (entry.depth + 4 > depth)
-        return;
+    // We only overwrite if
+    // - Exact
+    // - Different hash
+    // - Different age (TODO)
+    // - Lower depth
+    if (!entry.occupied or (bound == .exact or key != entry.key or entry.depth <= depth + 4)) {
+        // if (entry.occupied and key != entry.key) {
+        //     std.debug.print("collision for key {} and {}\n", .{ key, entry.key });
+        // }
 
-    // if (entry.occupied and key != entry.key) {
-    //     std.debug.print("collision\n", .{});
-    //     // std.debug.print("key {} {}\n", .{ key, entry.key });
-    // }
-
-    entry.key = key;
-    entry.value = score;
-    entry.depth = depth;
-    entry.move = move;
-    entry.bound = bound;
-    entry.occupied = true;
+        entry.key = key;
+        entry.value = score;
+        entry.depth = depth;
+        entry.move = move;
+        entry.bound = bound;
+        entry.occupied = true;
+    }
 }
 
 /// Allocates size of transposition table in Mega bytes
