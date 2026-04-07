@@ -342,6 +342,11 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     // 4. Transposition table probe
     const key: tables.Key = pos.state.material_key;
     // const key: tables.Key = pos.state.material_key ^ tables.hash_half_move[pos.state.half_move];
+    // const idx = pos.state.half_move / 8;
+    // const zero_mask: u64 = @intFromBool(idx != 0);
+    // const hm_xor: types.Bitboard = -%zero_mask & tables.hash_half_move[idx];
+    // const key: tables.Key = pos.state.material_key ^ hm_xor;
+
     const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
     const tt_hit: bool = tt_entry.occupied;
     var tt_value: types.Value = -types.value_none;
