@@ -47,7 +47,7 @@ pub const TranspositionEntry = struct {
     depth: Depth,
     move: Move,
     bound: TableBound,
-    key16: u64, // Could be compressed to a smaller part of key
+    key16: u8, // Could be compressed to a smaller part of key
 
     pub const empty: @This() = .{
         .value = 0,
@@ -57,12 +57,8 @@ pub const TranspositionEntry = struct {
         .key16 = 0,
     };
 
-    // pub inline fn reduce(key: Key) u16 {
-    //     return @intCast(key & 0xffff);
-    // }
-
-    pub inline fn reduce(key: Key) u64 {
-        return @intCast(key);
+    pub inline fn reduce(key: Key) u8 {
+        return @intCast(key & 0xff);
     }
 
     pub inline fn isEqualKey(self: @This(), key: Key) bool {
@@ -122,9 +118,9 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
 
     // WIP: Always replace for now
 
-    // if (entry.bound != .none and !entry.isEqualKey(key)) {
-    //     std.debug.print("collision for key {} and {}\n", .{ TranspositionEntry.reduce(key), entry.key16 });
-    // }
+    if (entry.bound != .none and !entry.isEqualKey(key)) {
+        std.debug.print("collision for key {} and {}\n", .{ TranspositionEntry.reduce(key), entry.key16 });
+    }
 
     entry.key16 = TranspositionEntry.reduce(key);
     entry.value = score;
