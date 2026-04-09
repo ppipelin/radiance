@@ -1,6 +1,7 @@
 const magic = @import("magic.zig");
 const position = @import("position.zig");
 const std = @import("std");
+const tables = @import("tables.zig");
 const types = @import("types.zig");
 const utils = @import("utils.zig");
 
@@ -25,13 +26,20 @@ pub fn initAll(allocator: std.mem.Allocator) void {
     initPassedPawn();
     initZobrist();
     magic.initMagic();
+    tables.transposition_table = .{ .allocator = allocator, .tt = &.{} };
 }
 
 ////// Zobrist hashing //////
 
 pub const Key = u64;
 
-pub var transposition_table: []TranspositionEntry = &.{};
+/// Not assigning an allocator can result in segmentation fault
+pub const TranspositionHolder = struct {
+    allocator: std.mem.Allocator,
+    tt: []TranspositionEntry,
+};
+
+pub var transposition_table: TranspositionHolder = undefined;
 pub var transposition_table_size: usize = 0;
 
 pub const TranspositionEntry = struct {
@@ -74,16 +82,16 @@ pub inline fn transpositionIndex(key: Key) usize {
     // return @intCast(key_ * transposition_table.len >> 64);
 
     // Division hashing
-    return key % transposition_table.len;
+    return key % transposition_table.tt.len;
 
     // return key *% transposition_table.len;
 }
 
 pub fn readTranspositionTable(key: Key) TranspositionEntry {
-    if (transposition_table.len == 0)
+    if (transposition_table.tt.len == 0)
         return .empty;
 
-    const entry: TranspositionEntry = transposition_table[transpositionIndex(key)];
+    const entry: TranspositionEntry = transposition_table.tt[transpositionIndex(key)];
     if (entry.bound != .none and entry.isEqualKey(key)) {
         return entry;
     } else {
@@ -92,10 +100,10 @@ pub fn readTranspositionTable(key: Key) TranspositionEntry {
 }
 
 pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth, move: types.Move, bound: TableBound) void {
-    if (transposition_table.len == 0)
+    if (transposition_table.tt.len == 0)
         return;
 
-    var entry: *TranspositionEntry = &transposition_table[transpositionIndex(key)];
+    var entry: *TranspositionEntry = &transposition_table.tt[transpositionIndex(key)];
 
     if (entry.bound == .none) {
         transposition_table_size += 1;
@@ -127,13 +135,14 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
 }
 
 /// Allocates capacity of transposition table in Mega bytes
-pub fn setTranspositionTableCapacity(allocator: std.mem.Allocator, size: usize) !void {
-    // if (transposition_table.len > 0) {
-    //     allocator.free(transposition_table);
-    // }
+pub fn setTranspositionTableCapacity(size: usize) !void {
     transposition_table_size = 0;
-    transposition_table = try allocator.alloc(TranspositionEntry, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
-    @memset(transposition_table, .empty);
+    if (transposition_table.tt.len > 0) {
+        transposition_table.tt = try transposition_table.allocator.realloc(transposition_table.tt, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
+    } else {
+        transposition_table.tt = try transposition_table.allocator.alloc(TranspositionEntry, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
+    }
+    @memset(transposition_table.tt, .empty);
 }
 
 // Will store pawn structures once computed
@@ -399,7 +408,7 @@ pub fn deinitAll(allocator: std.mem.Allocator) void {
         moves_bishop[sq].deinit(allocator);
         moves_rook[sq].deinit(allocator);
     }
-    allocator.free(transposition_table);
+    allocator.free(transposition_table.tt);
     pawn_table.clearAndFree(allocator);
 }
 
