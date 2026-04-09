@@ -601,6 +601,7 @@ pub inline fn now() TimePoint {
 }
 
 pub const TableBound = enum(u2) {
+    none,
     exact,
     lowerbound,
     upperbound,

@@ -181,7 +181,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     interface.seldepth = 0;
     interface.transposition_used = 0;
     tables.history = @splat(@splat(0));
-    try tables.setTranspositionTableSize(allocator, try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10));
+    try tables.setTranspositionTableCapacity(allocator, try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10));
 
     if (limits.movetime > 0) {
         interface.remaining = limits.movetime * 30;
@@ -348,7 +348,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     // const key: tables.Key = pos.state.material_key ^ hm_xor;
 
     const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
-    const tt_hit: bool = tt_entry.occupied;
+    const tt_hit: bool = tt_entry.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
     var tt_value: types.Value = -types.value_none;
     var tt_depth: types.Depth = 0;
     var tt_move: types.Move = .none;
@@ -369,6 +369,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                 .exact => score = tt_value,
                 .lowerbound => alpha = @max(alpha, tt_value),
                 .upperbound => beta = @min(beta, tt_value),
+                else => unreachable,
             }
             if (alpha >= beta) {
                 return alpha;
@@ -597,9 +598,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                         }
                     }
                     if (score != types.value_draw) {
-                        if (!tt_hit or tt_depth <= depth) {
-                            tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), depth, move, .lowerbound);
-                        }
+                        tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), depth, move, .lowerbound);
                     }
                     return best_score;
                 } else {
@@ -657,7 +656,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
     // Transposition table probe
     const key: tables.Key = pos.state.material_key;
     const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
-    const tt_hit: bool = tt_entry.occupied;
+    const tt_hit: bool = tt_entry.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
     var tt_value: types.Value = -types.value_none;
     var tt_depth: types.Depth = 0;
     var tt_move: types.Move = .none;

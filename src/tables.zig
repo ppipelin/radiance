@@ -39,29 +39,44 @@ pub const TranspositionEntry = struct {
     depth: Depth,
     move: Move,
     bound: TableBound,
-    key: Key, // Could be compressed to a smaller part of key
-    occupied: bool,
+    key16: u64, // Could be compressed to a smaller part of key
 
     pub const empty: @This() = .{
         .value = 0,
         .depth = 0,
         .move = .none,
-        .bound = .exact,
-        .key = 0,
-        .occupied = false,
+        .bound = .none,
+        .key16 = 0,
     };
+
+    // pub inline fn reduce(key: Key) u16 {
+    //     return @intCast(key & 0xffff);
+    // }
+
+    pub inline fn reduce(key: Key) u64 {
+        return @intCast(key);
+    }
+
+    pub inline fn isEqualKey(self: @This(), key: Key) bool {
+        return self.key16 == reduce(key);
+    }
 };
 
 pub inline fn transpositionIndex(key: Key) usize {
     // Multiplicative hashing
-    return @intCast((@as(u128, key) * transposition_table.len) >> 64);
+    // return @intCast((@as(u128, key) * transposition_table.len) >> 64);
+
+    // Wrapping multiplicative hashing
+    // return key *% transposition_table.len;
 
     // Multiplicative hashing edited
     // const key_ = @as(u128, key) ^ (@as(u128, key) >> 64);
     // return @intCast(key_ * transposition_table.len >> 64);
 
     // Division hashing
-    // return key % transposition_table.len;
+    return key % transposition_table.len;
+
+    // return key *% transposition_table.len;
 }
 
 pub fn readTranspositionTable(key: Key) TranspositionEntry {
@@ -69,7 +84,7 @@ pub fn readTranspositionTable(key: Key) TranspositionEntry {
         return .empty;
 
     const entry: TranspositionEntry = transposition_table[transpositionIndex(key)];
-    if (entry.occupied and entry.key == key) {
+    if (entry.bound != .none and entry.isEqualKey(key)) {
         return entry;
     } else {
         return .empty;
@@ -82,41 +97,43 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
 
     var entry: *TranspositionEntry = &transposition_table[transpositionIndex(key)];
 
-    if (!entry.occupied) {
+    if (entry.bound == .none) {
         transposition_table_size += 1;
     }
 
     // Avoid replacing better entries
-    if (key == entry.key and bound == entry.bound and depth < entry.depth)
-        return;
+    // if (key == entry.key and bound == entry.bound and depth < entry.depth)
+    //     return;
 
     // We only overwrite if
     // - Exact
     // - Different hash
     // - Different age (TODO)
     // - Lower depth
-    if (!entry.occupied or (bound == .exact or key != entry.key or entry.depth <= depth + 4)) {
-        // if (entry.occupied and key != entry.key) {
-        //     std.debug.print("collision for key {} and {}\n", .{ key, entry.key });
-        // }
+    // if (entry.bound == .none or (bound == .exact or key != entry.key or entry.depth <= depth + 4)) {
 
-        entry.key = key;
-        entry.value = score;
-        entry.depth = depth;
-        entry.move = move;
-        entry.bound = bound;
-        entry.occupied = true;
-    }
+    // WIP: Always replace for now
+
+    // if (entry.bound != .none and !entry.isEqualKey(key)) {
+    //     std.debug.print("collision for key {} and {}\n", .{ TranspositionEntry.reduce(key), entry.key16 });
+    // }
+
+    entry.key16 = TranspositionEntry.reduce(key);
+    entry.value = score;
+    entry.depth = depth;
+    entry.move = move;
+    entry.bound = bound;
+    // }
 }
 
-/// Allocates size of transposition table in Mega bytes
-pub fn setTranspositionTableSize(allocator: std.mem.Allocator, size: usize) !void {
+/// Allocates capacity of transposition table in Mega bytes
+pub fn setTranspositionTableCapacity(allocator: std.mem.Allocator, size: usize) !void {
     if (transposition_table.len > 0) {
         allocator.free(transposition_table);
         transposition_table_size = 0;
     }
     transposition_table = try allocator.alloc(TranspositionEntry, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
-    // transposition_table = @splat(.empty);
+    @memset(transposition_table, .empty);
 }
 
 // Will store pawn structures once computed
