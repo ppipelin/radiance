@@ -56,7 +56,7 @@ pub const Option = struct {
 
 pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
     try options.put(allocator, "Hash", try Option.initSpin(allocator, "256", 0, 65535));
-    try tables.setTranspositionTableCapacity(allocator, 256);
+    try tables.setTranspositionTableCapacity(256);
     try options.put(allocator, "Threads", try Option.initSpin(allocator, "1", 1, 1));
     try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "PSQ var PSQ var Shannon", "PSQ"));
     try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
@@ -383,7 +383,7 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
 
     limits.start = types.now();
 
-    try tables.setTranspositionTableCapacity(allocator, try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10));
+    try tables.setTranspositionTableCapacity(try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10));
 
     while (tokens.next()) |token_name| {
         // Needs to be the last command on the line
@@ -562,11 +562,11 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: 
     try list.append(allocator, "fen r1r3k1/pb3pbp/1q1Bp1p1/3pP3/2p2P2/Q1P5/PP4PP/2KR1B1R b - - 0 19");
     try list.append(allocator, "fen 4k3/6R1/8/4B1P1/5PK1/8/6r1/8 w - - 3 62");
 
-    for (list.items) |fen| {
-        var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
-        defer deinitOptions(allocator, &options);
-        try initOptions(allocator, &options);
+    var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
+    try initOptions(allocator, &options);
+    defer deinitOptions(allocator, &options);
 
+    for (list.items) |fen| {
         var states: StateList = .empty;
         try states.ensureTotalCapacity(allocator, 1024); // Necessary because extending invalidates pointers
         defer states.deinit(allocator);
