@@ -40,7 +40,7 @@ pub const MovePick = struct {
                 return self.tt_move;
 
             const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(pos.state.material_key);
-            const tt_hit: bool = tt_entry.occupied;
+            const tt_hit: bool = tt_entry.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
 
             if (tt_hit) {
                 const move: types.Move = tt_entry.move;
