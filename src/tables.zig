@@ -31,7 +31,7 @@ pub fn initAll(allocator: std.mem.Allocator) void {
 
 pub const Key = u64;
 
-pub var transposition_table: []TranspositionEntry = undefined;
+pub var transposition_table: []TranspositionEntry = &.{};
 pub var transposition_table_size: usize = 0;
 
 pub const TranspositionEntry = struct {
@@ -128,10 +128,10 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
 
 /// Allocates capacity of transposition table in Mega bytes
 pub fn setTranspositionTableCapacity(allocator: std.mem.Allocator, size: usize) !void {
-    if (transposition_table.len > 0) {
-        allocator.free(transposition_table);
-        transposition_table_size = 0;
-    }
+    // if (transposition_table.len > 0) {
+    //     allocator.free(transposition_table);
+    // }
+    transposition_table_size = 0;
     transposition_table = try allocator.alloc(TranspositionEntry, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
     @memset(transposition_table, .empty);
 }

@@ -4,6 +4,7 @@ const position = @import("position.zig");
 const search = @import("search.zig");
 const std = @import("std");
 const types = @import("types.zig");
+const tables = @import("tables.zig");
 const variable = @import("variable.zig");
 
 pub var g_stop: std.atomic.Value(bool) = .init(false);
@@ -55,6 +56,7 @@ pub const Option = struct {
 
 pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
     try options.put(allocator, "Hash", try Option.initSpin(allocator, "256", 0, 65535));
+    try tables.setTranspositionTableCapacity(allocator, 256);
     try options.put(allocator, "Threads", try Option.initSpin(allocator, "1", 1, 1));
     try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "PSQ var PSQ var Shannon", "PSQ"));
     try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
@@ -94,8 +96,8 @@ pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnman
 
 pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io.Writer) !void {
     var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
-    defer deinitOptions(allocator, &options);
     try initOptions(allocator, &options);
+    defer deinitOptions(allocator, &options);
 
     var states: StateList = .empty;
     try states.ensureTotalCapacity(allocator, 1024); // Necessary because extending invalidates pointers
@@ -380,6 +382,8 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
     g_stop.store(false, .release);
 
     limits.start = types.now();
+
+    try tables.setTranspositionTableCapacity(allocator, try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10));
 
     while (tokens.next()) |token_name| {
         // Needs to be the last command on the line
