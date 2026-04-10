@@ -181,7 +181,6 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     interface.seldepth = 0;
     interface.transposition_used = 0;
     tables.history = @splat(@splat(0));
-    try tables.setTranspositionTableCapacity(allocator, try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10));
 
     if (limits.movetime > 0) {
         interface.remaining = limits.movetime * 30;
