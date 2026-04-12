@@ -431,7 +431,7 @@ pub const Position = struct {
         self.state = self.state.previous.?;
     }
 
-    pub fn isLegal(noalias self: *Position, move: Move) bool {
+    pub fn isPseudoLegal(noalias self: *Position, move: Move) bool {
         const from: Square = move.getFrom();
         const to: Square = move.getTo();
         const flags: MoveFlags = move.getFlags();
@@ -450,10 +450,14 @@ pub const Position = struct {
         if (from == to or from_piece == .none or from_piece.pieceToColor() != turn)
             return false;
 
+        // Pieces colors (if there are two) have to be disjoint
+        if (bb_us & (from_bb | to_bb) != from_bb)
+            return false;
+
         // TODO: Check not pinned or moving inside pin
 
         if (move.isCastle()) {
-            if (self.state.checkers != 0)
+            if (self.state.checkers != 0 or from_piece.pieceToPieceType() != .king)
                 return false;
 
             switch (flags) {
@@ -486,10 +490,6 @@ pub const Position = struct {
 
             return true;
         }
-
-        // Pieces colors (if there are two) have to be disjoint
-        if (bb_us & (from_bb | to_bb) != from_bb)
-            return false;
 
         // Double check is king move
         if (@popCount(self.state.checkers) > 1) {

@@ -55,15 +55,15 @@ pub const MovePick = struct {
                 //     }
                 // }
 
-                // TODO: isLegal
+                // TODO: isPseudoLegal
                 if (self.tt_move.isCapture() and pos.board[self.tt_move.getTo().index()] == .none) {
-                    if (pos.isLegal(self.tt_move)) {
+                    if (pos.isPseudoLegal(self.tt_move)) {
                         pos.printDebug();
                         self.tt_move.printUCIDebug();
                         std.debug.print("move {}\n", .{self.tt_move});
                     }
                 }
-                if (pos.isLegal(self.tt_move))
+                if (pos.isPseudoLegal(self.tt_move))
                     return self.tt_move;
             }
 

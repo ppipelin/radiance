@@ -100,7 +100,7 @@ test "MoveUnmovePiece" {
     try expectEqualSlices(u8, position.start_fen, computed_fen);
 }
 
-test "isLegal" {
+test "isPseudoLegal" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
@@ -108,10 +108,10 @@ test "isLegal" {
     const fen: []const u8 = "rnbqk2r/ppppbppp/4pn2/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 1 4";
     var pos: position.Position = try position.Position.setFen(&s, fen);
 
-    try std.testing.expect(!pos.isLegal(.{ .flags = 4, .from = 44, .to = 35 }));
+    try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 4, .from = 44, .to = 35 }));
 }
 
-test "isLegalBatch" {
+test "isPseudoLegalBatch" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
@@ -119,7 +119,7 @@ test "isLegalBatch" {
     const fen: []const u8 = position.start_fen;
     var pos: position.Position = try position.Position.setFen(&s, fen);
 
-    try std.testing.expect(!pos.isLegal(.{ .flags = 4, .from = 44, .to = 35 }));
+    try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 4, .from = 44, .to = 35 }));
 
     var move_list: [types.max_moves]types.Move = @splat(.none);
     var move_len: usize = 0;
@@ -139,7 +139,7 @@ test "isLegalBatch" {
                 continue;
 
             const move: types.Move = types.Move.init(.quiet, sq1, sq2);
-            if (pos.isLegal(move)) {}
+            if (pos.isPseudoLegal(move)) {}
         }
     }
 }
