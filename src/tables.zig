@@ -191,6 +191,7 @@ pub var moves_rook: [types.board_size2]std.AutoHashMapUnmanaged(Bitboard, Bitboa
 pub var pseudo_legal_attacks: [PieceType.nb()][types.board_size2]Bitboard = @splat(@splat(0));
 pub var pawn_attacks: [Color.nb()][types.board_size2]Bitboard = @splat(@splat(0));
 
+/// Between does not include source squares while line does
 pub var squares_between: [types.board_size2][types.board_size2]Bitboard = @splat(@splat(0));
 pub var squares_line: [types.board_size2][types.board_size2]Bitboard = @splat(@splat(0));
 
