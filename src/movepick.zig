@@ -37,24 +37,6 @@ pub const MovePick = struct {
             }
 
             if (self.tt_move != types.Move.none) {
-                // Guard from collisions
-                // Uncomment for high collision rate
-                // const from_piece: types.Piece = pos.board[self.tt_move.getFrom().index()];
-                // const to_piece: types.Piece = pos.board[self.tt_move.getTo().index()];
-
-                // // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (self.tt_move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-                // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and ((to_piece == .none and (!self.tt_move.isCapture() or self.tt_move.isEnPassant())) or (to_piece != .none and self.tt_move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-                //     const attacks: types.Bitboard = switch (pos.state.turn) {
-                //         inline else => |turn| switch (from_piece.pieceToPieceType()) {
-                //             .none => unreachable,
-                //             inline else => |pt_current| tables.getAttacks(pt_current, turn, self.tt_move.getFrom(), pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]),
-                //         },
-                //     } & ~pos.bb_colors[pos.state.turn.index()];
-                //     if (attacks & self.tt_move.getTo().sqToBB() >= 1) {
-                //         return self.tt_move;
-                //     }
-                // }
-
                 if (pos.isPseudoLegal(self.tt_move) and pos.isLegal(self.tt_move))
                     return self.tt_move;
             }
