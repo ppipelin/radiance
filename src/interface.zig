@@ -512,7 +512,6 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: 
     var buffer: [64]u8 = undefined;
     const w: std.Io.Writer.Discarding = .init(&buffer);
     var stdout_discarding: std.Io.Writer = w.writer;
-    try stdout_discarding.print("this is ignored: {d}\n", .{123});
 
     var total_nodes: u64 = 0;
 
@@ -580,7 +579,11 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: 
         const input = "depth 11";
         var tokens = std.mem.tokenizeScalar(u8, input, ' ');
 
-        try cmd_go(allocator, &stdout_discarding, &pos, &tokens, options);
+        if (verbose) {
+            try cmd_go(allocator, stdout, &pos, &tokens, options);
+        } else {
+            try cmd_go(allocator, &stdout_discarding, &pos, &tokens, options);
+        }
         total_nodes += interface.nodes_searched;
     }
 
