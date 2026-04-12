@@ -523,16 +523,6 @@ pub const Position = struct {
                 if (self.board[from.add(if (turn == .white) .north_north else .south_south).index()] != .none)
                     return false;
             } else {
-                switch (turn) {
-                    .white => if (to_rank == .r8 and !move.isPromotion()) return false,
-                    .black => if (to_rank == .r1 and !move.isPromotion()) return false,
-                }
-
-                switch (turn) {
-                    .white => if (to_rank == .r1) return false,
-                    .black => if (to_rank == .r8) return false,
-                }
-
                 // Did something different from advancing a rank
                 switch (turn) {
                     .white => if (from_rank.index() != to_rank.index() - 1) return false,
@@ -543,6 +533,11 @@ pub const Position = struct {
                     switch (turn) {
                         .white => if (to_rank != .r8) return false,
                         .black => if (to_rank != .r1) return false,
+                    }
+                } else {
+                    switch (turn) {
+                        .white => if (to_rank == .r8) return false,
+                        .black => if (to_rank == .r1) return false,
                     }
                 }
             }
