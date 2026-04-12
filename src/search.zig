@@ -853,10 +853,15 @@ fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
 fn info(stdout: *std.Io.Writer, limits: interface.Limits, depth: types.Depth, score: types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const time: u64 = @intCast(elapsed(limits));
 
-    const hash_size: u16 = try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10);
+    const hash_size: u128 = @divTrunc(try std.fmt.parseInt(u128, options.get("Hash").?.current_value, 10) * 1_000_000, @sizeOf(tables.TranspositionEntry));
     var hashfull: u128 = 0;
-    if (hash_size > 0) {
-        hashfull = @divTrunc(@as(u128, tables.transposition_table_size) * @sizeOf(tables.TranspositionEntry) * 1000, @as(u128, hash_size) * 1_000_000);
+    if (hash_size > 1000) {
+        for (0..1000) |i| {
+            if (tables.transposition_table.tt[i].bound != .none)
+                hashfull += 1;
+        }
+    } else {
+        hashfull = 1000;
     }
 
     try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, interface.seldepth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, hashfull });

@@ -47,7 +47,7 @@ pub const TranspositionEntry = struct {
     depth: Depth,
     move: Move,
     bound: TableBound,
-    key16: u16, // Could be compressed to a smaller part of key
+    key16: u16,
 
     pub const empty: @This() = .{
         .value = 0,
@@ -58,9 +58,8 @@ pub const TranspositionEntry = struct {
     };
 
     pub inline fn reduce(key: Key) u16 {
-        // return @intCast(key & 0xff);
-        // return @intCast(key & 0xffff);
-        return @intCast(key >> (64 - 16));
+        return @intCast(key & 0xffff);
+        // return @intCast(key >> (64 - 16));
     }
 
     pub inline fn isEqualKey(self: @This(), key: Key) bool {
@@ -70,19 +69,17 @@ pub const TranspositionEntry = struct {
 
 pub inline fn transpositionIndex(key: Key) usize {
     // Multiplicative hashing
-    // return @intCast((@as(u128, key) * transposition_table.len) >> 64);
+    // return @intCast((@as(u128, key) * transposition_table.tt.len) >> 64);
 
     // Wrapping multiplicative hashing
-    // return key *% transposition_table.len;
+    // return key *% transposition_table.tt.len;
 
     // Multiplicative hashing edited
     // const key_ = @as(u128, key) ^ (@as(u128, key) >> 64);
-    // return @intCast(key_ * transposition_table.len >> 64);
+    // return @intCast(key_ * transposition_table.tt.len >> 64);
 
     // Division hashing
     return key % transposition_table.tt.len;
-
-    // return key *% transposition_table.len;
 }
 
 pub fn readTranspositionTable(key: Key) TranspositionEntry {
