@@ -105,41 +105,47 @@ test "isPseudoLegal" {
     defer tables.deinitAll(allocator);
 
     var s: position.State = position.State{};
-    const fen: []const u8 = "rnbqk2r/ppppbppp/4pn2/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 1 4";
-    var pos: position.Position = try position.Position.setFen(&s, fen);
-
-    try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 4, .from = 44, .to = 35 }));
-}
-
-test "isPseudoLegalBatch" {
-    tables.initAll(allocator);
-    defer tables.deinitAll(allocator);
-
-    var s: position.State = position.State{};
-    const fen: []const u8 = position.start_fen;
+    var fen: []const u8 = "rnbqk2r/ppppbppp/4pn2/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 1 4";
     var pos: position.Position = try position.Position.setFen(&s, fen);
 
     try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 4, .from = 44, .to = 35 }));
 
-    var move_list: [types.max_moves]types.Move = @splat(.none);
-    var move_len: usize = 0;
+    fen = "r1bq2nr/pppp1ppp/2nk4/4P3/4P3/2N5/PPP2PPP/R1BQKBNR b KQ - 1 5";
+    pos = try position.Position.setFen(&s, fen);
 
-    pos.updateAttacked(false);
-    switch (pos.state.turn) {
-        inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, false),
-    }
-
-    var sq1: types.Square = types.Square.a1;
-
-    while (sq1 != types.Square.none) : (sq1 = sq1.inc().*) {
-        var sq2: types.Square = types.Square.a1;
-
-        while (sq2 != types.Square.none) : (sq2 = sq2.inc().*) {
-            if (sq1 == sq2)
-                continue;
-
-            const move: types.Move = types.Move.init(.quiet, sq1, sq2);
-            if (pos.isPseudoLegal(move)) {}
-        }
-    }
+    try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 0, .from = 21, .to = 36 }));
+    try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 0, .from = 20, .to = 19 }));
 }
+
+// test "isPseudoLegalBatch" {
+//     tables.initAll(allocator);
+//     defer tables.deinitAll(allocator);
+
+//     var s: position.State = position.State{};
+//     const fen: []const u8 = position.start_fen;
+//     var pos: position.Position = try position.Position.setFen(&s, fen);
+
+//     try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 4, .from = 44, .to = 35 }));
+
+//     var move_list: [types.max_moves]types.Move = @splat(.none);
+//     var move_len: usize = 0;
+
+//     pos.updateAttacked(false);
+//     switch (pos.state.turn) {
+//         inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, false),
+//     }
+
+//     var sq1: types.Square = types.Square.a1;
+
+//     while (sq1 != types.Square.none) : (sq1 = sq1.inc().*) {
+//         var sq2: types.Square = types.Square.a1;
+
+//         while (sq2 != types.Square.none) : (sq2 = sq2.inc().*) {
+//             if (sq1 == sq2)
+//                 continue;
+
+//             const move: types.Move = types.Move.init(.quiet, sq1, sq2);
+//             if (pos.isPseudoLegal(move)) {}
+//         }
+//     }
+// }

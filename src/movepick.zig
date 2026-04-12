@@ -29,7 +29,7 @@ pub const MovePick = struct {
     pub fn nextMove(noalias self: *MovePick, noalias pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
-
+            pos.updateAttacked(is_960);
             // PV move replaces transposition table move
             if (pv_move != types.Move.none) {
                 self.tt_move = pv_move;
@@ -55,51 +55,13 @@ pub const MovePick = struct {
                 //     }
                 // }
 
-                // TODO: isPseudoLegal
-                if (self.tt_move.isCapture() and pos.board[self.tt_move.getTo().index()] == .none) {
-                    if (pos.isPseudoLegal(self.tt_move)) {
-                        pos.printDebug();
-                        self.tt_move.printUCIDebug();
-                        std.debug.print("move {}\n", .{self.tt_move});
-                    }
-                }
-                if (pos.isPseudoLegal(self.tt_move))
+                if (pos.isPseudoLegal(self.tt_move) and pos.isLegal(self.tt_move))
                     return self.tt_move;
             }
-
-            // Most likely useless since tt_move was searched in abSearch
-            // const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(pos.state.material_key);
-            // const tt_hit: bool = tt_entry.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
-
-            // if (false and tt_hit) {
-            //     const move: types.Move = tt_entry.move;
-            //     if (self.stage == 1 or (self.stage == 11 and move.isCapture())) {
-            //         // Guard from collisions
-            //         // Uncomment for high collision rate
-            //         // const from_piece: types.Piece = pos.board[move.getFrom().index()];
-            //         // const to_piece: types.Piece = pos.board[move.getTo().index()];
-            //         // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and ((to_piece == .none and (!move.isCapture() or move.isEnPassant())) or (to_piece != .none and move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-            //         // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-            //         //     const attacks: types.Bitboard = switch (pos.state.turn) {
-            //         //         inline else => |turn| switch (from_piece.pieceToPieceType()) {
-            //         //             .none => unreachable,
-            //         //             inline else => |pt_current| tables.getAttacks(pt_current, turn, move.getFrom(), pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]),
-            //         //         },
-            //         //     } & ~pos.bb_colors[pos.state.turn.index()];
-
-            //         //     if (attacks & move.getTo().sqToBB() >= 1) {
-            //         self.tt_move = move;
-            //         return move;
-            //         // }
-            //         // }
-            //     }
-            // }
         }
 
         // Capture init
         if (self.stage == 1 or self.stage == 11) {
-            pos.updateAttacked(is_960);
-
             switch (pos.state.turn) {
                 inline else => |turn| pos.generateLegalMoves(.capture, turn, &self.moves_capture, &self.capture_len, is_960),
             }

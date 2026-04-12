@@ -54,14 +54,14 @@ const CastleInfo = enum(u4) {
 
 pub const State = struct {
     turn: Color = Color.white,
-    castle_info: CastleInfo = CastleInfo.none,
+    castle_info: CastleInfo = CastleInfo.none, // QKqk
     repetition: i7 = 0, // Zero if no repetition, x positive if happened once x half moves ago, negative indicates repetition
     half_move: u8 = 0,
     full_move: u32 = 1,
     en_passant: Square = Square.none,
     checkers: Bitboard = 0, // Bitboard of checkers on our king for current turn
     pinned: [Color.nb()]Bitboard = .{ 0, 0 },
-    attacked: Bitboard = 0,
+    attacked: Bitboard = 0, // Ignores king
     attacked_horizontal: Bitboard = 0,
     last_captured_piece: Piece = Piece.none,
     static_eval: Value = types.value_none,
@@ -78,6 +78,7 @@ pub const Position = struct {
     bb_colors: [Color.nb()]Bitboard = @splat(0),
 
     // Rook initial positions are recorded for 960
+    // QKqk
     rook_initial: [4]Square = [_]Square{ Square.none, Square.none, Square.none, Square.none },
 
     // Score
@@ -454,8 +455,6 @@ pub const Position = struct {
         if (bb_us & (from_bb | to_bb) != from_bb)
             return false;
 
-        // TODO: Check not pinned or moving inside pin
-
         if (move.isCastle()) {
             if (self.state.checkers != 0 or from_piece.pieceToPieceType() != .king)
                 return false;
@@ -484,11 +483,26 @@ pub const Position = struct {
                 else => unreachable,
             }
 
-            // Check in between pieces
-            if (tables.squares_line[from.index()][to.index()] & (bb_all) != 0)
-                return false;
+            // // Assert path is clear
+            // if (tables.squares_line[from.index()][to.index()] & (bb_all) != 0)
+            //     return false;
 
-            return true;
+            // // Ray cast from path of castle
+            // var current_king = our_king;
+            // const target_king: Square = if (flags == .ooo) Square.c1.relativeSquare(turn) else Square.g1.relativeSquare(turn);
+            // const d: Direction = if (flags == .ooo) .west else .east;
+
+            // while (current_king != target_king) {
+            //     current_king = current_king.add(d);
+            //     const attackers = switch (turn_them) {
+            //         inline else => |t| tables.getAttackers(self.*, t, current_king, bb_all),
+            //     };
+            //     if (attackers != 0)
+            //         return false;
+            // }
+
+            // Assert path is clear and not attacked
+            return (tables.squares_between[from.index()][to.index()] & bb_all) != 0 and (tables.squares_between[from.index()][to.index()] & self.state.attacked) == 0;
         }
 
         // Double check is king move
@@ -496,12 +510,16 @@ pub const Position = struct {
             if (from_piece.pieceToPieceType() != .king)
                 return false;
 
-            switch (turn) {
-                inline else => |t| return (tables.getAttacks(.king, t, from, bb_all) & to_bb) != 0,
-            }
+            // switch (turn) {
+            //     inline else => |t| return (tables.getAttacks(.king, t, from, bb_all) & to_bb) != 0,
+            // }
         }
+
         if (from_piece.pieceToPieceType() == .pawn) {
             if (move.isEnPassant()) {
+                if (self.state.en_passant == .none)
+                    return false;
+
                 const ep_piece: Piece = self.board[self.state.en_passant.index()];
                 if (ep_piece == .none or ep_piece.pieceToColor() == turn) {
                     return false;
@@ -523,45 +541,29 @@ pub const Position = struct {
                 if (self.board[from.add(if (turn == .white) .north_north else .south_south).index()] != .none)
                     return false;
             } else {
-                // Did something different from advancing a rank
-                switch (turn) {
-                    .white => if (from_rank.index() != to_rank.index() - 1) return false,
-                    .black => if (from_rank.index() != to_rank.index() + 1) return false,
-                }
-
                 if (move.isPromotion()) {
                     switch (turn) {
                         .white => if (to_rank != .r8) return false,
                         .black => if (to_rank != .r1) return false,
                     }
+                    // if (to_rank != .r1 and to_rank != .r8) return false;
                 } else {
-                    switch (turn) {
-                        .white => if (to_rank == .r8) return false,
-                        .black => if (to_rank == .r1) return false,
-                    }
+                    if (to_rank == .r1 or to_rank == .r8) return false;
+                }
+
+                // Did something different from advancing a rank
+                switch (turn) {
+                    .white => if (from_rank.index() != to_rank.index() - 1) return false,
+                    .black => if (from_rank.index() != to_rank.index() + 1) return false,
                 }
             }
 
             if (!move.isCapture()) {
-                if (self.board[from.add(if (turn == .white) .north else .south).index()] != .none)
-                    return false;
-            } else {
-                // Already returned if en passant
-                if (to_piece == .none)
-                    return false;
-
-                // Already returned if promotion
-                switch (turn) {
-                    .white => if (from.add(.north_east) != to or from.add(.north_west) != to) return false,
-                    .black => if (from.add(.south_east) != to or from.add(.south_west) != to) return false,
-                }
+                return self.board[from.add(if (turn == .white) .north else .south).index()] == .none;
             }
-            return true;
         }
 
-        // King castles and pawn moves already returned
-        if (flags != .capture or flags != .quiet)
-            return false;
+        std.debug.assert(from_piece.pieceToPieceType() != .pawn or move.isCapture());
 
         // WARNING: King move can be pinned in chess 960 with caslte
         // TODO: Pawn pinning and deal with en passant
@@ -574,12 +576,86 @@ pub const Position = struct {
         if (move.isCapture() and to_piece == .none)
             return false;
 
+        // Assert studied piece can do this move pseudo legally
         switch (from_piece.pieceToPieceType()) {
-            .pawn, .king => unreachable,
             inline else => |pt| switch (turn) {
                 inline else => |t| return (to_bb & (tables.getAttacks(pt, t, from, bb_all) & ~bb_us)) != 0,
             },
         }
+    }
+
+    /// Need move to be pseudo legal
+    pub fn isLegal(noalias self: *Position, move: Move) bool {
+        const from: Square = move.getFrom();
+        const to: Square = move.getTo();
+        const flags: MoveFlags = move.getFlags();
+
+        const from_bb: Bitboard = from.sqToBB();
+        const to_bb: Bitboard = to.sqToBB();
+
+        const from_piece: Piece = self.board[from.index()];
+
+        const turn: Color = self.state.turn;
+        const turn_them: Color = turn.invert();
+
+        const bb_us: Bitboard = self.bb_colors[turn.index()];
+        const bb_them: Bitboard = self.bb_colors[turn.invert().index()];
+        const bb_all: Bitboard = bb_us | bb_them;
+
+        const our_king: Square = @enumFromInt(types.lsb(self.bb_pieces[PieceType.king.index()]));
+
+        // Cannot move to attacked square and has to evade if in check
+        if (from_piece.pieceToPieceType() == .king) {
+            return to_bb & self.state.attacked == 0;
+        } else {
+            // if (our_king.sqToBB() & self.state.attacked != 0) {
+            //     // Test if non-king move prevents check
+            //     if (tables.getAttackersAll(self.*, our_king, bb_all ^ from_bb | to_bb) & ~(bb_us ^ from_bb | to_bb) != 0)
+            //         return false;
+            // }
+
+            std.debug.assert(@popCount(self.state.checkers) <= 1);
+
+            // Can be simplified, there is only one checker since non-king move : we have to go between checker and king, or take attacker
+            // Added special cas for en pasant if the pawn is the checker
+            if (self.state.checkers != 0) {
+                const attacker: Square = @enumFromInt(types.lsb(self.state.checkers));
+                if (move.isEnPassant() and to == self.state.en_passant and self.state.en_passant.add(if (turn == .white) .south else .north) == attacker)
+                    return false;
+                if (to_bb & (tables.squares_between[our_king.index()][attacker.index()] | attacker.sqToBB()) == 0)
+                    return false;
+            }
+        }
+
+        if (move.isEnPassant()) {
+            const blockers: Bitboard = (bb_all ^ self.state.en_passant.sqToBB() ^ from_bb) | to_bb;
+            // Ray cast from king
+            switch (turn_them) {
+                inline else => |t| return tables.getAttacks(.bishop, t, our_king, blockers) & (bb_them & (self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()])) == 0 and
+                    tables.getAttacks(.rook, t, our_king, blockers) & (bb_them & (self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()])) == 0,
+            }
+        } else if (move.isCastle()) {
+            // Check rook not pinned (for chess 960)
+            const rook_sq: Square = switch (flags) {
+                .ooo => switch (self.state.turn) {
+                    .white => self.rook_initial[0],
+                    .black => self.rook_initial[2],
+                },
+                .oo => switch (self.state.turn) {
+                    .white => self.rook_initial[1],
+                    .black => self.rook_initial[3],
+                },
+                else => unreachable,
+            };
+            return (to_bb & self.state.attacked) == 0 and (rook_sq.sqToBB() & self.state.pinned[turn.index()]) == 0;
+        }
+
+        // Non king moves are possible if non pinned or moving in line
+        if (from_bb & self.state.pinned[turn.index()] != 0) {
+            return (to_bb & tables.squares_line[our_king.index()][from.index()]) != 0;
+        }
+
+        return true;
     }
 
     pub fn updateCheckersPinned(noalias self: *Position) void {
