@@ -483,24 +483,6 @@ pub const Position = struct {
                 else => unreachable,
             }
 
-            // // Assert path is clear
-            // if (tables.squares_line[from.index()][to.index()] & (bb_all) != 0)
-            //     return false;
-
-            // // Ray cast from path of castle
-            // var current_king = our_king;
-            // const target_king: Square = if (flags == .ooo) Square.c1.relativeSquare(turn) else Square.g1.relativeSquare(turn);
-            // const d: Direction = if (flags == .ooo) .west else .east;
-
-            // while (current_king != target_king) {
-            //     current_king = current_king.add(d);
-            //     const attackers = switch (turn_them) {
-            //         inline else => |t| tables.getAttackers(self.*, t, current_king, bb_all),
-            //     };
-            //     if (attackers != 0)
-            //         return false;
-            // }
-
             // Assert path is clear and not attacked
             return (tables.squares_between[from.index()][to.index()] & bb_all) != 0 and (tables.squares_between[from.index()][to.index()] & self.state.attacked) == 0;
         }
@@ -509,10 +491,6 @@ pub const Position = struct {
         if (@popCount(self.state.checkers) > 1) {
             if (from_piece.pieceToPieceType() != .king)
                 return false;
-
-            // switch (turn) {
-            //     inline else => |t| return (tables.getAttacks(.king, t, from, bb_all) & to_bb) != 0,
-            // }
         }
 
         if (from_piece.pieceToPieceType() == .pawn) {
@@ -529,6 +507,7 @@ pub const Position = struct {
                     inline else => |t| return (tables.getAttacks(.pawn, t, from, bb_all) & self.state.en_passant.sqToBB()) != 0,
                 }
             }
+
             const from_rank: Rank = from.rank();
             const to_rank: Rank = to.rank();
 
@@ -565,14 +544,6 @@ pub const Position = struct {
 
         std.debug.assert(from_piece.pieceToPieceType() != .pawn or move.isCapture());
 
-        // WARNING: King move can be pinned in chess 960 with caslte
-        // TODO: Pawn pinning and deal with en passant
-        // if (self.state.pinned[turn] & from_bb != 0) {
-        //     const our_king: Square = types.lsb(self.bb_pieces[PieceType.king.index()]);
-        //     if (tables.squares_line[from.index()][to.index()] | tables.squares_line[from.index()][our_king.index()] == 0)
-        //         return false;
-        // }
-
         if (move.isCapture() and to_piece == .none)
             return false;
 
@@ -608,18 +579,13 @@ pub const Position = struct {
         if (from_piece.pieceToPieceType() == .king) {
             return to_bb & self.state.attacked == 0;
         } else {
-            // if (our_king.sqToBB() & self.state.attacked != 0) {
-            //     // Test if non-king move prevents check
-            //     if (tables.getAttackersAll(self.*, our_king, bb_all ^ from_bb | to_bb) & ~(bb_us ^ from_bb | to_bb) != 0)
-            //         return false;
-            // }
-
             std.debug.assert(@popCount(self.state.checkers) <= 1);
 
-            // Can be simplified, there is only one checker since non-king move : we have to go between checker and king, or take attacker
-            // Added special cas for en pasant if the pawn is the checker
+            // Can be simplified, there is only one checker since non-king move :
+            // We have to go between checker and king, or take attacker
             if (self.state.checkers != 0) {
                 const attacker: Square = @enumFromInt(types.lsb(self.state.checkers));
+                // Added special case for en passant if the pawn is the checker
                 if (move.isEnPassant() and to == self.state.en_passant and self.state.en_passant.add(if (turn == .white) .south else .north) == attacker)
                     return false;
                 if (to_bb & (tables.squares_between[our_king.index()][attacker.index()] | attacker.sqToBB()) == 0)
