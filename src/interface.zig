@@ -316,6 +316,9 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
             } else if (value_parsed < option.min) {
                 return error.LowerBoundBreached;
             }
+            if (std.ascii.eqlIgnoreCase(name, "Hash")) {
+                try tables.setTranspositionTableCapacity(try std.fmt.parseInt(usize, value, 10));
+            }
 
             // If option name is tunable edit variable.tunables
             // tunables are only spin
@@ -382,8 +385,6 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
     g_stop.store(false, .release);
 
     limits.start = types.now();
-
-    try tables.setTranspositionTableCapacity(try std.fmt.parseInt(u16, options.get("Hash").?.current_value, 10));
 
     while (tokens.next()) |token_name| {
         // Needs to be the last command on the line

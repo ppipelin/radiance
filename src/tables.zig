@@ -116,7 +116,7 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
     // - Different hash
     // - Different age (TODO)
     // - Lower depth
-    // if (entry.bound == .none or (bound == .exact or key != entry.key or entry.depth <= depth + 4)) {
+    // if (entry.bound == .none or (bound == .exact or !entry.isEqualKey(key) or entry.depth <= depth + 4)) {
 
     // WIP: Always replace for now
 
