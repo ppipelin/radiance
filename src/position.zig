@@ -455,6 +455,12 @@ pub const Position = struct {
         if (bb_us & (from_bb | to_bb) != from_bb)
             return false;
 
+        // Double check is king move
+        if (@popCount(self.state.checkers) > 1) {
+            if (from_piece.pieceToPieceType() != .king)
+                return false;
+        }
+
         if (move.isCastle()) {
             if (self.state.checkers != 0 or from_piece.pieceToPieceType() != .king)
                 return false;
@@ -487,19 +493,13 @@ pub const Position = struct {
             return (tables.squares_between[from.index()][to.index()] & bb_all) != 0 and (tables.squares_between[from.index()][to.index()] & self.state.attacked) == 0;
         }
 
-        // Double check is king move
-        if (@popCount(self.state.checkers) > 1) {
-            if (from_piece.pieceToPieceType() != .king)
-                return false;
-        }
-
         if (from_piece.pieceToPieceType() == .pawn) {
             if (move.isEnPassant()) {
                 if (self.state.en_passant == .none)
                     return false;
 
-                const ep_piece: Piece = self.board[self.state.en_passant.index()];
-                if (ep_piece == .none or ep_piece.pieceToColor() == turn) {
+                const ep_piece: Piece = self.board[self.state.en_passant.add(if (turn == .white) .south else .north).index()];
+                if (!(turn == .white and ep_piece == .b_pawn) or (turn == .black and ep_piece == .w_pawn)) {
                     return false;
                 }
 
@@ -537,6 +537,8 @@ pub const Position = struct {
             }
 
             if (!move.isCapture()) {
+                if (from.file() != to.file())
+                    return false;
                 return self.board[from.add(if (turn == .white) .north else .south).index()] == .none;
             }
         }
@@ -576,18 +578,35 @@ pub const Position = struct {
 
         // Cannot move to attacked square and has to evade if in check
         if (from_piece.pieceToPieceType() == .king) {
+            if (move.isCastle()) {
+                // Check rook not pinned (for chess 960)
+                const rook_sq: Square = switch (flags) {
+                    .ooo => switch (self.state.turn) {
+                        .white => self.rook_initial[0],
+                        .black => self.rook_initial[2],
+                    },
+                    .oo => switch (self.state.turn) {
+                        .white => self.rook_initial[1],
+                        .black => self.rook_initial[3],
+                    },
+                    else => unreachable,
+                };
+                return (to_bb & self.state.attacked) == 0 and (rook_sq.sqToBB() & self.state.pinned[turn.index()]) == 0;
+            }
+
             return to_bb & self.state.attacked == 0;
         } else {
             std.debug.assert(@popCount(self.state.checkers) <= 1);
 
-            // Can be simplified, there is only one checker since non-king move :
+            // There is only one checker since non-king move :
             // We have to go between checker and king, or take attacker
             if (self.state.checkers != 0) {
                 const attacker: Square = @enumFromInt(types.lsb(self.state.checkers));
                 // Added special case for en passant if the pawn is the checker
-                if (move.isEnPassant() and to == self.state.en_passant and self.state.en_passant.add(if (turn == .white) .south else .north) == attacker)
-                    return false;
-                if (to_bb & (tables.squares_between[our_king.index()][attacker.index()] | attacker.sqToBB()) == 0)
+                if (move.isEnPassant() and self.state.en_passant.add(if (turn == .white) .south else .north) == attacker) {
+                    if (to != self.state.en_passant)
+                        return false;
+                } else if (to_bb & (tables.squares_between[our_king.index()][attacker.index()] | attacker.sqToBB()) == 0)
                     return false;
             }
         }
@@ -599,20 +618,6 @@ pub const Position = struct {
                 inline else => |t| return tables.getAttacks(.bishop, t, our_king, blockers) & (bb_them & (self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()])) == 0 and
                     tables.getAttacks(.rook, t, our_king, blockers) & (bb_them & (self.bb_pieces[PieceType.rook.index()] | self.bb_pieces[PieceType.queen.index()])) == 0,
             }
-        } else if (move.isCastle()) {
-            // Check rook not pinned (for chess 960)
-            const rook_sq: Square = switch (flags) {
-                .ooo => switch (self.state.turn) {
-                    .white => self.rook_initial[0],
-                    .black => self.rook_initial[2],
-                },
-                .oo => switch (self.state.turn) {
-                    .white => self.rook_initial[1],
-                    .black => self.rook_initial[3],
-                },
-                else => unreachable,
-            };
-            return (to_bb & self.state.attacked) == 0 and (rook_sq.sqToBB() & self.state.pinned[turn.index()]) == 0;
         }
 
         // Non king moves are possible if non pinned or moving in line
