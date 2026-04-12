@@ -364,7 +364,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             }
 
             // At non-PV nodes check for early transposition table cutoff
-            if (tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
+            if ((tt_bound == types.TableBound.lowerbound and tt_value >= beta) or (tt_bound == types.TableBound.upperbound and tt_value < alpha)) {
 
                 // TODO: Update histories
 
