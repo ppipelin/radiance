@@ -39,24 +39,24 @@ pub const MovePick = struct {
             if (self.tt_move != types.Move.none)
                 return self.tt_move;
 
-            const found: ?std.meta.Tuple(&[_]type{ types.Value, types.Depth, types.Move, types.TableBound }) = tables.transposition_table.get(pos.state.material_key);
-            if (found != null) {
-                const move: types.Move = found.?[2];
-                if (self.stage == 1 or (self.stage == 11 and move.isCapture())) {
-                    // Guard from collisions
-                    // Uncomment for high collision rate
-                    // const from_piece: types.Piece = pos.board[move.getFrom().index()];
-                    // const to_piece: types.Piece = pos.board[move.getTo().index()];
-                    // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and ((to_piece == .none and (!move.isCapture() or move.isEnPassant())) or (to_piece != .none and move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-                    // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-                    // const attacks: types.Bitboard = tables.getAttacks(from_piece.pieceToPieceType(), pos.state.turn, move.getFrom(), pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]) & ~pos.bb_colors[pos.state.turn.index()];
-                    // if (attacks & move.getTo().sqToBB() >= 1) {
-                    self.tt_move = move;
-                    return move;
-                    // }
-                    // }
-                }
-            }
+            // const found: ?std.meta.Tuple(&[_]type{ types.Value, types.Depth, types.Move, types.TableBound }) = tables.transposition_table.get(pos.state.material_key);
+            // if (found != null) {
+            //     const move: types.Move = found.?[2];
+            //     if (self.stage == 1 or (self.stage == 11 and move.isCapture())) {
+            //         // Guard from collisions
+            //         // Uncomment for high collision rate
+            //         // const from_piece: types.Piece = pos.board[move.getFrom().index()];
+            //         // const to_piece: types.Piece = pos.board[move.getTo().index()];
+            //         // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and ((to_piece == .none and (!move.isCapture() or move.isEnPassant())) or (to_piece != .none and move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
+            //         // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
+            //         // const attacks: types.Bitboard = tables.getAttacks(from_piece.pieceToPieceType(), pos.state.turn, move.getFrom(), pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]) & ~pos.bb_colors[pos.state.turn.index()];
+            //         // if (attacks & move.getTo().sqToBB() >= 1) {
+            //         self.tt_move = move;
+            //         return move;
+            //         // }
+            //         // }
+            //     }
+            // }
         }
 
         // Capture init
