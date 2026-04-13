@@ -47,7 +47,7 @@ pub const TranspositionEntry = struct {
     depth: Depth,
     move: Move,
     bound: TableBound,
-    key16: u8, // Could be compressed to a smaller part of key
+    key16: u16, // Could be compressed to a smaller part of key
 
     pub const empty: @This() = .{
         .value = 0,
@@ -57,8 +57,10 @@ pub const TranspositionEntry = struct {
         .key16 = 0,
     };
 
-    pub inline fn reduce(key: Key) u8 {
-        return @intCast(key & 0xff);
+    pub inline fn reduce(key: Key) u16 {
+        // return @intCast(key & 0xff);
+        // return @intCast(key & 0xffff);
+        return @intCast(key >> (64 - 16));
     }
 
     pub inline fn isEqualKey(self: @This(), key: Key) bool {
