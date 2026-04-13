@@ -521,7 +521,10 @@ pub const Position = struct {
                     return false;
             } else {
                 if (move.isPromotion()) {
-                    if (to_rank != .r1 and to_rank != .r8) return false;
+                    switch (turn) {
+                        .white => if (to_rank != .r8) return false,
+                        .black => if (to_rank != .r1) return false,
+                    }
                 } else {
                     if (to_rank == .r1 or to_rank == .r8) return false;
                 }
