@@ -861,7 +861,7 @@ fn info(stdout: *std.Io.Writer, limits: interface.Limits, depth: types.Depth, sc
 
     try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, interface.seldepth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, hashfull });
 
-    if (@abs(score) > types.value_mate_in_max_depth) {
+    if (types.isValueMate(score)) {
         const mate_distance: types.Value = try std.math.divCeil(types.Value, types.value_mate - @as(types.Value, @intCast(@abs(score))), 2);
         try stdout.print("mate {} ", .{if (score > 0) mate_distance else -mate_distance});
     } else {
