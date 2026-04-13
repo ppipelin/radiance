@@ -39,6 +39,7 @@ pub const MovePick = struct {
             if (self.tt_move != types.Move.none) {
                 if (pos.isPseudoLegal(self.tt_move) and pos.isLegal(self.tt_move))
                     return self.tt_move;
+                self.tt_move = .none;
             }
         }
 
