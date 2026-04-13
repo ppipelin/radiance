@@ -814,7 +814,6 @@ pub fn seeGreaterEqual(pos: position.Position, move: types.Move, threshold: type
             see = tables.material[pt.index()] - see;
 
             if (see < @intFromBool(result)) {
-                std.debug.assert(pt != .queen);
                 break;
             }
 
