@@ -661,8 +661,8 @@ pub const Position = struct {
         while (candidates != 0) {
             const sq: Square = types.popLsb(&candidates);
             const bb_between: Bitboard = tables.squares_between[king_them.index()][sq.index()] & bb_them;
-            if (bb_between == 0)
-                self.printDebug();
+            // if (bb_between == 0)
+            //     self.printDebug();
 
             if ((bb_between & (bb_between - 1)) == 0) {
                 // Only one of our piece between king and slider: pinned
