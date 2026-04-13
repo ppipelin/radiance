@@ -120,9 +120,9 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
 
     // WIP: Always replace for now
 
-    if (entry.bound != .none and !entry.isEqualKey(key)) {
-        std.debug.print("collision for key {} and {}\n", .{ TranspositionEntry.reduce(key), entry.key16 });
-    }
+    // if (entry.bound != .none and !entry.isEqualKey(key)) {
+    //     std.debug.print("collision for key {} and {}\n", .{ TranspositionEntry.reduce(key), entry.key16 });
+    // }
 
     entry.key16 = TranspositionEntry.reduce(key);
     entry.value = score;

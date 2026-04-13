@@ -661,7 +661,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
     var tt_depth: types.Depth = 0;
     var tt_move: types.Move = .none;
     var tt_bound: types.TableBound = .upperbound;
-    if (false and tt_hit) {
+    if (tt_hit) {
         tt_value = tt_entry.value;
         tt_depth = tt_entry.depth;
         tt_move = tt_entry.move;
