@@ -340,11 +340,6 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
     // 4. Transposition table probe
     const key: tables.Key = pos.state.material_key;
-    // const key: tables.Key = pos.state.material_key ^ tables.hash_half_move[pos.state.half_move];
-    // const idx = pos.state.half_move / 8;
-    // const zero_mask: u64 = @intFromBool(idx != 0);
-    // const hm_xor: types.Bitboard = -%zero_mask & tables.hash_half_move[idx];
-    // const key: tables.Key = pos.state.material_key ^ hm_xor;
 
     const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
     const tt_hit: bool = tt_entry.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
@@ -352,7 +347,6 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     var tt_depth: types.Depth = 0;
     var tt_move: types.Move = .none;
     var tt_bound: types.TableBound = .upperbound;
-    // TODO: REMOVE?
     if (tt_hit) {
         tt_value = tt_entry.value;
         tt_depth = tt_entry.depth;

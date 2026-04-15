@@ -116,36 +116,3 @@ test "isPseudoLegal" {
     try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 0, .from = 21, .to = 36 }));
     try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 0, .from = 20, .to = 19 }));
 }
-
-// test "isPseudoLegalBatch" {
-//     tables.initAll(allocator);
-//     defer tables.deinitAll(allocator);
-
-//     var s: position.State = position.State{};
-//     const fen: []const u8 = position.start_fen;
-//     var pos: position.Position = try position.Position.setFen(&s, fen);
-
-//     try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 4, .from = 44, .to = 35 }));
-
-//     var move_list: [types.max_moves]types.Move = @splat(.none);
-//     var move_len: usize = 0;
-
-//     pos.updateAttacked(false);
-//     switch (pos.state.turn) {
-//         inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, false),
-//     }
-
-//     var sq1: types.Square = types.Square.a1;
-
-//     while (sq1 != types.Square.none) : (sq1 = sq1.inc().*) {
-//         var sq2: types.Square = types.Square.a1;
-
-//         while (sq2 != types.Square.none) : (sq2 = sq2.inc().*) {
-//             if (sq1 == sq2)
-//                 continue;
-
-//             const move: types.Move = types.Move.init(.quiet, sq1, sq2);
-//             if (pos.isPseudoLegal(move)) {}
-//         }
-//     }
-// }
