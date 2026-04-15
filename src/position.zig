@@ -451,9 +451,6 @@ pub const Position = struct {
         const bb_them: Bitboard = self.bb_colors[turn.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
 
-        if (from_piece.pieceToPieceType() != .queen)
-            return false;
-
         if (from == to or from_piece == .none or from_piece.pieceToColor() != turn)
             return false;
 
@@ -578,14 +575,6 @@ pub const Position = struct {
                 return self.board[to_sq.index()] == .none;
             }
         }
-
-        // Only pawn capture
-        if (move.isCastle())
-            std.debug.print("is caslte\n", .{});
-        if (move.isEnPassant())
-            std.debug.print("is isEnPassant\n", .{});
-        if (!(move.isCapture() or from_piece.pieceToPieceType() != .pawn))
-            std.debug.print("move.isCapture() or from_piece.pieceToPieceType() != .pawn\n", .{});
 
         std.debug.assert(!move.isCastle());
         std.debug.assert(!move.isEnPassant());
@@ -720,8 +709,6 @@ pub const Position = struct {
         while (candidates != 0) {
             const sq: Square = types.popLsb(&candidates);
             const bb_between: Bitboard = tables.squares_between[king_them.index()][sq.index()] & bb_them;
-            if (bb_between == 0)
-                self.printDebug();
 
             if ((bb_between & (bb_between - 1)) == 0) {
                 // Only one of our piece between king and slider: pinned
