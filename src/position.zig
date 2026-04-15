@@ -187,6 +187,8 @@ pub const Position = struct {
         var to_piece: Piece = self.board[to.index()];
 
         if (from_piece == Piece.none) {
+            self.printDebug();
+            std.debug.print("move {}\n", .{move});
             return error.MoveNone;
         }
 
@@ -448,11 +450,15 @@ pub const Position = struct {
         const bb_us: Bitboard = self.bb_colors[turn.index()];
         const bb_them: Bitboard = self.bb_colors[turn.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
+
+        if (from_piece.pieceToPieceType() != .queen)
+            return false;
+
         if (from == to or from_piece == .none or from_piece.pieceToColor() != turn)
             return false;
 
         // Pieces colors (if there are two) have to be disjoint
-        if (bb_us & (from_bb | to_bb) != from_bb)
+        if ((bb_us & (from_bb | to_bb)) != from_bb)
             return false;
 
         // Double check is king move
@@ -464,7 +470,10 @@ pub const Position = struct {
         switch (flags) {
             .oo, .ooo => {
                 std.debug.assert(from.rank() == to.rank());
-                std.debug.assert(from_piece.pieceToPieceType() == .king);
+
+                if (from_piece.pieceToPieceType() != .king) {
+                    return false;
+                }
 
                 if (self.state.checkers != 0)
                     return false;
@@ -513,6 +522,10 @@ pub const Position = struct {
                 if (self.state.en_passant == .none)
                     return false;
 
+                if (to != self.state.en_passant)
+                    return false;
+
+                // Maybe useless because en passant in state has to be correct
                 const ep_piece: Piece = self.board[self.state.en_passant.add(if (turn == .white) .south else .north).index()];
                 if ((turn == .white and ep_piece != .b_pawn) or (turn == .black and ep_piece != .w_pawn)) {
                     return false;
@@ -523,38 +536,46 @@ pub const Position = struct {
                 }
             },
             .double_push => {
-                // Assert move only one rank or double push
-                const from_rank: Rank = from.rank();
                 if (from_piece.pieceToPieceType() != .pawn)
                     return false;
+                const from_rank: Rank = from.rank();
                 switch (turn) {
                     .white => if (from_rank != .r2) return false,
                     .black => if (from_rank != .r7) return false,
                 }
-                if (self.board[from.add(if (turn == .white) .north_north else .south_south).index()] != .none)
+
+                const to_sq: Square = from.add(if (turn == .white) .north_north else .south_south);
+                if (to != to_sq)
+                    return false;
+
+                if (self.board[to_sq.index()] != .none)
+                    return false;
+
+                return self.board[from.add(if (turn == .white) .north else .south).index()] == .none;
+            },
+            .pr_knight, .pr_bishop, .pr_rook, .pr_queen, .prc_knight, .prc_bishop, .prc_rook, .prc_queen => {
+                if (from_piece.pieceToPieceType() != .pawn)
                     return false;
             },
-            else => {},
+            .quiet, .capture => {},
         }
 
         if (from_piece.pieceToPieceType() == .pawn) {
-            const from_rank: Rank = from.rank();
             const to_rank: Rank = to.rank();
             switch (turn) {
                 .white => if ((to_rank == .r8 and !move.isPromotion()) or to_rank == .r1) return false,
                 .black => if ((to_rank == .r1 and !move.isPromotion()) or to_rank == .r8) return false,
             }
 
-            // Did something different from advancing a rank
-            switch (turn) {
-                .white => if (from_rank.index() != to_rank.index() - 1) return false,
-                .black => if (from_rank.index() != to_rank.index() + 1) return false,
-            }
-
             if (!move.isCapture()) {
                 if (from.file() != to.file())
                     return false;
-                return self.board[from.add(if (turn == .white) .north else .south).index()] == .none;
+
+                const to_sq: Square = from.add(if (turn == .white) .north else .south);
+                if (to != to_sq)
+                    return false;
+
+                return self.board[to_sq.index()] == .none;
             }
         }
 
@@ -577,7 +598,7 @@ pub const Position = struct {
         // Assert studied piece can do this move pseudo legally
         switch (from_piece.pieceToPieceType()) {
             inline else => |pt| switch (turn) {
-                inline else => |t| return (to_bb & (tables.getAttacks(pt, t, from, bb_all) & ~bb_us)) != 0,
+                inline else => |t| return (to_bb & tables.getAttacks(pt, t, from, bb_all) & ~bb_us) != 0,
             },
         }
     }
