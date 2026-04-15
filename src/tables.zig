@@ -113,20 +113,20 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
     // - Different hash
     // - Different age (TODO)
     // - Lower depth
-    // if (entry.bound == .none or (bound == .exact or !entry.isEqualKey(key) or entry.depth <= depth + 4)) {
+    if (entry.bound == .none or (bound == .exact or !entry.isEqualKey(key) or entry.depth <= depth + 4)) {
 
-    // WIP: Always replace for now
+        // WIP: Always replace for now
 
-    // if (entry.bound != .none and !entry.isEqualKey(key)) {
-    //     std.debug.print("collision for key {} and {}\n", .{ TranspositionEntry.reduce(key), entry.key16 });
-    // }
+        // if (entry.bound != .none and !entry.isEqualKey(key)) {
+        //     std.debug.print("collision for key {} and {}\n", .{ TranspositionEntry.reduce(key), entry.key16 });
+        // }
 
-    entry.key16 = TranspositionEntry.reduce(key);
-    entry.value = score;
-    entry.depth = depth;
-    entry.move = move;
-    entry.bound = bound;
-    // }
+        entry.key16 = TranspositionEntry.reduce(key);
+        entry.value = score;
+        entry.depth = depth;
+        entry.move = move;
+        entry.bound = bound;
+    }
 }
 
 /// Allocates capacity of transposition table in Mega bytes
