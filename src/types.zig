@@ -513,6 +513,7 @@ pub const Move = packed struct {
         const writer = std.debug.lockStderrWriter(&buffer);
         defer std.debug.unlockStderrWriter();
         self.printUCI(writer) catch unreachable;
+        writer.print(" with flag {}\n", .{self.getFlags()}) catch unreachable;
     }
 };
 
