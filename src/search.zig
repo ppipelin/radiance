@@ -591,9 +591,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                             tables.updateHistory(&tables.history[pos.state.turn.index()][malus_move.getFromTo()], -bonus);
                         }
                     }
-                    if (score != types.value_draw) {
-                        tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), depth, move, .lowerbound);
-                    }
+                    tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), depth, move, .lowerbound);
                     return best_score;
                 } else {
                     alpha = score; // Update alpha! Always alpha < beta
