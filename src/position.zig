@@ -187,8 +187,6 @@ pub const Position = struct {
         var to_piece: Piece = self.board[to.index()];
 
         if (from_piece == Piece.none) {
-            self.printDebug();
-            std.debug.print("move {}\n", .{move});
             return error.MoveNone;
         }
 
@@ -648,20 +646,8 @@ pub const Position = struct {
                 return false;
             }
 
-            // Cannot cover check for knight
-            // Commented as line cannot trace for knight
-            // if (self.board[attacker.index()].pieceToPieceType() == .knight)
-            //     if ((to_bb & attacker.sqToBB()) == 0)
-            //         return false;
-
-            if (self.board[attacker.index()].pieceToPieceType() == .king or self.board[attacker.index()].pieceToPieceType() == .queen or self.board[attacker.index()].pieceToPieceType() == .rook or self.board[attacker.index()].pieceToPieceType() == .bishop)
-                return false;
-
             if ((to_bb & (tables.squares_between[our_king.index()][attacker.index()] | attacker.sqToBB())) == 0)
                 return false;
-
-            // test
-            // return false;
         }
 
         if (move.isEnPassant()) {
