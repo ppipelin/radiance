@@ -310,12 +310,11 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     return move;
 }
 
-fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
+fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
     var alpha = alpha_;
-    var beta = beta_;
     var depth = depth_;
 
     interface.nodes_searched += 1;
@@ -359,16 +358,6 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         interface.transposition_used += 1;
 
         if (!is_null_move and !pv_node and tt_depth > depth - @intFromBool(tt_value <= beta)) {
-            switch (tt_bound) {
-                .exact => score = tt_value,
-                .lowerbound => alpha = @max(alpha, tt_value),
-                .upperbound => beta = @min(beta, tt_value),
-                else => unreachable,
-            }
-            if (alpha >= beta) {
-                return alpha;
-            }
-
             // At non-PV nodes check for early transposition table cutoff
             if (tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
 
