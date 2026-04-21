@@ -608,7 +608,7 @@ pub const Position = struct {
         const bb_them: Bitboard = self.bb_colors[turn.invert().index()];
         const bb_all: Bitboard = bb_us | bb_them;
 
-        const our_king: Square = @enumFromInt(types.lsb(self.bb_pieces[PieceType.king.index()]));
+        const our_king: Square = @enumFromInt(types.lsb(bb_us & self.bb_pieces[PieceType.king.index()]));
 
         std.debug.assert(from_piece != .none);
 
