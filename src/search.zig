@@ -356,6 +356,8 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         // Update the mate score retrieved from the table to consider the current ply
         tt_value = types.valueFromTT(tt_value, ss[0].ply);
 
+        interface.transposition_used += 1;
+
         if (!is_null_move and !pv_node and tt_depth > depth - @intFromBool(tt_value <= beta)) {
             switch (tt_bound) {
                 .exact => score = tt_value,
@@ -377,8 +379,6 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                 }
             }
         }
-
-        interface.transposition_used += 1;
     }
 
     // 5. Static evaluation
