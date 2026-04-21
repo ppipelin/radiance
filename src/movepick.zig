@@ -37,6 +37,7 @@ pub const MovePick = struct {
             }
 
             if (self.tt_move != types.Move.none) {
+                // maybe generate all moves  and check if exist first ?
                 if (pos.isPseudoLegal(self.tt_move) and pos.isLegal(self.tt_move))
                     return self.tt_move;
                 self.tt_move = .none;
