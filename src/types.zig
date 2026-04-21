@@ -589,6 +589,15 @@ pub inline fn valueFromTT(v: Value, ply: u8) Value {
     return v;
 }
 
+pub inline fn checkBoundTT(v: Value, alpha: Value, beta: Value, bound: TableBound) bool {
+    return switch (bound) {
+        .exact => true,
+        .lowerbound => v >= beta,
+        .upperbound => v <= alpha,
+        .none => false,
+    };
+}
+
 pub inline fn isValueMate(score: Value) bool {
     return @abs(score) > value_mate_in_max_depth;
 }
