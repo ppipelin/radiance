@@ -58,8 +58,8 @@ pub const TranspositionEntry = struct {
     };
 
     pub inline fn reduce(key: Key) u16 {
-        return @intCast(key & 0xffff);
-        // return @intCast(key >> (64 - 16));
+        // return @intCast(key & 0xffff);
+        return @intCast(key >> (64 - 16));
     }
 
     pub inline fn isEqualKey(self: @This(), key: Key) bool {
