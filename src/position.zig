@@ -459,10 +459,8 @@ pub const Position = struct {
             return false;
 
         // Double check is king move
-        if (@popCount(self.state.checkers) > 1) {
-            if (from_piece.pieceToPieceType() != .king)
-                return false;
-        }
+        if (@popCount(self.state.checkers) > 1 and from_piece.pieceToPieceType() != .king)
+            return false;
 
         switch (flags) {
             .oo, .ooo => {
@@ -614,7 +612,6 @@ pub const Position = struct {
 
         std.debug.assert(from_piece != .none);
 
-        // Cannot move to attacked square and has to evade if in check
         if (from_piece.pieceToPieceType() == .king) {
             if (move.isCastle()) {
                 // Check rook not pinned (for chess 960)
@@ -632,25 +629,43 @@ pub const Position = struct {
                 return (to_bb & self.state.attacked) == 0 and (rook_sq.sqToBB() & self.state.pinned[turn.index()]) == 0;
             }
 
+            // Cannot move to attacked square and has to evade if in check
             return to_bb & self.state.attacked == 0;
-        } else {
-            std.debug.assert(@popCount(self.state.checkers) <= 1);
+        }
 
-            // There is only one checker since non-king move :
-            // We have to go between checker and king, or take attacker
-            if (self.state.checkers != 0) {
-                const attacker: Square = @enumFromInt(types.lsb(self.state.checkers));
-                // Added special case for en passant if the pawn is the checker
-                if (move.isEnPassant() and self.state.en_passant.add(if (turn == .white) .south else .north) == attacker) {
-                    if (to != self.state.en_passant)
-                        return false;
-                } else if (to_bb & (tables.squares_between[our_king.index()][attacker.index()] | attacker.sqToBB()) == 0)
-                    return false;
+        std.debug.assert(@popCount(self.state.checkers) <= 1); // Only king move when multiple checkers if pseudo legal
+
+        const ep_target: Square = if (self.state.en_passant != .none) self.state.en_passant.add(if (turn == .white) .south else .north) else .none;
+
+        // There is only one checker since non-king move:
+        // We have to go between checker and king, or take attacker
+        if (self.state.checkers != 0) {
+            const attacker: Square = @enumFromInt(types.lsb(self.state.checkers));
+            std.debug.assert(attacker != .none);
+
+            // Added special case for en passant if the pawn is the checker
+            if (move.isEnPassant() and ep_target != attacker) {
+                return false;
             }
+
+            // Cannot cover check for knight
+            // Commented as line cannot trace for knight
+            // if (self.board[attacker.index()].pieceToPieceType() == .knight)
+            //     if ((to_bb & attacker.sqToBB()) == 0)
+            //         return false;
+
+            if (self.board[attacker.index()].pieceToPieceType() == .king or self.board[attacker.index()].pieceToPieceType() == .queen or self.board[attacker.index()].pieceToPieceType() == .rook or self.board[attacker.index()].pieceToPieceType() == .bishop)
+                return false;
+
+            if ((to_bb & (tables.squares_between[our_king.index()][attacker.index()] | attacker.sqToBB())) == 0)
+                return false;
+
+            // test
+            // return false;
         }
 
         if (move.isEnPassant()) {
-            const blockers: Bitboard = (bb_all ^ self.state.en_passant.sqToBB() ^ from_bb) | to_bb;
+            const blockers: Bitboard = (bb_all ^ ep_target.sqToBB() ^ from_bb) | to_bb;
             // Ray cast from king
             switch (turn_them) {
                 inline else => |t| return tables.getAttacks(.bishop, t, our_king, blockers) & (bb_them & (self.bb_pieces[PieceType.bishop.index()] | self.bb_pieces[PieceType.queen.index()])) == 0 and
@@ -662,6 +677,7 @@ pub const Position = struct {
 
         // Non king moves are possible if non pinned or moving in line
         if (from_bb & self.state.pinned[turn.index()] != 0) {
+            std.debug.assert(tables.squares_line[our_king.index()][from.index()] != 0);
             return (to_bb & tables.squares_line[our_king.index()][from.index()]) != 0;
         }
 
