@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.4] - 2026-04-23
+
+### Added
+
+- Futility pruning for quiet moves
+- `benchv` command
+- `go searchmoves XXX` command
+- `go nodes XXX` command
+- Fifty move rules
+- Makefile
+
+### Fixed
+
+- Support fen with moved rooks
+
+### Changed
+
+- Transposition table to use a fixed size array
+- IIR condition for pv nodes
+- Depth condition for TT
+- Aspiration window computation
+
+### Removed
+
+- Transposition table filling during move loop
+
 ## [4.3] - 2026-03-25
 
 ### Added
@@ -355,7 +381,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - UCI `position` command
 - `Random` search
 
-[Unreleased]: https://github.com/ppipelin/radiance/compare/4.3...HEAD
+[Unreleased]: https://github.com/ppipelin/radiance/compare/4.4...HEAD
+[4.4]: https://github.com/ppipelin/radiance/compare/4.3...4.4
 [4.3]: https://github.com/ppipelin/radiance/compare/4.2...4.3
 [4.2]: https://github.com/ppipelin/radiance/compare/4.1...4.2
 [4.1]: https://github.com/ppipelin/radiance/compare/4.0.1...4.1
