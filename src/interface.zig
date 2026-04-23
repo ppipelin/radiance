@@ -4,6 +4,7 @@ const position = @import("position.zig");
 const search = @import("search.zig");
 const std = @import("std");
 const types = @import("types.zig");
+const tables = @import("tables.zig");
 const variable = @import("variable.zig");
 
 pub var g_stop: std.atomic.Value(bool) = .init(false);
@@ -14,7 +15,6 @@ pub var increment: types.TimePoint = 0;
 pub var remaining_computed: types.TimePoint = 0;
 pub var nodes_searched: u64 = 0;
 pub var seldepth: u64 = 0;
-pub var transposition_used: u64 = 0;
 
 const StateList = std.ArrayListUnmanaged(position.State);
 
@@ -55,6 +55,7 @@ pub const Option = struct {
 
 pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
     try options.put(allocator, "Hash", try Option.initSpin(allocator, "256", 0, 65535));
+    try tables.setTranspositionTableCapacity(256);
     try options.put(allocator, "Threads", try Option.initSpin(allocator, "1", 1, 1));
     try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "PSQ var PSQ var Shannon", "PSQ"));
     try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
@@ -94,8 +95,8 @@ pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnman
 
 pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io.Writer) !void {
     var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
-    defer deinitOptions(allocator, &options);
     try initOptions(allocator, &options);
+    defer deinitOptions(allocator, &options);
 
     var states: StateList = .empty;
     try states.ensureTotalCapacity(allocator, 1024); // Necessary because extending invalidates pointers
@@ -314,6 +315,9 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
             } else if (value_parsed < option.min) {
                 return error.LowerBoundBreached;
             }
+            if (std.ascii.eqlIgnoreCase(name, "Hash")) {
+                try tables.setTranspositionTableCapacity(try std.fmt.parseInt(usize, value, 10));
+            }
 
             // If option name is tunable edit variable.tunables
             // tunables are only spin
@@ -507,7 +511,6 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: 
     var buffer: [64]u8 = undefined;
     const w: std.Io.Writer.Discarding = .init(&buffer);
     var stdout_discarding: std.Io.Writer = w.writer;
-    try stdout_discarding.print("this is ignored: {d}\n", .{123});
 
     var total_nodes: u64 = 0;
 
@@ -558,11 +561,11 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: 
     try list.append(allocator, "fen r1r3k1/pb3pbp/1q1Bp1p1/3pP3/2p2P2/Q1P5/PP4PP/2KR1B1R b - - 0 19");
     try list.append(allocator, "fen 4k3/6R1/8/4B1P1/5PK1/8/6r1/8 w - - 3 62");
 
-    for (list.items) |fen| {
-        var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
-        defer deinitOptions(allocator, &options);
-        try initOptions(allocator, &options);
+    var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
+    try initOptions(allocator, &options);
+    defer deinitOptions(allocator, &options);
 
+    for (list.items) |fen| {
         var states: StateList = .empty;
         try states.ensureTotalCapacity(allocator, 1024); // Necessary because extending invalidates pointers
         defer states.deinit(allocator);
@@ -575,7 +578,11 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: 
         const input = "depth 11";
         var tokens = std.mem.tokenizeScalar(u8, input, ' ');
 
-        try cmd_go(allocator, &stdout_discarding, &pos, &tokens, options);
+        if (verbose) {
+            try cmd_go(allocator, stdout, &pos, &tokens, options);
+        } else {
+            try cmd_go(allocator, &stdout_discarding, &pos, &tokens, options);
+        }
         total_nodes += interface.nodes_searched;
     }
 

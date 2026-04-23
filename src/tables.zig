@@ -1,6 +1,7 @@
 const magic = @import("magic.zig");
 const position = @import("position.zig");
 const std = @import("std");
+const tables = @import("tables.zig");
 const types = @import("types.zig");
 const utils = @import("utils.zig");
 
@@ -25,16 +26,99 @@ pub fn initAll(allocator: std.mem.Allocator) void {
     initPassedPawn();
     initZobrist();
     magic.initMagic();
+    tables.transposition_table = .{ .allocator = allocator, .tt = &.{} };
 }
 
 ////// Zobrist hashing //////
 
 pub const Key = u64;
 
-pub var transposition_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{ Value, Depth, Move, TableBound })) = .empty;
+/// Not assigning an allocator can result in segmentation fault
+pub const TranspositionHolder = struct {
+    allocator: std.mem.Allocator,
+    tt: []TranspositionEntry,
+};
+
+pub var transposition_table: TranspositionHolder = undefined;
+
+pub const TranspositionEntry = struct {
+    value: Value,
+    depth: Depth,
+    move: Move,
+    bound: TableBound,
+    key16: u16,
+
+    pub const empty: @This() = .{
+        .value = 0,
+        .depth = 0,
+        .move = .none,
+        .bound = .none,
+        .key16 = 0,
+    };
+
+    pub inline fn reduce(key: Key) u16 {
+        // return @intCast(key & 0xffff);
+        return @intCast(key >> (64 - 16));
+    }
+
+    pub inline fn isEqualKey(self: @This(), key: Key) bool {
+        return self.key16 == reduce(key);
+    }
+};
+
+pub inline fn transpositionIndex(key: Key) usize {
+    return key % transposition_table.tt.len;
+}
+
+pub fn readTranspositionTable(key: Key) TranspositionEntry {
+    if (transposition_table.tt.len == 0)
+        return .empty;
+
+    const entry: TranspositionEntry = transposition_table.tt[transpositionIndex(key)];
+    if (entry.bound != .none and entry.isEqualKey(key)) {
+        return entry;
+    } else {
+        return .empty;
+    }
+}
+
+pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth, move: types.Move, bound: TableBound) void {
+    if (transposition_table.tt.len == 0)
+        return;
+
+    var entry: *TranspositionEntry = &transposition_table.tt[transpositionIndex(key)];
+
+    // We only overwrite if
+    // - Exact
+    // - Different hash
+    // - Different age
+    // - Lower depth
+    // if (entry.bound == .none or (bound == .exact or !entry.isEqualKey(key) or entry.depth <= depth + 4)) {
+
+    // WIP: Always replace for now
+    entry.key16 = TranspositionEntry.reduce(key);
+    entry.value = score;
+    entry.depth = depth;
+    entry.move = move;
+    entry.bound = bound;
+    // }
+}
+
+/// Allocates capacity of transposition table in Mega bytes
+pub fn setTranspositionTableCapacity(size: usize) !void {
+    if (transposition_table.tt.len > 0) {
+        transposition_table.tt = try transposition_table.allocator.realloc(transposition_table.tt, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
+    } else {
+        transposition_table.tt = try transposition_table.allocator.alloc(TranspositionEntry, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
+    }
+    @memset(transposition_table.tt, .empty);
+}
+
 // Will store pawn structures once computed
 // Computed every pawn move/capture
 pub var pawn_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{Value})) = .empty;
+
+pub var hash_half_move: [256]Key = @splat(0);
 
 // pnbrqkPNBRQK
 pub var hash_psq: [types.Piece.nb()][types.board_size2]Key = @splat(@splat(0));
@@ -64,6 +148,10 @@ fn initZobrist() void {
     for (0..4) |i| {
         hash_castling[i] = prng.rand64();
     }
+
+    for (0..hash_half_move.len) |i| {
+        hash_half_move[i] = prng.rand64();
+    }
 }
 
 ////// Movegen //////
@@ -76,6 +164,7 @@ pub var moves_rook: [types.board_size2]std.AutoHashMapUnmanaged(Bitboard, Bitboa
 pub var pseudo_legal_attacks: [PieceType.nb()][types.board_size2]Bitboard = @splat(@splat(0));
 pub var pawn_attacks: [Color.nb()][types.board_size2]Bitboard = @splat(@splat(0));
 
+/// Between does not include source squares while line is the full line
 pub var squares_between: [types.board_size2][types.board_size2]Bitboard = @splat(@splat(0));
 pub var squares_line: [types.board_size2][types.board_size2]Bitboard = @splat(@splat(0));
 
@@ -289,7 +378,7 @@ pub fn deinitAll(allocator: std.mem.Allocator) void {
         moves_bishop[sq].deinit(allocator);
         moves_rook[sq].deinit(allocator);
     }
-    transposition_table.clearAndFree(allocator);
+    allocator.free(transposition_table.tt);
     pawn_table.clearAndFree(allocator);
 }
 

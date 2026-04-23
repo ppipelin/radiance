@@ -99,3 +99,20 @@ test "MoveUnmovePiece" {
 
     try expectEqualSlices(u8, position.start_fen, computed_fen);
 }
+
+test "isPseudoLegal" {
+    tables.initAll(allocator);
+    defer tables.deinitAll(allocator);
+
+    var s: position.State = position.State{};
+    var fen: []const u8 = "rnbqk2r/ppppbppp/4pn2/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 1 4";
+    var pos: position.Position = try position.Position.setFen(&s, fen);
+
+    try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 4, .from = 44, .to = 35 }));
+
+    fen = "r1bq2nr/pppp1ppp/2nk4/4P3/4P3/2N5/PPP2PPP/R1BQKBNR b KQ - 1 5";
+    pos = try position.Position.setFen(&s, fen);
+
+    try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 0, .from = 21, .to = 36 }));
+    try std.testing.expect(!pos.isPseudoLegal(.{ .flags = 0, .from = 20, .to = 19 }));
+}
