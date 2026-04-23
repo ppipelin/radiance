@@ -13,7 +13,7 @@ jobs:
     name: Build and Release
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: mlugg/setup-zig@v2
         with:
@@ -24,7 +24,7 @@ jobs:
       - run: zig build deploy
 
       - name: Upload Windows Executable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
             name: radiance
             path: ${{ github.workspace }}/zig-out/bin/*
@@ -40,10 +40,10 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Extract release notes
-      uses: ffurrer2/extract-release-notes@v2
+      uses: ffurrer2/extract-release-notes@v3
       with:
         release_notes_file: RELEASE_NOTES.md
 
@@ -53,7 +53,7 @@ jobs:
         echo -e "\n### Executables\nExecutables versions are related to cpu features, for modern cpu use latest version (v3 for 2013+ and v4 for 2022+).\n" >> RELEASE_NOTES.md
 
     - name: Download Artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: radiance
         path: ${{ github.workspace }}/exe/
