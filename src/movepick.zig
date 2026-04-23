@@ -29,40 +29,22 @@ pub const MovePick = struct {
     pub fn nextMove(noalias self: *MovePick, noalias pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
-
+            pos.updateAttacked(is_960);
             // PV move replaces transposition table move
             if (pv_move != types.Move.none) {
                 self.tt_move = pv_move;
                 return self.tt_move;
             }
 
-            if (self.tt_move != types.Move.none)
-                return self.tt_move;
-
-            const found: ?std.meta.Tuple(&[_]type{ types.Value, types.Depth, types.Move, types.TableBound }) = tables.transposition_table.get(pos.state.material_key);
-            if (found != null) {
-                const move: types.Move = found.?[2];
-                if (self.stage == 1 or (self.stage == 11 and move.isCapture())) {
-                    // Guard from collisions
-                    // Uncomment for high collision rate
-                    // const from_piece: types.Piece = pos.board[move.getFrom().index()];
-                    // const to_piece: types.Piece = pos.board[move.getTo().index()];
-                    // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and ((to_piece == .none and (!move.isCapture() or move.isEnPassant())) or (to_piece != .none and move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-                    // if (from_piece != .none and from_piece.pieceToColor() == pos.state.turn and (to_piece == .none or (move.isCapture() and to_piece.pieceToColor() != pos.state.turn))) {
-                    // const attacks: types.Bitboard = tables.getAttacks(from_piece.pieceToPieceType(), pos.state.turn, move.getFrom(), pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]) & ~pos.bb_colors[pos.state.turn.index()];
-                    // if (attacks & move.getTo().sqToBB() >= 1) {
-                    self.tt_move = move;
-                    return move;
-                    // }
-                    // }
-                }
+            if (self.tt_move != types.Move.none) {
+                if (pos.isPseudoLegal(self.tt_move) and pos.isLegal(self.tt_move))
+                    return self.tt_move;
+                self.tt_move = .none;
             }
         }
 
         // Capture init
         if (self.stage == 1 or self.stage == 11) {
-            pos.updateAttacked(is_960);
-
             switch (pos.state.turn) {
                 inline else => |turn| pos.generateLegalMoves(.capture, turn, &self.moves_capture, &self.capture_len, is_960),
             }
