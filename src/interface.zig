@@ -15,7 +15,6 @@ pub var increment: types.TimePoint = 0;
 pub var remaining_computed: types.TimePoint = 0;
 pub var nodes_searched: u64 = 0;
 pub var seldepth: u64 = 0;
-pub var transposition_used: u64 = 0;
 
 const StateList = std.ArrayListUnmanaged(position.State);
 

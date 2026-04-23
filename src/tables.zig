@@ -40,7 +40,6 @@ pub const TranspositionHolder = struct {
 };
 
 pub var transposition_table: TranspositionHolder = undefined;
-pub var transposition_table_size: usize = 0;
 
 pub const TranspositionEntry = struct {
     value: Value,
@@ -100,10 +99,6 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
 
     var entry: *TranspositionEntry = &transposition_table.tt[transpositionIndex(key)];
 
-    if (entry.bound == .none) {
-        transposition_table_size += 1;
-    }
-
     // Avoid replacing better entries
     // if (key == entry.key and bound == entry.bound and depth < entry.depth)
     //     return;
@@ -131,7 +126,6 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
 
 /// Allocates capacity of transposition table in Mega bytes
 pub fn setTranspositionTableCapacity(size: usize) !void {
-    transposition_table_size = 0;
     if (transposition_table.tt.len > 0) {
         transposition_table.tt = try transposition_table.allocator.realloc(transposition_table.tt, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
     } else {

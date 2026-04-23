@@ -179,7 +179,6 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     interface.remaining_computed = 0;
     interface.nodes_searched = 0;
     interface.seldepth = 0;
-    interface.transposition_used = 0;
     tables.history = @splat(@splat(0));
 
     if (limits.movetime > 0) {
@@ -355,8 +354,6 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
 
         // Update the mate score retrieved from the table to consider the current ply
         tt_value = types.valueFromTT(tt_value, ss[0].ply);
-
-        interface.transposition_used += 1;
 
         if (!is_null_move and !pv_node and tt_depth >= depth) {
             switch (tt_bound) {
@@ -666,8 +663,6 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
         if (!is_null_move and !pv_node and tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
             return tt_value;
         }
-
-        interface.transposition_used += 1;
     }
 
     // Delta pruning margin
@@ -847,7 +842,7 @@ fn info(stdout: *std.Io.Writer, limits: interface.Limits, depth: types.Depth, sc
 
     const hash_size: u128 = @divTrunc(try std.fmt.parseInt(u128, options.get("Hash").?.current_value, 10) * 1_000_000, @sizeOf(tables.TranspositionEntry));
     var hashfull: u128 = 0;
-    if (hash_size > 1000) {
+    if (hash_size >= 1000) {
         for (0..1000) |i| {
             if (tables.transposition_table.tt[i].bound != .none)
                 hashfull += 1;
@@ -868,7 +863,6 @@ fn info(stdout: *std.Io.Writer, limits: interface.Limits, depth: types.Depth, sc
     try stdout.print("pv ", .{});
     try pvDisplay(stdout, root_moves.items[0].pv.items);
     try stdout.print("\n", .{});
-    try stdout.print("info hash {} hashused {}\n", .{ tables.transposition_table_size, interface.transposition_used });
 }
 
 fn pvDisplay(stdout: *std.Io.Writer, pv: []types.Move) !void {
