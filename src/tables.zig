@@ -67,17 +67,6 @@ pub const TranspositionEntry = struct {
 };
 
 pub inline fn transpositionIndex(key: Key) usize {
-    // Multiplicative hashing
-    // return @intCast((@as(u128, key) * transposition_table.tt.len) >> 64);
-
-    // Wrapping multiplicative hashing
-    // return key *% transposition_table.tt.len;
-
-    // Multiplicative hashing edited
-    // const key_ = @as(u128, key) ^ (@as(u128, key) >> 64);
-    // return @intCast(key_ * transposition_table.tt.len >> 64);
-
-    // Division hashing
     return key % transposition_table.tt.len;
 }
 
@@ -99,23 +88,14 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
 
     var entry: *TranspositionEntry = &transposition_table.tt[transpositionIndex(key)];
 
-    // Avoid replacing better entries
-    // if (key == entry.key and bound == entry.bound and depth < entry.depth)
-    //     return;
-
     // We only overwrite if
     // - Exact
     // - Different hash
-    // - Different age (TODO)
+    // - Different age
     // - Lower depth
     // if (entry.bound == .none or (bound == .exact or !entry.isEqualKey(key) or entry.depth <= depth + 4)) {
 
     // WIP: Always replace for now
-
-    // if (entry.bound != .none and !entry.isEqualKey(key)) {
-    //     std.debug.print("collision for key {} and {}\n", .{ TranspositionEntry.reduce(key), entry.key16 });
-    // }
-
     entry.key16 = TranspositionEntry.reduce(key);
     entry.value = score;
     entry.depth = depth;
