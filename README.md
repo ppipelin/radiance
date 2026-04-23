@@ -29,6 +29,7 @@
 - [Late Move Reductions](https://www.chessprogramming.org/Late_Move_Reductions)
 - [Null Move Pruning](https://www.chessprogramming.org/Null_Move_Pruning)
 - [Reverse Futility Pruning](https://www.chessprogramming.org/Reverse_Futility_Pruning)
+- Futility pruning
 - Mate pruning
 - Razoring
 - Internal iterative reductions
@@ -55,18 +56,19 @@ CCRL [blitz benchmark](https://computerchess.org.uk/ccrl/404/cgi/compare_engines
 
 | Rank | Name             | CCRL  |  Elo |  + |  - | games | score | oppo. | draws |
 | ---- | ---------------- | ----- | ---- | -- | -- | ----- | ----- | ----- | ----- |
-|    1 | [radiance_4.3]   |       | 1961 | 10 | 10 |  6144 |   84% |  1641 |   12% |
-|    2 | [radiance_4.2]   |  1803 | 1803 |  8 |  8 |  6144 |   64% |  1693 |   21% |
-|    3 | [radiance_4.1]   |  1675 | 1640 |  8 |  9 |  7419 |   51% |  1593 |   16% |
-|    4 | [radiance_4.0.1] |       | 1480 |  8 |  8 | 14312 |   65% |  1249 |    8% |
-|    5 | [radiance_3.5]   |  1322 | 1222 |  8 |  8 | 10216 |   66% |  1025 |   11% |
-|    6 | [radiance_3.4]   |  1300 | 1198 |  8 |  7 | 10218 |   64% |  1028 |   11% |
-|    7 | [radiance_3.3]   |       | 1146 |  8 |  8 | 10216 |   59% |  1034 |   11% |
-|    8 | [radiance_3.2]   |       | 1135 |  8 |  8 | 10215 |   58% |  1036 |   11% |
-|    9 | [radiance_3.1.1] |  1119 | 965  |  8 |  8 |  9552 |   45% |  1015 |    9% |
-|   10 | [radiance_3.0.1] |       | 689  |  9 |  9 |  9552 |   20% |  1050 |    9% |
-|   11 | [radiance_2.4]   |       | 647  |  9 |  9 |  9552 |   16% |  1055 |   10% |
-|   12 | [radiance_2.3]   |   874 | 602  |  9 | 10 |  9552 |   13% |  1061 |    9% |
+|    1 | [radiance_4.4]   |       | 2243 | 14 | 14 |  3456 |   88% |  1834 |   11% |
+|    2 | [radiance_4.3]   |  2071 | 2071 |  9 |  9 |  7008 |   77% |  1816 |   14% |
+|    3 | [radiance_4.2]   |  1803 | 1917 |  8 |  8 |  7008 |   57% |  1861 |   20% |
+|    4 | [radiance_4.1]   |  1674 | 1754 |  8 |  8 |  8283 |   46% |  1762 |   15% |
+|    5 | [radiance_4.0.1] |       | 1596 |  8 |  8 | 15176 |   61% |  1413 |    8% |
+|    6 | [radiance_3.5]   |  1321 | 1338 |  8 |  8 | 10216 |   66% |  1141 |   11% |
+|    7 | [radiance_3.4]   |  1299 | 1314 |  8 |  8 | 10218 |   64% |  1144 |   11% |
+|    8 | [radiance_3.3]   |       | 1262 |  8 |  8 | 10216 |   59% |  1150 |   11% |
+|    9 | [radiance_3.2]   |       | 1251 |  8 |  8 | 10215 |   58% |  1152 |   11% |
+|   10 | [radiance_3.1.1] |  1117 | 1081 |  8 |  8 |  9552 |   45% |  1131 |    9% |
+|   11 | [radiance_3.0.1] |       |  804 |  9 |  9 |  9552 |   20% |  1166 |    9% |
+|   12 | [radiance_2.4]   |       |  763 |  9 |  9 |  9552 |   16% |  1171 |   10% |
+|   13 | [radiance_2.3]   |   872 |  718 |  9 | 10 |  9552 |   13% |  1177 |    9% |
 
 
 ## Getting started
@@ -106,7 +108,7 @@ zig build test --release=safe
 - `setoption name <string> [value <string>]`
 - `position [(fen <string> | startpos | kiwi | lasker) [moves <string>...]]`
 - `eval`
-- `go [movetime <int> | wtime <int> | btime <int> | winc <int> | binc <int> | nodes <int> | depth <int> | infinite | perft <int>]`
+- `go [movetime <int> | wtime <int> | btime <int> | winc <int> | binc <int> | nodes <int> | depth <int> | searchmoves <string>... | infinite | perft <int>]`
 - `bench`
 - `benchv`
 - `stop`
@@ -126,6 +128,7 @@ This project was originaly written in C++ before 4.0 version and archived under 
 
 _I'm radiant!_
 
+[radiance_4.4]: https://github.com/ppipelin/radiance/releases/tag/4.4
 [radiance_4.3]: https://github.com/ppipelin/radiance/releases/tag/4.3
 [radiance_4.2]: https://github.com/ppipelin/radiance/releases/tag/4.2
 [radiance_4.1]: https://github.com/ppipelin/radiance/releases/tag/4.1
