@@ -93,7 +93,7 @@ pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnman
     }
 }
 
-pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io.Writer) !void {
+pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io.Writer) !void {
     var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
     try initOptions(allocator, &options);
     defer deinitOptions(allocator, &options);
@@ -181,7 +181,7 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
             search_thread = std.Thread.spawn(
                 .{ .stack_size = 64 * 1024 * 1024 },
                 cmd_go,
-                .{ allocator, stdout, &pos, &tokens, options },
+                .{ io, allocator, stdout, &pos, &tokens, options },
             ) catch |err| {
                 try stdout.print("Could not spawn thread! With error {}\n", .{err});
                 states.clearRetainingCapacity();
@@ -193,12 +193,12 @@ pub fn loop(allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io
 
         if (std.ascii.eqlIgnoreCase("bench", primary_token)) {
             existing_command = true;
-            try cmd_bench(allocator, stdout, false);
+            try cmd_bench(io, allocator, stdout, false);
         }
 
         if (std.ascii.eqlIgnoreCase("benchv", primary_token)) {
             existing_command = true;
-            try cmd_bench(allocator, stdout, true);
+            try cmd_bench(io, allocator, stdout, true);
         }
 
         if (std.ascii.eqlIgnoreCase("spsa", primary_token)) {
@@ -379,11 +379,11 @@ fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states
     }
 }
 
-fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
-    limits = Limits{};
+fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
+    limits = .{};
     g_stop.store(false, .release);
 
-    limits.start = types.now();
+    limits.start = types.now(io);
 
     while (tokens.next()) |token_name| {
         // Needs to be the last command on the line
@@ -463,12 +463,12 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
 
     const is_960: bool = std.ascii.eqlIgnoreCase(options.get("UCI_Chess960").?.current_value, "true");
 
-    var t = try std.time.Timer.start();
+    const t = std.Io.Timestamp.now(io, .real);
     if (limits.perft > 0) {
         const nodes = if (is_960) try search.perft(allocator, stdout, pos, limits.perft, true, true) else try search.perft(allocator, stdout, pos, limits.perft, false, true);
         const nodes_f: f64 = @floatFromInt(nodes);
-        const time_f: f64 = @floatFromInt(t.read());
-        try stdout.print("info nodes {} time {D} ({d:.1} Mnps)\n", .{ nodes, t.read(), (nodes_f / (time_f / 1000.0)) });
+        const time_f: f64 = @floatFromInt(std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real)).toMilliseconds());
+        try stdout.print("info nodes {} time {d:.0} ({d:.1} Mnps)\n", .{ nodes, time_f, (nodes_f / (time_f / 1e3) / 1e6) });
         try stdout.flush();
     } else {
         const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
@@ -477,19 +477,19 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
         if (std.ascii.eqlIgnoreCase(search_mode, "Random")) {
             try stdout.print("bestmove ", .{});
             if (is_960) {
-                try (try search.searchRandom(pos, true)).printUCI(stdout);
+                try (try search.searchRandom(io, pos, true)).printUCI(stdout);
             } else {
-                try (try search.searchRandom(pos, false)).printUCI(stdout);
+                try (try search.searchRandom(io, pos, false)).printUCI(stdout);
             }
             try stdout.print("\n", .{});
         } else if (std.ascii.eqlIgnoreCase(search_mode, "NegamaxAlphaBeta")) {
             var move: types.Move = .none;
             if (std.ascii.eqlIgnoreCase(evaluation_mode, "Materialist")) {
-                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateMaterialist, options);
+                move = try search.iterativeDeepening(io, allocator, stdout, pos, limits, evaluate.evaluateMaterialist, options);
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
-                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateShannon, options);
+                move = try search.iterativeDeepening(io, allocator, stdout, pos, limits, evaluate.evaluateShannon, options);
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
-                move = try search.iterativeDeepening(allocator, stdout, pos, limits, evaluate.evaluateTable, options);
+                move = try search.iterativeDeepening(io, allocator, stdout, pos, limits, evaluate.evaluateTable, options);
             }
             try stdout.print("bestmove ", .{});
             try move.printUCI(stdout);
@@ -502,8 +502,8 @@ fn cmd_go(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *po
     }
 }
 
-pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: bool) anyerror!void {
-    var t = try std.time.Timer.start();
+pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: bool) anyerror!void {
+    const t = std.Io.Timestamp.now(io, .real);
 
     var list: std.ArrayListUnmanaged([]const u8) = .empty;
     defer list.deinit(allocator);
@@ -579,15 +579,17 @@ pub fn cmd_bench(allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: 
         var tokens = std.mem.tokenizeScalar(u8, input, ' ');
 
         if (verbose) {
-            try cmd_go(allocator, stdout, &pos, &tokens, options);
+            try cmd_go(io, allocator, stdout, &pos, &tokens, options);
         } else {
-            try cmd_go(allocator, &stdout_discarding, &pos, &tokens, options);
+            try cmd_go(io, allocator, &stdout_discarding, &pos, &tokens, options);
         }
         total_nodes += interface.nodes_searched;
     }
 
-    try stdout.print("{d} nodes {d:.0} nps\n", .{ total_nodes, (@as(f32, @floatFromInt(total_nodes)) / @as(f32, @floatFromInt(t.read())) * 1e9) });
+    const elapsed = std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real));
+
+    try stdout.print("{d} nodes {d:.0} nps\n", .{ total_nodes, (@as(f32, @floatFromInt(total_nodes)) / @as(f32, @floatFromInt(elapsed.toMilliseconds())) * 1e3) });
     if (verbose)
-        try stdout.print("Time elapsed: {D}\n", .{t.read()});
+        try stdout.print("Time elapsed: {f}\n", .{elapsed});
     try stdout.flush();
 }

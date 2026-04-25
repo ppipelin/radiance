@@ -91,8 +91,8 @@ const magic_numbers: [types.board_size2 * 2]u64 = [_]u64{
     0x80290030800019,   0x41004e00529882,   0x40080160019400a,  0x41000c400a060022, 0x108000500100613,  0x6319000608040001, 0xa1200801700180b4, 0x1500024110ac0082,
 };
 
-pub fn compute(iterations: u64) void {
-    const seed: u64 = @intCast(std.time.nanoTimestamp());
+pub fn compute(io: std.Io, iterations: u64) void {
+    const seed: u64 = @truncate(@abs(std.Io.Timestamp.now(io, .real).toNanoseconds()));
     var prng = std.Random.DefaultPrng.init(seed);
     var improved_shift: bool = false;
     var improved_sparse: bool = false;

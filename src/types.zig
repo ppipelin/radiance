@@ -597,8 +597,8 @@ pub inline fn isValueMate(score: Value) bool {
 
 pub const TimePoint = i64; // A value in milliseconds
 
-pub inline fn now() TimePoint {
-    return std.time.milliTimestamp();
+pub inline fn now(io: std.Io) TimePoint {
+    return std.Io.Timestamp.now(io, .real).toMilliseconds();
 }
 
 pub const TableBound = enum(u2) {

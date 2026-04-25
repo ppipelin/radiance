@@ -6,6 +6,7 @@ const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
 
+const io = std.testing.io;
 const allocator = std.testing.allocator;
 
 test "start_fen" {
@@ -22,7 +23,7 @@ test "start_fen" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout);
 
     try std.testing.expectStringStartsWith(stdout.buffer,
         \\ +---+---+---+---+---+---+---+---+
@@ -63,7 +64,7 @@ test "kiwipete" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout);
 
     try std.testing.expectStringStartsWith(stdout.buffer,
         \\ +---+---+---+---+---+---+---+---+
@@ -104,7 +105,7 @@ test "start_fenWithSpaces" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout);
 
     try std.testing.expectStringStartsWith(stdout.buffer,
         \\ +---+---+---+---+---+---+---+---+
@@ -145,7 +146,7 @@ test "ErrorFenPosition" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout);
 
     try std.testing.expectStringStartsWith(stdout.buffer,
         \\Command position failed with error error.UnknownPiece, reset to startpos
@@ -187,7 +188,7 @@ test "ErrorUnknownPosition" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout);
 
     try std.testing.expectStringStartsWith(stdout.buffer,
         \\Command position failed with error error.UnknownPositionArgument, reset to startpos
@@ -230,7 +231,7 @@ test "SearchLeak" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout);
 }
 
 test "SearchLeakNoInterface" {
@@ -249,8 +250,8 @@ test "SearchLeakNoInterface" {
     var move: types.Move = .none;
     var limits = interface.limits;
     limits.depth = 8;
-    move = try search.iterativeDeepening(allocator, &stdout, &pos, limits, evaluate.evaluateShannon, options);
-    move = try search.iterativeDeepening(allocator, &stdout, &pos, limits, evaluate.evaluateTable, options);
+    move = try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateShannon, options);
+    move = try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateTable, options);
     try stdout.print("bestmove ", .{});
     try move.printUCI(&stdout);
     try stdout.print("\n", .{});
@@ -270,5 +271,5 @@ test "SearchLeakNoInterface" {
 //     var output: [131072]u8 = undefined;
 //     var stdout = std.Io.Writer.fixed(&output);
 
-//     try interface.loop(allocator, &stdin, &stdout);
+//     try interface.loop(io,allocator, &stdin, &stdout);
 // }
