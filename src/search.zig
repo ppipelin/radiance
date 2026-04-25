@@ -38,11 +38,11 @@ const Stack = struct {
     ply: u8 = 0,
 };
 
-inline fn elapsed(limits: interface.Limits) types.TimePoint {
-    return (types.now() - limits.start);
+inline fn elapsed(io: std.Io, limits: interface.Limits) types.TimePoint {
+    return (types.now(io) - limits.start);
 }
 
-inline fn outOfTime(limits: interface.Limits) bool {
+inline fn outOfTime(io: std.Io, limits: interface.Limits) bool {
     if (interface.g_stop.load(.acquire))
         return true;
 
@@ -52,7 +52,7 @@ inline fn outOfTime(limits: interface.Limits) bool {
     if (limits.nodes != 0) {
         return interface.nodes_searched >= interface.remaining_computed;
     }
-    return elapsed(limits) > interface.remaining_computed;
+    return elapsed(io, limits) > interface.remaining_computed;
 }
 
 pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, depth: types.Depth, comptime is_960: bool, verbose: bool) !u64 {
@@ -151,7 +151,7 @@ pub fn perftTest(allocator: std.mem.Allocator, noalias pos: *position.Position, 
     return nodes;
 }
 
-pub fn searchRandom(noalias pos: *position.Position, comptime is_960: bool) !types.Move {
+pub fn searchRandom(io: std.Io, noalias pos: *position.Position, comptime is_960: bool) !types.Move {
     var move_list: [types.max_moves]types.Move = @splat(.none);
     var move_len: usize = 0;
 
@@ -162,16 +162,14 @@ pub fn searchRandom(noalias pos: *position.Position, comptime is_960: bool) !typ
 
     if (move_len == 0)
         return error.MoveAfterCheckmate;
-    var prng = std.Random.DefaultPrng.init(blk: {
-        var seed: u64 = undefined;
-        try std.posix.getrandom(std.mem.asBytes(&seed));
-        break :blk seed;
-    });
+
+    const seed: u64 = @truncate(@abs(std.Io.Timestamp.now(io, .real).toNanoseconds()));
+    var prng = std.Random.DefaultPrng.init(seed);
     const rand = prng.random();
     return move_list[rand.intRangeAtMost(u8, 0, @intCast(move_len - 1))];
 }
 
-pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !types.Move {
+pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !types.Move {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
     interface.remaining = 0;
@@ -265,11 +263,11 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
             var score: types.Value = 0;
             switch (is_960) {
                 inline else => |is_960_current| {
-                    score = try abSearch(allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, is_960_current, false);
+                    score = try abSearch(io, allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, is_960_current, false);
                 },
             }
 
-            if (depth > 1 and outOfTime(limits))
+            if (depth > 1 and outOfTime(io, limits))
                 break;
 
             // In case of failing low/high increase aspiration window and re-search, otherwise exit the loop.
@@ -291,11 +289,11 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
         // Even if outofTime we keep a better move if there is one
         std.sort.insertion(RootMove, root_moves.items, {}, RootMove.sort);
 
-        if (depth > 1 and outOfTime(limits)) {
+        if (depth > 1 and outOfTime(io, limits)) {
             break;
         }
 
-        try info(stdout, limits, depth, root_moves.items[0].score, options);
+        try info(io, stdout, limits, depth, root_moves.items[0].score, options);
         try stdout.flush();
     }
 
@@ -309,7 +307,7 @@ pub fn iterativeDeepening(allocator: std.mem.Allocator, stdout: *std.Io.Writer, 
     return move;
 }
 
-fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
+fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
@@ -322,7 +320,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     // 1. Quiescence search at depth 0
     if (depth <= 0) {
         // return eval(pos.*);
-        return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_null_move);
+        return quiesce(io, allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_null_move);
     }
 
     // 2. Initialize data
@@ -406,7 +404,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         const razoring: bool = pos.state.static_eval < razoring_threshold;
         if (!pv_node and razoring) {
             // return eval(pos.*);
-            return quiesce(allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_null_move);
+            return quiesce(io, allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, limits, eval, alpha, beta, is_null_move);
         }
 
         // Reverse Futility Pruning
@@ -421,9 +419,9 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
             const tapered: types.Depth = @min(@divTrunc(pos.state.static_eval -| beta, variable.getValue("null_move_taper")), 6);
             const r: types.Depth = tapered + @divTrunc(depth, 3) + 5;
             try pos.moveNull(&s);
-            const null_score: types.Value = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, depth -| r, is_960, true);
+            const null_score: types.Value = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, depth -| r, is_960, true);
             try pos.unMoveNull();
-            if (depth > 1 and outOfTime(limits))
+            if (depth > 1 and outOfTime(io, limits))
                 return -types.value_none;
 
             // Do not return unproven mate
@@ -514,21 +512,21 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
                 // 7.2. Late moves reduction (LMR) before full search
                 if (depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
                     // Reduced LMR
-                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth_reduced_lmr - 1, is_960, false);
+                    score = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth_reduced_lmr - 1, is_960, false);
                     // Failed so roll back to full-depth null window
                     if (score > alpha and depth > depth_reduced_lmr) {
-                        score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
+                        score = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
                     }
                 }
                 // In case non PV search are called without LMR, null window search at current depth
                 else if (!pv_node or move_count > 1) {
-                    score = -try abSearch(allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
+                    score = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
                 }
 
                 // 7.3. Full-depth regular search
                 // Only for first move (PVS) or after a fail high
                 if (pv_node and (move_count == 1 or score > alpha)) {
-                    score = -try abSearch(allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
+                    score = -try abSearch(io, allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
                 }
             }
         }
@@ -537,7 +535,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
         try pos.unMovePiece(move);
 
         // Useless ?
-        if (depth > 1 and outOfTime(limits))
+        if (depth > 1 and outOfTime(io, limits))
             return -types.value_none;
 
         if (root_node) {
@@ -613,7 +611,7 @@ fn abSearch(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias s
     return best_score;
 }
 
-fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, is_null_move: bool) !types.Value {
+fn quiesce(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, is_null_move: bool) !types.Value {
     const pv_node: bool = nodetype == NodeType.pv;
 
     var alpha = alpha_;
@@ -676,7 +674,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
 
     if (alpha < stand_pat)
         alpha = stand_pat;
-    if (outOfTime(limits))
+    if (outOfTime(io, limits))
         return alpha;
 
     // Loop over all legal captures
@@ -706,7 +704,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
         if (pos.isDraw()) {
             score = types.value_draw;
         } else {
-            score = -try quiesce(allocator, nodetype, ss + 1, pos, limits, eval, -beta, -alpha, false);
+            score = -try quiesce(io, allocator, nodetype, ss + 1, pos, limits, eval, -beta, -alpha, false);
         }
 
         try pos.unMovePiece(move);
@@ -728,7 +726,7 @@ fn quiesce(allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss
             }
         }
 
-        if (outOfTime(limits))
+        if (outOfTime(io, limits))
             break;
     }
 
@@ -837,8 +835,8 @@ fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
     }
 }
 
-fn info(stdout: *std.Io.Writer, limits: interface.Limits, depth: types.Depth, score: types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
-    const time: u64 = @intCast(elapsed(limits));
+fn info(io: std.Io, stdout: *std.Io.Writer, limits: interface.Limits, depth: types.Depth, score: types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
+    const time: u64 = @intCast(elapsed(io, limits));
 
     const hash_size: u128 = @divTrunc(try std.fmt.parseInt(u128, options.get("Hash").?.current_value, 10) * 1_000_000, @sizeOf(tables.TranspositionEntry));
     var hashfull: u128 = 0;

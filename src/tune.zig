@@ -39,32 +39,15 @@ const Wdl = enum(u2) {
 };
 
 /// Reads a file containing rows of "fen [score]" where score is win (1.0), draw (0.5) or loss (0.0)
-fn readBook(allocator: std.mem.Allocator) !std.ArrayList(Triplet) {
-    var buffer: []u8 = try allocator.alloc(u8, 1_000_000 * 64);
+fn readBook(io: std.Io, allocator: std.mem.Allocator) !std.ArrayList(Triplet) {
+    const buffer: []u8 = try allocator.alloc(u8, 1_000_000 * 64);
     defer allocator.free(buffer);
 
-    var len: usize = 0;
-    if (@import("builtin").os.tag == .windows) {
-        const file = std.os.windows.kernel32.CreateFileW(
-            std.unicode.utf8ToUtf16LeStringLiteral("data.book"),
-            std.os.windows.GENERIC_READ,
-            std.os.windows.FILE_SHARE_READ | std.os.windows.FILE_SHARE_WRITE, // Allow others to access
-            null,
-            std.os.windows.OPEN_EXISTING,
-            std.os.windows.FILE_ATTRIBUTE_NORMAL,
-            null,
-        );
-        defer std.os.windows.CloseHandle(file);
-        len = try std.os.windows.ReadFile(file, buffer, null);
-    } else {
-        const file = try std.fs.cwd().openFile("data.book", .{});
-        defer file.close();
-        len = try file.readAll(buffer);
-    }
+    const buffer_slice = try std.Io.Dir.readFile(std.Io.Dir.cwd(), io, "data.book", buffer);
 
     var list: std.ArrayList(Triplet) = .empty;
 
-    var it = std.mem.splitScalar(u8, buffer[0..len], '\n');
+    var it = std.mem.splitScalar(u8, buffer_slice, '\n');
     while (it.next()) |token| {
         if (std.mem.endsWith(u8, token[0..(token.len - 1)], "]")) {
             const wdl = try std.fmt.parseFloat(f16, token[(token.len - 5)..(token.len - 2)]);
@@ -130,17 +113,14 @@ fn applyDeltaNegative(variable_new: *@Vector(variable.tunables.len, f32), deltas
     variable_new.* -= deltas;
 }
 
-pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usize) !void {
-    var book: std.ArrayList(Triplet) = try readBook(allocator);
+pub fn run(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usize) !void {
+    var book: std.ArrayList(Triplet) = try readBook(io, allocator);
     defer book.deinit(allocator);
 
     // Set vars
     var initial: [variable.tunables.len]types.Value = @splat(0);
     variable.getValues(&initial);
-    var initial_f: @Vector(variable.tunables.len, f32) = @splat(0);
-    for (initial, 0..) |v, i| {
-        initial_f[i] = @floatFromInt(v);
-    }
+    var initial_f: @Vector(variable.tunables.len, f32) = initial;
 
     var initial_delta_plus = initial_f;
     var initial_delta_minus = initial_f;
@@ -172,11 +152,8 @@ pub fn run(allocator: std.mem.Allocator, stdout: *std.Io.Writer, iterations: usi
     }
     const steps: @Vector(variable.tunables.len, f32) = steps_array;
 
-    var prng = std.Random.DefaultPrng.init(seed: {
-        var seed: u64 = undefined;
-        try std.posix.getrandom(std.mem.asBytes(&seed));
-        break :seed seed;
-    });
+    const seed: u64 = @truncate(@abs(std.Io.Timestamp.now(io, .real).toNanoseconds()));
+    var prng = std.Random.DefaultPrng.init(seed);
     const rand = prng.random();
 
     // This variable allows to have random positions of size batch from within the book

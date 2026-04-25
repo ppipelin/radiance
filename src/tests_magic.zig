@@ -3,6 +3,7 @@ const tables = @import("tables.zig");
 const std = @import("std");
 const types = @import("types.zig");
 
+const io = std.testing.io;
 const allocator = std.testing.allocator;
 
 test "MovegenAccessions" {
@@ -12,7 +13,7 @@ test "MovegenAccessions" {
     const iterations: u64 = 1000;
 
     // Dictionary
-    var t = try std.time.Timer.start();
+    var t = std.Io.Timestamp.now(io, .real);
     for (0..iterations) |_| {
         var sq: types.Square = types.Square.a1;
         while (sq != types.Square.none) : (sq = sq.inc().*) {
@@ -33,10 +34,10 @@ test "MovegenAccessions" {
             }
         }
     }
-    const t1 = t.read();
+    const t1 = std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real)).toMilliseconds();
 
     // Magic
-    t = try std.time.Timer.start();
+    t = std.Io.Timestamp.now(io, .real);
     var sq: types.Square = types.Square.a1;
     for (0..iterations) |_| {
         sq = types.Square.a1;
@@ -58,6 +59,6 @@ test "MovegenAccessions" {
             }
         }
     }
-    const t2 = t.read();
+    const t2 = std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real)).toMilliseconds();
     try std.testing.expect(t2 < t1);
 }
