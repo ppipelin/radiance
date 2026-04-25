@@ -12,10 +12,10 @@ pub const Tunable = struct {
 };
 
 ////// Evaluation tunables //////
-pub const knight_mobility: Value = 8;
-pub const bishop_mobility: Value = 6;
-pub const rook_mobility: Value = 3;
-pub const queen_mobility: Value = 6;
+pub const knight_mobility: Value = 5;
+pub const bishop_mobility: Value = 5;
+pub const rook_mobility: Value = 2;
+pub const queen_mobility: Value = 5;
 pub const king_mobility: Value = 5;
 
 pub const pawn_threat_knight: Value = 0;
@@ -23,22 +23,22 @@ pub const pawn_threat_bishop: Value = 0;
 pub const pawn_threat_rook: Value = 0;
 pub const pawn_threat_queen: Value = 0;
 
-pub const pawn_defend_king: Value = 13;
-pub const pawn_isolated: Value = 14;
-pub const pawn_doubled: Value = 4;
-pub const pawn_blocked: Value = 21;
-pub const pawn_protection: Value = 6;
+pub const pawn_defend_king: Value = 10;
+pub const pawn_isolated: Value = 15;
+pub const pawn_doubled: Value = 5;
+pub const pawn_blocked: Value = 20;
+pub const pawn_protection: Value = 5;
 
-pub const bishop_pair: Value = 43;
-pub const bishop_opposite_pawn: Value = 7;
+pub const bishop_pair: Value = 40;
+pub const bishop_opposite_pawn: Value = 5;
 
-pub const rook_open_files: Value = 49;
-pub const rook_semi_open_files: Value = 23;
+pub const rook_open_files: Value = 50;
+pub const rook_semi_open_files: Value = 20;
 
-pub const castle_bonus: Value = 49;
+pub const castle_bonus: Value = 50;
 
 ////// Histories //////
-pub const history: Value = 29;
+pub const history: Value = 25;
 
 ////// Search tunables //////
 
