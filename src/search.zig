@@ -180,7 +180,9 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
     tables.history = @splat(@splat(0));
 
     if (limits.movetime > 0) {
-        interface.remaining = limits.movetime * 30;
+        interface.remaining = limits.movetime;
+        const remaining_float: f128 = interface.remaining;
+        interface.remaining_computed = @intFromFloat(remaining_float * 0.95);
     } else {
         interface.remaining = if (pos.state.turn.isWhite()) limits.time[types.Color.white.index()] else limits.time[types.Color.black.index()];
         interface.increment = if (pos.state.turn.isWhite()) limits.inc[types.Color.white.index()] else limits.inc[types.Color.black.index()];
