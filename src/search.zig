@@ -476,10 +476,12 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
             continue;
         }
 
-        const depth_reduced_lmr: types.Depth = @max(1, depth - 4);
+        var depth_reduced_lmr: types.Depth = 1;
+        if (depth > 1) {
+            depth_reduced_lmr = @max(1, depth - tables.lmr_table[@intCast(depth)][move_count]);
+        }
 
         if (!root_node and !types.isValueMate(best_score)) {
-            // SEE pruning
             if (move.isCapture()) {} else {
                 // Futility pruning on quiets
                 var futility_value: types.Value = pos.state.static_eval +| 50 +| 150 *| depth_reduced_lmr;

@@ -42,6 +42,9 @@ pub const history: Value = 25;
 
 ////// Search tunables //////
 
+pub const lmr_offset: Value = 100;
+pub const lmr_mult: Value = 33;
+
 pub const see_qs: Value = -72;
 pub const delta_pruning: Value = 453;
 pub const reverse_futility_factor: Value = 40;
@@ -72,6 +75,9 @@ pub var tunables = [_]Tunable{
     .{ .name = "rook_semi_open_files", .default = rook_semi_open_files, .min = 0, .max = 100, .step = 10 },
 
     .{ .name = "castle_bonus", .default = castle_bonus, .min = 0, .max = 100, .step = 10 },
+
+    .{ .name = "lmr_offset", .default = lmr_offset, .min = 0, .max = 1000, .step = 10 },
+    .{ .name = "lmr_mult", .default = lmr_mult, .min = 0, .max = 100, .step = 5 },
 
     .{ .name = "see_qs", .default = see_qs, .min = -100, .max = 0, .step = 10 },
     .{ .name = "delta_pruning", .default = delta_pruning, .min = 0, .max = 500, .step = 50 },

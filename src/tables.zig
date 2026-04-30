@@ -4,6 +4,7 @@ const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
 const utils = @import("utils.zig");
+const variable = @import("variable.zig");
 
 const Bitboard = types.Bitboard;
 const Color = types.Color;
@@ -469,6 +470,24 @@ pub const black_pawn_attacks = [64]Bitboard{
     0x2000000000000,   0x5000000000000,   0xa000000000000,   0x14000000000000,   0x28000000000000,    0x50000000000000,   0xa0000000000000,   0x40000000000000,
 };
 // zig fmt: on
+
+////// Search //////
+
+/// Cannot be comptime with tunables so have to use constant
+pub const lmr_table: [types.max_depth][types.max_moves]Value = blk: {
+    @setEvalBranchQuota(types.max_depth * types.max_moves);
+    var table: [types.max_depth][types.max_moves]Value = undefined;
+    table[0][0] = 0;
+    for (1..types.max_depth) |depth| {
+        for (1..types.max_moves) |move| {
+            const depth_f: f16 = depth;
+            const move_f: f16 = move;
+
+            table[depth][move] = @divTrunc(variable.lmr_offset + @log10(depth_f) * @log10(move_f) * variable.lmr_mult, 100);
+        }
+    }
+    break :blk table;
+};
 
 ////// Evaluation //////
 
