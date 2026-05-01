@@ -492,6 +492,10 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
                 if (pos.state.checkers == 0 and depth_reduced_lmr < 13 and futility_value <= alpha)
                     continue;
             }
+
+            // Late move pruning (LMP)
+            if (move_count >= 4 + 3 * depth * depth)
+                break;
         }
 
         try pos.movePiece(move, &s);
