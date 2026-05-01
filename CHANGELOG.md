@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Late move pruning
+
 ## [4.4] - 2026-04-23
 
 ### Added

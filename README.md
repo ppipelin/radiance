@@ -27,6 +27,7 @@
 - [Alpha-Beta](https://www.chessprogramming.org/Alpha-Beta) Pruning
 - [Aspiration Window](https://www.chessprogramming.org/Aspiration_Windows)
 - [Late Move Reductions](https://www.chessprogramming.org/Late_Move_Reductions)
+- Late Move Pruning
 - [Null Move Pruning](https://www.chessprogramming.org/Null_Move_Pruning)
 - [Reverse Futility Pruning](https://www.chessprogramming.org/Reverse_Futility_Pruning)
 - Futility pruning
