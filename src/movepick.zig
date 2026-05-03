@@ -25,6 +25,7 @@ pub const MovePick = struct {
     tt_move: types.Move = types.Move.none,
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
+    cont_hist: []*tables.PieceToHistory = undefined,
 
     pub fn nextMove(noalias self: *MovePick, noalias pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
@@ -68,7 +69,7 @@ pub const MovePick = struct {
         // Sort captures
         if (self.stage == 3 or self.stage == 13) {
             var scores: [types.max_moves]types.Value = undefined;
-            pos.scoreMoves(self.moves_capture[0..self.capture_len], .capture, &scores);
+            pos.scoreMoves(self.moves_capture[0..self.capture_len], .capture, self.cont_hist, &scores);
             position.orderMoves(self.moves_capture[0..self.capture_len], &scores);
             self.stage += 1;
         }
@@ -122,7 +123,7 @@ pub const MovePick = struct {
         // Sort quiets
         if (self.stage == 7) {
             var scores: [types.max_moves]types.Value = undefined;
-            pos.scoreMoves(self.moves_quiet[0..self.quiet_len], .quiet, &scores);
+            pos.scoreMoves(self.moves_quiet[0..self.quiet_len], .quiet, self.cont_hist, &scores);
             position.orderMoves(self.moves_quiet[0..self.quiet_len], &scores);
             self.stage += 1;
         }

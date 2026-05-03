@@ -1,5 +1,6 @@
 const magic = @import("magic.zig");
 const position = @import("position.zig");
+const search = @import("search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -13,6 +14,7 @@ const Move = types.Move;
 const Piece = types.Piece;
 const PieceType = types.PieceType;
 const Square = types.Square;
+const Stack = search.Stack;
 const TableBound = types.TableBound;
 const Value = types.Value;
 
@@ -472,15 +474,36 @@ pub const black_pawn_attacks = [64]Bitboard{
 
 ////// Evaluation //////
 
+pub const FromToHistory = [Color.nb()][types.board_size2 * types.board_size2]Value;
+pub const PieceToHistory = [Piece.nb()][types.board_size2]Value;
+pub const PieceToPieceHistory = [Piece.nb()][types.board_size2][PieceType.nb()]Value;
+pub const ContinuationHistory = [Piece.nb()][types.board_size2]PieceToHistory;
+
 pub const max_history = 15000;
-pub var history: [Color.nb()][types.board_size2 * types.board_size2]types.Value = @splat(@splat(0));
-pub var history_capture: [PieceType.nb()][types.board_size2][PieceType.nb()]types.Value = @splat(@splat(@splat(0)));
+pub var history: FromToHistory = @splat(@splat(0));
+pub var history_capture: PieceToPieceHistory = @splat(@splat(@splat(0)));
+// pub var continuation_history: *[2][2]ContinuationHistory = undefined; // [in_check][is_capture]
+pub var continuation_history: [2][2]ContinuationHistory = @splat(@splat(@splat(@splat(@splat(@splat(0)))))); // [in_check][is_capture]
 
 pub fn updateHistory(history_value: *Value, bonus: Value) void {
     const clamped: i32 = std.math.clamp(bonus, -max_history, max_history);
     const magnitude: i32 = @intCast(@abs(clamped));
     const current_value: i32 = history_value.*;
     history_value.* += @intCast(clamped - @divTrunc(current_value * magnitude, max_history));
+}
+
+pub fn updateContinuationHistories(ss: [*]Stack, p: Piece, to: Square, bonus: Value) void {
+    const cont_hist_bonuses = [_]Value{ 1108, 652, 273, 572, 126, 449 };
+    for (cont_hist_bonuses, 0..) |weight, i| {
+        // Only update the first 2 continuation histories if we are in check
+        // if (ss[0].in_check and i > 2)
+        //     break;
+        updateHistory(&(ss - i)[0].continuation_history[p.index()][to.index()], @intCast(@as(i128, bonus) * @as(i128, weight) >> 10));
+    }
+}
+
+pub fn resetContinuationHistories() void {
+    continuation_history = @splat(@splat(@splat(@splat(@splat(@splat(0))))));
 }
 
 // Start position total 14152, max 20952
