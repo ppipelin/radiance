@@ -42,6 +42,8 @@ pub const history: Value = 33;
 
 ////// Search tunables //////
 
+pub const hard_bound_divider: Value = 28;
+pub const soft_bound_factor: Value = 700;
 pub const see_qs: Value = -89;
 pub const delta_pruning: Value = 477;
 pub const reverse_futility_factor: Value = 49;
@@ -73,6 +75,8 @@ pub var tunables = [_]Tunable{
 
     .{ .name = "castle_bonus", .default = castle_bonus, .min = 0, .max = 100, .step = 10 },
 
+    .{ .name = "hard_bound_divider", .default = hard_bound_divider, .min = 1, .max = 50, .step = 1 },
+    .{ .name = "soft_bound_factor", .default = soft_bound_factor, .min = 0, .max = 1024, .step = 50 },
     .{ .name = "see_qs", .default = see_qs, .min = -100, .max = 0, .step = 10 },
     .{ .name = "delta_pruning", .default = delta_pruning, .min = 0, .max = 500, .step = 50 },
     .{ .name = "reverse_futility_factor", .default = reverse_futility_factor, .min = 0, .max = 200, .step = 20 },

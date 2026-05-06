@@ -199,8 +199,8 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
         } else {
             const remaining_float: f128 = interface.remaining;
             const increment_float: f128 = interface.increment;
-            interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
-            interface.remaining_computed_soft = @intFromFloat(@as(f128, interface.remaining_computed) * 0.6);
+            interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / variable.getValue("hard_bound_divider") + increment_float));
+            interface.remaining_computed_soft = @intFromFloat(@as(f128, interface.remaining_computed) * variable.getValue("soft_bound_factor") / 1024);
         }
     }
 
