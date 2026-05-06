@@ -13,6 +13,7 @@ pub var limits: Limits = Limits{};
 pub var remaining: types.TimePoint = 0;
 pub var increment: types.TimePoint = 0;
 pub var remaining_computed: types.TimePoint = 0;
+pub var remaining_computed_soft: types.TimePoint = 0;
 pub var nodes_searched: u64 = 0;
 pub var seldepth: u64 = 0;
 

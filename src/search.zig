@@ -42,7 +42,7 @@ inline fn elapsed(io: std.Io, limits: interface.Limits) types.TimePoint {
     return (types.now(io) - limits.start);
 }
 
-inline fn outOfTime(io: std.Io, limits: interface.Limits) bool {
+inline fn outOfTime(io: std.Io, limits: interface.Limits, is_soft: bool) bool {
     if (interface.g_stop.load(.acquire))
         return true;
 
@@ -52,6 +52,11 @@ inline fn outOfTime(io: std.Io, limits: interface.Limits) bool {
     if (limits.nodes != 0) {
         return interface.nodes_searched >= interface.remaining_computed;
     }
+
+    if (is_soft) {
+        return elapsed(io, limits) > interface.remaining_computed_soft;
+    }
+
     return elapsed(io, limits) > interface.remaining_computed;
 }
 
@@ -175,6 +180,7 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
     interface.remaining = 0;
     interface.increment = 0;
     interface.remaining_computed = 0;
+    interface.remaining_computed_soft = 0;
     interface.nodes_searched = 0;
     interface.seldepth = 0;
     tables.history = @splat(@splat(0));
@@ -183,15 +189,18 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
         interface.remaining = limits.movetime;
         const remaining_float: f128 = interface.remaining;
         interface.remaining_computed = @intFromFloat(remaining_float * 0.95);
+        interface.remaining_computed_soft = interface.remaining_computed;
     } else {
         interface.remaining = if (pos.state.turn.isWhite()) limits.time[types.Color.white.index()] else limits.time[types.Color.black.index()];
         interface.increment = if (pos.state.turn.isWhite()) limits.inc[types.Color.white.index()] else limits.inc[types.Color.black.index()];
         if (limits.nodes != 0) {
             interface.remaining_computed = @intFromFloat(@as(f32, @floatFromInt(limits.nodes)) * 0.95);
+            interface.remaining_computed_soft = interface.remaining_computed;
         } else {
-            const remaining_float: f128 = @floatFromInt(interface.remaining);
-            const increment_float: f128 = @floatFromInt(interface.increment);
+            const remaining_float: f128 = interface.remaining;
+            const increment_float: f128 = interface.increment;
             interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
+            interface.remaining_computed_soft = @intFromFloat(@as(f128, interface.remaining_computed) * 0.6);
         }
     }
 
@@ -269,7 +278,7 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
                 },
             }
 
-            if (depth > 1 and outOfTime(io, limits))
+            if (depth > 1 and outOfTime(io, limits, false))
                 break;
 
             // In case of failing low/high increase aspiration window and re-search, otherwise exit the loop.
@@ -291,7 +300,7 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
         // Even if outofTime we keep a better move if there is one
         std.sort.insertion(RootMove, root_moves.items, {}, RootMove.sort);
 
-        if (depth > 1 and outOfTime(io, limits)) {
+        if (depth > 1 and outOfTime(io, limits, true)) {
             break;
         }
 
@@ -418,7 +427,7 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
             try pos.moveNull(&s);
             const null_score: types.Value = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, depth -| r, is_960, true);
             try pos.unMoveNull();
-            if (depth > 1 and outOfTime(io, limits))
+            if (depth > 1 and outOfTime(io, limits, false))
                 return -types.value_none;
 
             // Do not return unproven mate
@@ -532,7 +541,7 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
         try pos.unMovePiece(move);
 
         // Useless ?
-        if (depth > 1 and outOfTime(io, limits))
+        if (depth > 1 and outOfTime(io, limits, false))
             return -types.value_none;
 
         if (root_node) {
@@ -671,7 +680,7 @@ fn quiesce(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType
 
     if (alpha < stand_pat)
         alpha = stand_pat;
-    if (outOfTime(io, limits))
+    if (outOfTime(io, limits, false))
         return alpha;
 
     // Loop over all legal captures
@@ -723,7 +732,7 @@ fn quiesce(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType
             }
         }
 
-        if (outOfTime(io, limits))
+        if (outOfTime(io, limits, false))
             break;
     }
 
