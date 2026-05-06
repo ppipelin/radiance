@@ -187,20 +187,21 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
 
     if (limits.movetime > 0) {
         interface.remaining = limits.movetime;
-        const remaining_float: f128 = interface.remaining;
-        interface.remaining_computed = @intFromFloat(remaining_float * 0.95);
+        const remaining_big: u128 = @intCast(interface.remaining);
+        interface.remaining_computed = @intCast(remaining_big * 973 >> 10);
         interface.remaining_computed_soft = interface.remaining_computed;
     } else {
-        interface.remaining = if (pos.state.turn.isWhite()) limits.time[types.Color.white.index()] else limits.time[types.Color.black.index()];
-        interface.increment = if (pos.state.turn.isWhite()) limits.inc[types.Color.white.index()] else limits.inc[types.Color.black.index()];
         if (limits.nodes != 0) {
-            interface.remaining_computed = @intFromFloat(@as(f32, @floatFromInt(limits.nodes)) * 0.95);
+            const nodes_big: u128 = limits.nodes;
+            interface.remaining_computed = @intCast(nodes_big * 973 >> 10);
             interface.remaining_computed_soft = interface.remaining_computed;
         } else {
-            const remaining_float: f128 = interface.remaining;
-            const increment_float: f128 = interface.increment;
-            interface.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / variable.getValue("hard_bound_divider") + increment_float));
-            interface.remaining_computed_soft = @intFromFloat(@as(f128, interface.remaining_computed) * variable.getValue("soft_bound_factor") / 1024);
+            interface.remaining = if (pos.state.turn.isWhite()) limits.time[types.Color.white.index()] else limits.time[types.Color.black.index()];
+            interface.increment = if (pos.state.turn.isWhite()) limits.inc[types.Color.white.index()] else limits.inc[types.Color.black.index()];
+            const remaining_big: u128 = @intCast(interface.remaining);
+            const hard_bound: types.TimePoint = @intCast(remaining_big * 973 >> 10);
+            interface.remaining_computed = @min(hard_bound, @divTrunc(interface.remaining, variable.getValue("hard_bound_divider")) + interface.increment);
+            interface.remaining_computed_soft = @intCast(@as(u128, @abs(interface.remaining_computed)) * @abs(variable.getValue("soft_bound_factor")) >> 10);
         }
     }
 
