@@ -493,7 +493,8 @@ pub fn updateHistory(history_value: *Value, bonus: Value) void {
 }
 
 pub fn updateContinuationHistories(ss: [*]Stack, p: Piece, to: Square, bonus: Value) void {
-    const cont_hist_bonuses = [_]Value{ 1108, 652, 273, 572, 126, 449 };
+    // const cont_hist_bonuses = [_]Value{ 1108, 652, 273, 572, 126, 449 };
+    const cont_hist_bonuses = [_]Value{1108};
     for (cont_hist_bonuses, 0..) |weight, i| {
         // Only update the first 2 continuation histories if we are in check
         // if (ss[0].in_check and i > 2)
