@@ -579,15 +579,15 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
 
                 // Fail high
                 if (score >= beta) {
-                    const bonus: types.Value = @intCast(depth);
+                    // const bonus: types.Value = @intCast(depth);
 
-                    if (!move.isCapture()) {
-                        tables.updateHistory(&tables.history[pos.state.turn.index()][move.getFromTo()], bonus);
-                        // Apply maluses to previous moves
-                        for (previous_quiets[0..(move_count_quiets - 1)]) |malus_move| {
-                            tables.updateHistory(&tables.history[pos.state.turn.index()][malus_move.getFromTo()], -bonus);
-                        }
-                    }
+                    // if (!move.isCapture()) {
+                    //     tables.updateHistory(&tables.history[pos.state.turn.index()][move.getFromTo()], bonus);
+                    //     // Apply maluses to previous moves
+                    //     for (previous_quiets[0..(move_count_quiets - 1)]) |malus_move| {
+                    //         tables.updateHistory(&tables.history[pos.state.turn.index()][malus_move.getFromTo()], -bonus);
+                    //     }
+                    // }
                     tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), depth, move, .lowerbound);
                     return best_score;
                 } else {
