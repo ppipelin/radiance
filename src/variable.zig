@@ -40,6 +40,12 @@ pub const castle_bonus: Value = 50;
 ////// Histories //////
 pub const history: Value = 25;
 pub const continuation_history: Value = 10;
+pub const cont_hist_1: Value = 1108;
+pub const cont_hist_2: Value = 652;
+pub const cont_hist_3: Value = 273;
+pub const cont_hist_4: Value = 572;
+pub const cont_hist_5: Value = 126;
+pub const cont_hist_6: Value = 449;
 
 ////// Search tunables //////
 
@@ -81,6 +87,12 @@ pub var tunables = [_]Tunable{
 
     .{ .name = "history", .default = history, .min = 0, .max = 100, .step = 10 },
     .{ .name = "continuation_history", .default = continuation_history, .min = 0, .max = 100, .step = 10 },
+    .{ .name = "cont_hist_1", .default = cont_hist_1, .min = 0, .max = 2048, .step = 50 },
+    .{ .name = "cont_hist_2", .default = cont_hist_2, .min = 0, .max = 2048, .step = 50 },
+    .{ .name = "cont_hist_3", .default = cont_hist_3, .min = 0, .max = 2048, .step = 50 },
+    .{ .name = "cont_hist_4", .default = cont_hist_4, .min = 0, .max = 2048, .step = 50 },
+    .{ .name = "cont_hist_5", .default = cont_hist_5, .min = 0, .max = 2048, .step = 50 },
+    .{ .name = "cont_hist_6", .default = cont_hist_6, .min = 0, .max = 2048, .step = 50 },
 };
 
 pub fn getValues(buffer: []types.Value) void {
