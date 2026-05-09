@@ -4,6 +4,7 @@ const position = @import("position.zig");
 const search = @import("search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
+const thread_pool = @import("thread_pool.zig");
 const tune = @import("tune.zig");
 const types = @import("types.zig");
 
@@ -11,6 +12,9 @@ pub fn main(init: std.process.Init) !void {
     const allocator = std.heap.c_allocator;
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
+
+    try thread_pool.init(init.io, allocator);
+    defer thread_pool.deinit();
 
     var stdout_buffer: [16 * 1024]u8 = undefined;
     var stdout_writer: std.Io.File.Writer = std.Io.File.stdout().writerStreaming(init.io, &stdout_buffer); // Can use &.{} for no buffer

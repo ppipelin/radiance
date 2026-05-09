@@ -6,15 +6,13 @@ const tables = @import("tables.zig");
 const types = @import("types.zig");
 const variable = @import("variable.zig");
 
-var root_moves: std.ArrayListUnmanaged(RootMove) = .empty;
-
 const NodeType = enum {
     non_pv,
     pv,
     root,
 };
 
-const RootMove = struct {
+pub const RootMove = struct {
     score: types.Value = -types.value_infinite,
     previous_score: types.Value = -types.value_infinite,
     average_score: types.Value = -types.value_infinite,
@@ -50,7 +48,7 @@ inline fn outOfTime(io: std.Io, limits: interface.Limits) bool {
     if (limits.infinite or uninitialized) return false;
 
     if (limits.nodes != 0) {
-        return interface.nodes_searched >= interface.remaining_computed;
+        return interface.nodes_searched.load(.acquire) >= interface.remaining_computed;
     }
     return elapsed(io, limits) > interface.remaining_computed;
 }
@@ -169,13 +167,13 @@ pub fn searchRandom(io: std.Io, noalias pos: *position.Position, comptime is_960
     return move_list[rand.intRangeAtMost(u8, 0, @intCast(move_len - 1))];
 }
 
-pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !types.Move {
+pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, root_moves: *std.ArrayListUnmanaged(RootMove), limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
     interface.remaining = 0;
     interface.increment = 0;
     interface.remaining_computed = 0;
-    interface.nodes_searched = 0;
+    interface.nodes_searched.store(0, .release);
     interface.seldepth = 0;
     tables.history = @splat(@splat(0));
 
@@ -220,7 +218,8 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
     if (move_len == 0) {
         return error.NoMove;
     } else if (move_len == 1) {
-        return move_list[0];
+        try interface.displayBestMove(stdout, move_list[0]);
+        return;
     }
 
     // Order moves
@@ -229,8 +228,6 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
     position.orderMoves(move_list[0..move_len], &scores);
 
     try root_moves.ensureTotalCapacity(allocator, move_len);
-    defer root_moves.clearAndFree(allocator);
-    root_moves.clearRetainingCapacity();
 
     for (move_list[0..move_len]) |move| {
         // searchmove constraint if exists
@@ -265,7 +262,7 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
             var score: types.Value = 0;
             switch (is_960) {
                 inline else => |is_960_current| {
-                    score = try abSearch(io, allocator, NodeType.root, ss, pos, limits, eval, alpha, beta, depth, is_960_current, false);
+                    score = try abSearch(io, allocator, NodeType.root, ss, pos, root_moves, limits, eval, alpha, beta, depth, is_960_current, false);
                 },
             }
 
@@ -295,21 +292,22 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
             break;
         }
 
-        try info(io, stdout, limits, depth, root_moves.items[0].score, options);
+        try info(io, stdout, root_moves.items[0].pv.items, limits, depth, root_moves.items[0].score, options);
         try stdout.flush();
     }
 
     // Even if outofTime we keep a better move if there is one
-    const move = root_moves.items[0].pv.items[0];
+    const move: types.Move = root_moves.items[0].pv.items[0];
 
     for (root_moves.items) |*root_move| {
         root_move.pv.deinit(allocator);
     }
 
-    return move;
+    try interface.displayBestMove(stdout, move);
+    return;
 }
 
-fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
+fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, root_moves: *std.ArrayListUnmanaged(RootMove), limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
@@ -317,7 +315,7 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
     var beta = beta_;
     var depth = depth_;
 
-    interface.nodes_searched += 1;
+    _ = interface.nodes_searched.fetchAdd(1, .monotonic);
 
     // 1. Quiescence search at depth 0
     if (depth <= 0) {
@@ -416,7 +414,7 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
             const tapered: types.Depth = @min(@divTrunc(pos.state.static_eval -| beta, variable.getValue("null_move_taper")), 6);
             const r: types.Depth = tapered + @divTrunc(depth, 3) + 5;
             try pos.moveNull(&s);
-            const null_score: types.Value = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, depth -| r, is_960, true);
+            const null_score: types.Value = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, root_moves, limits, eval, -beta, -beta + 1, depth -| r, is_960, true);
             try pos.unMoveNull();
             if (depth > 1 and outOfTime(io, limits))
                 return -types.value_none;
@@ -509,21 +507,21 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
                 // 7.2. Late moves reduction (LMR) before full search
                 if (depth >= 2 and move_count > 3 and pos.state.checkers == 0 and !move.isCapture() and !move.isPromotion() and !is_passed_pawn) {
                     // Reduced LMR
-                    score = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth_reduced_lmr - 1, is_960, false);
+                    score = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, root_moves, limits, eval, -(alpha + 1), -alpha, depth_reduced_lmr - 1, is_960, false);
                     // Failed so roll back to full-depth null window
                     if (score > alpha and depth > depth_reduced_lmr) {
-                        score = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
+                        score = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, root_moves, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
                     }
                 }
                 // In case non PV search are called without LMR, null window search at current depth
                 else if (!pv_node or move_count > 1) {
-                    score = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
+                    score = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, root_moves, limits, eval, -(alpha + 1), -alpha, depth - 1, is_960, false);
                 }
 
                 // 7.3. Full-depth regular search
                 // Only for first move (PVS) or after a fail high
                 if (pv_node and (move_count == 1 or score > alpha)) {
-                    score = -try abSearch(io, allocator, NodeType.pv, ss + 1, pos, limits, eval, -beta, -alpha, depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
+                    score = -try abSearch(io, allocator, NodeType.pv, ss + 1, pos, root_moves, limits, eval, -beta, -alpha, depth - 1 + @intFromBool(pos.state.checkers != 0), is_960, false);
                 }
             }
         }
@@ -613,7 +611,7 @@ fn quiesce(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType
 
     var alpha = alpha_;
 
-    interface.nodes_searched += 1;
+    _ = interface.nodes_searched.fetchAdd(1, .monotonic);
     if (interface.seldepth < ss[0].ply + 1) {
         interface.seldepth = ss[0].ply + 1;
     }
@@ -832,7 +830,7 @@ fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
     }
 }
 
-fn info(io: std.Io, stdout: *std.Io.Writer, limits: interface.Limits, depth: types.Depth, score: types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
+fn info(io: std.Io, stdout: *std.Io.Writer, pv: []types.Move, limits: interface.Limits, depth: types.Depth, score: types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const time: u64 = @intCast(elapsed(io, limits));
 
     const hash_size: u128 = @divTrunc(try std.fmt.parseInt(u128, options.get("Hash").?.current_value, 10) * 1_000_000, @sizeOf(tables.TranspositionEntry));
@@ -846,7 +844,7 @@ fn info(io: std.Io, stdout: *std.Io.Writer, limits: interface.Limits, depth: typ
         hashfull = 1000;
     }
 
-    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, interface.seldepth, interface.nodes_searched, @divTrunc(interface.nodes_searched * 1000, @max(1, time)), time, hashfull });
+    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, interface.seldepth, interface.nodes_searched.load(.acquire), @divTrunc(interface.nodes_searched.load(.acquire) * 1000, @max(1, time)), time, hashfull });
 
     if (types.isValueMate(score)) {
         const mate_distance: types.Value = try std.math.divCeil(types.Value, types.value_mate - @as(types.Value, @intCast(@abs(score))), 2);
@@ -856,7 +854,7 @@ fn info(io: std.Io, stdout: *std.Io.Writer, limits: interface.Limits, depth: typ
     }
 
     try stdout.print("pv ", .{});
-    try pvDisplay(stdout, root_moves.items[0].pv.items);
+    try pvDisplay(stdout, pv);
     try stdout.print("\n", .{});
 }
 

@@ -247,14 +247,10 @@ test "SearchLeakNoInterface" {
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, position.start_fen);
-    var move: types.Move = .none;
     var limits = interface.limits;
     limits.depth = 8;
-    move = try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateShannon, options);
-    move = try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateTable, options);
-    try stdout.print("bestmove ", .{});
-    try move.printUCI(&stdout);
-    try stdout.print("\n", .{});
+    try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateShannon, options);
+    try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateTable, options);
     try pos.moveNull(&s);
 }
 
