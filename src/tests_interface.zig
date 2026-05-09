@@ -1,9 +1,10 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
 const position = @import("position.zig");
-const search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
+const thread_pool = @import("thread_pool.zig");
 const types = @import("types.zig");
 
 const io = std.testing.io;
@@ -220,6 +221,9 @@ test "SearchLeak" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
+    try thread_pool.init(io, allocator);
+    defer thread_pool.deinit();
+
     const input =
         \\position kiwi
         \\eval
@@ -236,26 +240,31 @@ test "SearchLeak" {
 
 test "SearchLeakNoInterface" {
     var output: [4096]u8 = undefined;
-    var stdout = std.Io.Writer.fixed(&output);
+    var stdout: std.Io.Writer.Discarding = .init(&output);
 
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
     var options: std.StringArrayHashMapUnmanaged(interface.Option) = .empty;
-    defer interface.deinitOptions(allocator, &options);
     try interface.initOptions(allocator, &options);
+    defer interface.deinitOptions(allocator, &options);
 
-    var s: position.State = position.State{};
-    var pos: position.Position = try position.Position.setFen(&s, position.start_fen);
-    var move: types.Move = .none;
+    var states: interface.StateList = .empty;
+    try states.ensureTotalCapacity(allocator, 1024); // Necessary because extending invalidates pointers
+    defer states.deinit(allocator);
+
+    try thread_pool.init(io, allocator);
+    defer thread_pool.deinit();
+
+    states.appendAssumeCapacity(.{});
+
+    var pos: position.Position = try position.Position.setFen(&states.items[0], position.start_fen);
     var limits = interface.limits;
     limits.depth = 8;
-    move = try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateShannon, options);
-    move = try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateTable, options);
-    try stdout.print("bestmove ", .{});
-    try move.printUCI(&stdout);
-    try stdout.print("\n", .{});
-    try pos.moveNull(&s);
+
+    try thread_pool.startThinking(&stdout.writer, &pos, states, limits, evaluate.evaluateShannon, options);
+    try thread_pool.startThinking(&stdout.writer, &pos, states, limits, evaluate.evaluateTable, options);
+    try pos.moveNull(&states.items[0]);
 }
 
 // test "Bench" {

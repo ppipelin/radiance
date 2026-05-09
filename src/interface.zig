@@ -1,22 +1,16 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
 const position = @import("position.zig");
-const search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const types = @import("types.zig");
 const tables = @import("tables.zig");
+const thread_pool = @import("thread_pool.zig");
 const variable = @import("variable.zig");
 
 pub var g_stop: std.atomic.Value(bool) = .init(false);
-pub var search_thread: ?std.Thread = null;
-pub var limits: Limits = Limits{};
-pub var remaining: types.TimePoint = 0;
-pub var increment: types.TimePoint = 0;
-pub var remaining_computed: types.TimePoint = 0;
-pub var nodes_searched: u64 = 0;
-pub var seldepth: u64 = 0;
 
-const StateList = std.ArrayListUnmanaged(position.State);
+pub const StateList = std.ArrayListUnmanaged(position.State);
 
 pub const Limits = struct {
     movestogo: u8 = 0,
@@ -56,7 +50,7 @@ pub const Option = struct {
 pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
     try options.put(allocator, "Hash", try Option.initSpin(allocator, "256", 0, 65535));
     try tables.setTranspositionTableCapacity(256);
-    try options.put(allocator, "Threads", try Option.initSpin(allocator, "1", 1, 1));
+    try options.put(allocator, "Threads", try Option.initSpin(allocator, "1", 1, 1024));
     try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "PSQ var PSQ var Shannon", "PSQ"));
     try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
     try options.put(allocator, "UCI_Chess960", try Option.initCheck(allocator, "false", "false"));
@@ -172,22 +166,9 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
         if (std.ascii.eqlIgnoreCase("go", primary_token)) {
             existing_command = true;
 
-            if (search_thread != null) {
-                g_stop.store(true, .release);
-                search_thread.?.join();
-                search_thread = null;
-            }
-
-            search_thread = std.Thread.spawn(
-                .{ .stack_size = 64 * 1024 * 1024 },
-                cmd_go,
-                .{ io, allocator, stdout, &pos, &tokens, options },
-            ) catch |err| {
-                try stdout.print("Could not spawn thread! With error {}\n", .{err});
-                states.clearRetainingCapacity();
-                states.appendAssumeCapacity(position.State{});
-                pos = try position.Position.setFen(&states.items[0], position.start_fen);
-                return;
+            cmd_go(io, allocator, stdout, &pos, states, &tokens, options) catch |err| {
+                try stdout.print("Command go failed with error {}\n", .{err});
+                thread_pool.terminateThreads();
             };
         }
 
@@ -265,11 +246,9 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
 
         try stdout.flush();
     }
-    if (search_thread != null) {
-        g_stop.store(true, .release);
-        search_thread.?.join();
-        search_thread = null;
-    }
+
+    g_stop.store(true, .release);
+    thread_pool.terminateThreads(); // Terminate before options and states are deallocated
 }
 
 fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
@@ -379,9 +358,8 @@ fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states
     }
 }
 
-fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
-    limits = .{};
-    g_stop.store(false, .release);
+fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
+    var limits: Limits = .{};
 
     limits.start = types.now(io);
 
@@ -465,7 +443,7 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
 
     const t = std.Io.Timestamp.now(io, .real);
     if (limits.perft > 0) {
-        const nodes = if (is_960) try search.perft(allocator, stdout, pos, limits.perft, true, true) else try search.perft(allocator, stdout, pos, limits.perft, false, true);
+        const nodes = if (is_960) try Search.perft(allocator, stdout, pos, limits.perft, true, true) else try Search.perft(allocator, stdout, pos, limits.perft, false, true);
         const nodes_f: f64 = @floatFromInt(nodes);
         const time_f: f64 = @floatFromInt(std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real)).toMilliseconds());
         try stdout.print("info nodes {} time {d:.0} ({d:.1} Mnps)\n", .{ nodes, time_f, (nodes_f / (time_f / 1e3) / 1e6) });
@@ -477,23 +455,19 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
         if (std.ascii.eqlIgnoreCase(search_mode, "Random")) {
             try stdout.print("bestmove ", .{});
             if (is_960) {
-                try (try search.searchRandom(io, pos, true)).printUCI(stdout);
+                try (try Search.searchRandom(io, pos, true)).printUCI(stdout);
             } else {
-                try (try search.searchRandom(io, pos, false)).printUCI(stdout);
+                try (try Search.searchRandom(io, pos, false)).printUCI(stdout);
             }
             try stdout.print("\n", .{});
         } else if (std.ascii.eqlIgnoreCase(search_mode, "NegamaxAlphaBeta")) {
-            var move: types.Move = .none;
             if (std.ascii.eqlIgnoreCase(evaluation_mode, "Materialist")) {
-                move = try search.iterativeDeepening(io, allocator, stdout, pos, limits, evaluate.evaluateMaterialist, options);
+                try thread_pool.startThinking(stdout, pos, states, limits, evaluate.evaluateMaterialist, options);
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
-                move = try search.iterativeDeepening(io, allocator, stdout, pos, limits, evaluate.evaluateShannon, options);
+                try thread_pool.startThinking(stdout, pos, states, limits, evaluate.evaluateShannon, options);
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
-                move = try search.iterativeDeepening(io, allocator, stdout, pos, limits, evaluate.evaluateTable, options);
+                try thread_pool.startThinking(stdout, pos, states, limits, evaluate.evaluateTable, options);
             }
-            try stdout.print("bestmove ", .{});
-            try move.printUCI(stdout);
-            try stdout.print("\n", .{});
         } else {
             try stdout.print("Search mode {s} not implemented\n", .{search_mode});
         }
@@ -508,7 +482,11 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
     var list: std.ArrayListUnmanaged([]const u8) = .empty;
     defer list.deinit(allocator);
 
-    var buffer: [64]u8 = undefined;
+    var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
+    try initOptions(allocator, &options);
+    defer deinitOptions(allocator, &options);
+
+    var buffer: [2048]u8 = undefined;
     const w: std.Io.Writer.Discarding = .init(&buffer);
     var stdout_discarding: std.Io.Writer = w.writer;
 
@@ -561,10 +539,6 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
     try list.append(allocator, "fen r1r3k1/pb3pbp/1q1Bp1p1/3pP3/2p2P2/Q1P5/PP4PP/2KR1B1R b - - 0 19");
     try list.append(allocator, "fen 4k3/6R1/8/4B1P1/5PK1/8/6r1/8 w - - 3 62");
 
-    var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
-    try initOptions(allocator, &options);
-    defer deinitOptions(allocator, &options);
-
     for (list.items) |fen| {
         var states: StateList = .empty;
         try states.ensureTotalCapacity(allocator, 1024); // Necessary because extending invalidates pointers
@@ -579,17 +553,50 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
         var tokens = std.mem.tokenizeScalar(u8, input, ' ');
 
         if (verbose) {
-            try cmd_go(io, allocator, stdout, &pos, &tokens, options);
+            try cmd_go(io, allocator, stdout, &pos, states, &tokens, options);
         } else {
-            try cmd_go(io, allocator, &stdout_discarding, &pos, &tokens, options);
+            try cmd_go(io, allocator, &stdout_discarding, &pos, states, &tokens, options);
         }
-        total_nodes += interface.nodes_searched;
+        // Make sure the thread has finished
+        thread_pool.finishThreads();
+
+        // Then add counted nodes to total
+        total_nodes += interface.queryNodes();
+
+        // Finally clear the thread
+        thread_pool.clearThreads();
     }
 
-    const elapsed = std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real));
+    const elapsed_time = std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real));
 
-    try stdout.print("{d} nodes {d:.0} nps\n", .{ total_nodes, (@as(f32, @floatFromInt(total_nodes)) / @as(f32, @floatFromInt(elapsed.toMilliseconds())) * 1e3) });
+    try stdout.print("{d} nodes {d:.0} nps\n", .{ total_nodes, (@as(f32, @floatFromInt(total_nodes)) / @as(f32, @floatFromInt(elapsed_time.toMilliseconds())) * 1e3) });
     if (verbose)
-        try stdout.print("Time elapsed: {f}\n", .{elapsed});
+        try stdout.print("Time elapsed: {f}\n", .{elapsed_time});
     try stdout.flush();
+}
+
+pub fn displayBestMove(stdout: *std.Io.Writer, move: types.Move) !void {
+    try stdout.print("bestmove ", .{});
+    try move.printUCI(stdout);
+    try stdout.print("\n", .{});
+    try stdout.flush();
+}
+
+pub inline fn queryNodes() u64 {
+    var total_nodes: u64 = 0;
+    for (thread_pool.threads.items) |thread| {
+        total_nodes += thread.search.nodes_searched;
+    }
+
+    return total_nodes;
+}
+
+pub inline fn querySeldepth() types.Depth {
+    var current_seldepth: types.Depth = 0;
+    for (thread_pool.threads.items) |thread| {
+        if (current_seldepth < thread.search.seldepth)
+            current_seldepth = thread.search.seldepth;
+    }
+
+    return current_seldepth;
 }

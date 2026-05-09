@@ -1,5 +1,3 @@
-const std = @import("std");
-
 /// PRNG from https://github.com/SnowballSH/Avalanche
 /// MIT License
 /// Copyright (c) 2023 Yinuo Huang

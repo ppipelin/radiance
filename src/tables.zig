@@ -41,12 +41,16 @@ pub const TranspositionHolder = struct {
 
 pub var transposition_table: TranspositionHolder = undefined;
 
-pub const TranspositionEntry = struct {
+pub const TranspositionEntry = extern struct {
     value: Value,
     static_eval: Value,
-    depth: Depth,
     move: Move,
-    bound: TableBound,
+    depth: Depth,
+    flags: packed struct(u8) {
+        bound: TableBound,
+        is_pv: bool = false,
+        age: u5 = 0,
+    },
     key16: u16,
 
     pub const empty: @This() = .{
@@ -54,7 +58,7 @@ pub const TranspositionEntry = struct {
         .static_eval = types.value_none,
         .depth = 0,
         .move = .none,
-        .bound = .none,
+        .flags = .{ .bound = .none, .is_pv = false, .age = 0 },
         .key16 = 0,
     };
 
@@ -84,7 +88,7 @@ pub fn readTranspositionTable(key: Key) TranspositionEntry {
     }
 }
 
-pub fn writeTranspositionTable(key: Key, score: types.Value, static_eval: types.Value, depth: types.Depth, move: types.Move, bound: TableBound) void {
+pub fn writeTranspositionTable(key: Key, score: types.Value, static_eval: types.Value, depth: types.Depth, move: types.Move, bound: TableBound, age: u5) void {
     if (transposition_table.tt.len == 0)
         return;
 
@@ -95,15 +99,16 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, static_eval: types.
     // - Different hash
     // - Different age
     // - Lower depth
-    // if (entry.bound == .none or (bound == .exact or !entry.isEqualKey(key) or entry.depth <= depth + 4)) {
-
+    // if (entry.flags.bound == .none or bound == .exact or !entry.isEqualKey(key) or entry.depth <= depth + 4 or entry.flags.age != age) {
     // WIP: Always replace for now
     entry.key16 = TranspositionEntry.reduce(key);
     entry.value = score;
     entry.static_eval = static_eval;
     entry.depth = depth;
     entry.move = move;
-    entry.bound = bound;
+    entry.flags.bound = bound;
+    entry.flags.is_pv = false;
+    entry.flags.age = age;
     // }
 }
 
@@ -476,8 +481,16 @@ pub const black_pawn_attacks = [64]Bitboard{
 ////// Evaluation //////
 
 pub const max_history = 15000;
-pub var history: [Color.nb()][types.board_size2 * types.board_size2]types.Value = @splat(@splat(0));
-pub var history_capture: [PieceType.nb()][types.board_size2][PieceType.nb()]types.Value = @splat(@splat(@splat(0)));
+
+pub const FromToHistory = [Color.nb()][types.board_size2 * types.board_size2]Value;
+pub const PieceToHistory = [Piece.nb()][types.board_size2]Value;
+pub const PieceToPieceHistory = [Piece.nb()][types.board_size2][PieceType.nb()]Value;
+pub const ContinuationHistory = [Piece.nb()][types.board_size2]PieceToHistory;
+
+pub const Histories = struct {
+    history: FromToHistory = @splat(@splat(0)),
+    // history_capture: PieceToPieceHistory = @splat(@splat(@splat(0))),
+};
 
 pub fn updateHistory(history_value: *Value, bonus: Value) void {
     const clamped: i32 = std.math.clamp(bonus, -max_history, max_history);

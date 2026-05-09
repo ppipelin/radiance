@@ -1,3 +1,4 @@
+const interface = @import("interface.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -6,7 +7,6 @@ const variable = @import("variable.zig");
 const Bitboard = types.Bitboard;
 const Color = types.Color;
 const Direction = types.Direction;
-const File = types.File;
 const GenerationType = types.GenerationType;
 const Key = tables.Key;
 const Move = types.Move;
@@ -97,6 +97,20 @@ pub const Position = struct {
 
         pos.state = state;
 
+        return pos;
+    }
+
+    pub fn clone(noalias self: *Position, allocator: std.mem.Allocator, states: interface.StateList, new_states: *interface.StateList) !*Position {
+        var pos = try allocator.create(Position);
+        pos.* = self.*;
+        try new_states.ensureTotalCapacity(allocator, 1024); // Necessary because extending invalidates pointers
+        for (states.items, 0..) |state, i| {
+            new_states.appendAssumeCapacity(state);
+            if (i != 0)
+                new_states.items[new_states.items.len - 1].previous = &new_states.items[new_states.items.len - 2];
+        }
+
+        pos.state = &new_states.items[new_states.items.len - 1];
         return pos;
     }
 
@@ -1006,7 +1020,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn scoreMoves(self: Position, list: []Move, comptime flag: GenerationType, scores: []Value) void {
+    pub fn scoreMoves(self: Position, list: []Move, comptime flag: GenerationType, histories: tables.Histories, scores: []Value) void {
         for (list, 0..) |move, i| {
             scores[i] = 0;
 
@@ -1028,7 +1042,7 @@ pub const Position = struct {
                     scores[i] += variable.getValue("castle_bonus");
                 }
 
-                scores[i] += @divTrunc(variable.getValue("history") *| tables.history[self.state.turn.index()][move.getFromTo()], 10);
+                scores[i] += @divTrunc(variable.getValue("history") *| histories.history[self.state.turn.index()][move.getFromTo()], 10);
 
                 // TODO: threatByLesser
             }
