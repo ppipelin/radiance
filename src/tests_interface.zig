@@ -254,8 +254,8 @@ test "SearchLeakNoInterface" {
     var limits = interface.limits;
     limits.depth = 8;
 
-    try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateShannon, options);
-    try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateTable, options);
+    try search.iterativeDeepening(io, allocator, &stdout, &pos, 0, limits, evaluate.evaluateShannon, options);
+    try search.iterativeDeepening(io, allocator, &stdout, &pos, 0, limits, evaluate.evaluateTable, options);
     try pos.moveNull(&s);
 }
 

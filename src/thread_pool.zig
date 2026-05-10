@@ -14,7 +14,7 @@ var threads: std.ArrayListUnmanaged(Thread) = .empty;
 pub fn init(io_: std.Io, allocator_: std.mem.Allocator) !void {
     io = io_;
     allocator = allocator_;
-    buffer = try allocator.alloc(u8, 64);
+    buffer = try allocator.alloc(u8, 2048);
     stdout_helper = .init(buffer);
 }
 
@@ -43,11 +43,10 @@ pub fn addThread(stdout: *std.Io.Writer, noalias pos: *position.Position, states
     const current_thread: *Thread = threads.addOneAssumeCapacity();
     current_thread.* = .{}; // Initialization
     current_thread.pos = try pos.clone(allocator, states, &current_thread.states);
-
     current_thread.thread = std.Thread.spawn(
         .{ .stack_size = 64 * 1024 * 1024 },
         search.iterativeDeepening,
-        .{ io, allocator, stdout, current_thread.pos, limits, eval, options },
+        .{ io, allocator, stdout, current_thread.pos, threads.items.len - 1, limits, eval, options },
     ) catch |err| {
         try stdout.print("Could not spawn thread! With error {}\n", .{err});
         return;

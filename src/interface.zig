@@ -172,7 +172,10 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
         if (std.ascii.eqlIgnoreCase("go", primary_token)) {
             existing_command = true;
 
-            try cmd_go(io, allocator, stdout, &pos, states, &tokens, options);
+            cmd_go(io, allocator, stdout, &pos, states, &tokens, options) catch |err| {
+                try stdout.print("Command go failed with error {}\n", .{err});
+                thread_pool.terminateThreads();
+            };
         }
 
         if (std.ascii.eqlIgnoreCase("bench", primary_token)) {

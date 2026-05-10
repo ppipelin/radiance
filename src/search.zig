@@ -167,7 +167,7 @@ pub fn searchRandom(io: std.Io, noalias pos: *position.Position, comptime is_960
     return move_list[rand.intRangeAtMost(u8, 0, @intCast(move_len - 1))];
 }
 
-pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
+pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, rm_reorder: usize, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
     var root_moves: std.ArrayListUnmanaged(RootMove) = .empty;
@@ -244,7 +244,12 @@ pub fn iterativeDeepening(io: std.Io, allocator: std.mem.Allocator, stdout: *std
         root_moves.appendAssumeCapacity(RootMove{ .pv = pv_rm });
     }
 
-    var depth: types.Depth = 1;
+    // Reorder root moves
+    // Used for multi threading
+    const target: usize = @mod(rm_reorder, root_moves.items.len);
+    std.mem.swap(RootMove, &root_moves.items[target], &root_moves.items[0]);
+
+    var depth: types.Depth = @intCast(1 + @divTrunc(rm_reorder, 2));
     while (depth <= limits.depth) : (depth += 1) {
         // Some variables have to be reset
         for (root_moves.items) |*root_move| {
