@@ -4,6 +4,7 @@ const position = @import("position.zig");
 const search = @import("search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
+const thread_pool = @import("thread_pool.zig");
 const types = @import("types.zig");
 
 const io = std.testing.io;
@@ -241,16 +242,22 @@ test "SearchLeakNoInterface" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
+    try thread_pool.init(io, allocator);
+    defer thread_pool.deinit();
+
     var options: std.StringArrayHashMapUnmanaged(interface.Option) = .empty;
-    defer interface.deinitOptions(allocator, &options);
     try interface.initOptions(allocator, &options);
+    defer interface.deinitOptions(allocator, &options);
 
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, position.start_fen);
     var limits = interface.limits;
     limits.depth = 8;
-    try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateShannon, options);
-    try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateTable, options);
+
+    var rm: std.ArrayListUnmanaged(search.RootMove) = .empty;
+    try search.iterativeDeepening(io, allocator, &stdout, &pos, &rm, limits, evaluate.evaluateShannon, options);
+    try search.iterativeDeepening(io, allocator, &stdout, &pos, &rm, limits, evaluate.evaluateTable, options);
+    try thread_pool.terminateThreads();
     try pos.moveNull(&s);
 }
 
