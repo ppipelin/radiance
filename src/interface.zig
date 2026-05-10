@@ -9,7 +9,6 @@ const thread_pool = @import("thread_pool.zig");
 const variable = @import("variable.zig");
 
 pub var g_stop: std.atomic.Value(bool) = .init(false);
-pub var search_thread: ?std.Thread = null;
 pub var limits: Limits = Limits{};
 pub var remaining: types.TimePoint = 0;
 pub var increment: types.TimePoint = 0;
@@ -250,11 +249,9 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
 
         try stdout.flush();
     }
-    if (search_thread != null) {
-        g_stop.store(true, .release);
-        search_thread.?.join();
-        search_thread = null;
-    }
+
+    g_stop.store(true, .release);
+    thread_pool.terminateThreads(); // Terminate before options and states are deallocated
 }
 
 fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
@@ -496,6 +493,10 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
     var list: std.ArrayListUnmanaged([]const u8) = .empty;
     defer list.deinit(allocator);
 
+    var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
+    try initOptions(allocator, &options);
+    defer deinitOptions(allocator, &options);
+
     var buffer: [64]u8 = undefined;
     const w: std.Io.Writer.Discarding = .init(&buffer);
     var stdout_discarding: std.Io.Writer = w.writer;
@@ -549,10 +550,6 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
     try list.append(allocator, "fen r1r3k1/pb3pbp/1q1Bp1p1/3pP3/2p2P2/Q1P5/PP4PP/2KR1B1R b - - 0 19");
     try list.append(allocator, "fen 4k3/6R1/8/4B1P1/5PK1/8/6r1/8 w - - 3 62");
 
-    var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
-    try initOptions(allocator, &options);
-    defer deinitOptions(allocator, &options);
-
     for (list.items) |fen| {
         var states: StateList = .empty;
         try states.ensureTotalCapacity(allocator, 1024); // Necessary because extending invalidates pointers
@@ -571,9 +568,10 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
         } else {
             try cmd_go(io, allocator, &stdout_discarding, &pos, states, &tokens, options);
         }
-        total_nodes += interface.nodes_searched.load(.acquire);
         // Make sure threads are terminated
-        try thread_pool.terminateThreads();
+        thread_pool.terminateThreads();
+        // Then add counted nodes to total
+        total_nodes += interface.nodes_searched.load(.acquire);
     }
 
     const elapsed = std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real));

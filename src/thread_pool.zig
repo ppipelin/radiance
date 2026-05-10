@@ -19,6 +19,8 @@ pub fn init(io_: std.Io, allocator_: std.mem.Allocator) !void {
 }
 
 pub fn deinit() void {
+    terminateThreads();
+    threads.deinit(allocator);
     allocator.free(buffer);
 }
 
@@ -29,13 +31,11 @@ const Thread = struct {
     search: search = .{},
     pos: *position.Position = undefined,
     states: interface.StateList = .empty,
-    root_moves: std.ArrayListUnmanaged(search.RootMove) = .empty,
 
-    fn terminateThread(self: *Thread) !void {
+    fn terminateThread(self: *Thread) void {
         self.thread.join();
         allocator.destroy(self.pos);
-        self.states.clearRetainingCapacity();
-        self.root_moves.clearRetainingCapacity();
+        self.states.deinit(allocator);
     }
 };
 
@@ -47,22 +47,22 @@ pub fn addThread(stdout: *std.Io.Writer, noalias pos: *position.Position, states
     current_thread.thread = std.Thread.spawn(
         .{ .stack_size = 64 * 1024 * 1024 },
         search.iterativeDeepening,
-        .{ io, allocator, stdout, current_thread.pos, &current_thread.root_moves, limits, eval, options },
+        .{ io, allocator, stdout, current_thread.pos, limits, eval, options },
     ) catch |err| {
         try stdout.print("Could not spawn thread! With error {}\n", .{err});
         return;
     };
 }
 
-pub fn terminateThreads() !void {
+pub fn terminateThreads() void {
     for (threads.items) |*thread| {
-        try thread.terminateThread();
+        thread.terminateThread();
     }
     threads.clearRetainingCapacity();
 }
 
 pub fn startThinking(stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
-    try terminateThreads();
+    terminateThreads();
 
     const threads_nb: usize = @intCast(try std.fmt.parseInt(u128, options.get("Threads").?.current_value, 10));
     try threads.ensureTotalCapacity(allocator, threads_nb);

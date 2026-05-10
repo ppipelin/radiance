@@ -221,6 +221,9 @@ test "SearchLeak" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
+    try thread_pool.init(io, allocator);
+    defer thread_pool.deinit();
+
     const input =
         \\position kiwi
         \\eval
@@ -242,9 +245,6 @@ test "SearchLeakNoInterface" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
-    try thread_pool.init(io, allocator);
-    defer thread_pool.deinit();
-
     var options: std.StringArrayHashMapUnmanaged(interface.Option) = .empty;
     try interface.initOptions(allocator, &options);
     defer interface.deinitOptions(allocator, &options);
@@ -254,10 +254,8 @@ test "SearchLeakNoInterface" {
     var limits = interface.limits;
     limits.depth = 8;
 
-    var rm: std.ArrayListUnmanaged(search.RootMove) = .empty;
-    try search.iterativeDeepening(io, allocator, &stdout, &pos, &rm, limits, evaluate.evaluateShannon, options);
-    try search.iterativeDeepening(io, allocator, &stdout, &pos, &rm, limits, evaluate.evaluateTable, options);
-    try thread_pool.terminateThreads();
+    try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateShannon, options);
+    try search.iterativeDeepening(io, allocator, &stdout, &pos, limits, evaluate.evaluateTable, options);
     try pos.moveNull(&s);
 }
 
