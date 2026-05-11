@@ -342,19 +342,14 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
 
     const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
     const tt_hit: bool = tt_entry.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
-    var tt_value: types.Value = -types.value_none;
-    var tt_depth: types.Depth = 0;
-    var tt_move: types.Move = .none;
-    var tt_bound: types.TableBound = .upperbound;
+
+    // Update the mate score retrieved from the table to consider the current ply
+    const tt_value: types.Value = types.valueFromTT(tt_entry.value, ss[0].ply);
+    const tt_static: types.Value = tt_entry.static_eval;
+    const tt_depth: types.Depth = tt_entry.depth;
+    const tt_move: types.Move = tt_entry.move;
+    const tt_bound: types.TableBound = tt_entry.bound;
     if (tt_hit) {
-        tt_value = tt_entry.value;
-        tt_depth = tt_entry.depth;
-        tt_move = tt_entry.move;
-        tt_bound = tt_entry.bound;
-
-        // Update the mate score retrieved from the table to consider the current ply
-        tt_value = types.valueFromTT(tt_value, ss[0].ply);
-
         if (!is_null_move and !pv_node and tt_depth >= depth) {
             switch (tt_bound) {
                 .exact => score = tt_value,
@@ -380,17 +375,17 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
 
     // 5. Static evaluation
     if (pos.state.checkers == 0) {
-        if (tt_hit) {
+        if (tt_static != types.value_none) {
             // TODO: Handle bound if needed
             // switch (tt_bound) {
             //     .exact => pos.state.static_eval = tt_value,
             //     .lowerbound =>,
             //     .upperbound =>,
             // }
-            pos.state.static_eval = tt_value;
+            pos.state.static_eval = tt_static;
         } else {
             pos.state.static_eval = eval(pos.*);
-            // TODO: Store evaluation in tt?
+            tables.writeTranspositionTable(key, types.value_none, pos.state.static_eval, 0, .none, .none);
         }
     }
 
@@ -588,7 +583,7 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
                             tables.updateHistory(&tables.history[pos.state.turn.index()][malus_move.getFromTo()], -bonus);
                         }
                     }
-                    tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), depth, move, .lowerbound);
+                    tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), pos.state.static_eval, depth, move, .lowerbound);
                     return best_score;
                 } else {
                     alpha = score; // Update alpha! Always alpha < beta
