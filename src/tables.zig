@@ -43,6 +43,7 @@ pub var transposition_table: TranspositionHolder = undefined;
 
 pub const TranspositionEntry = struct {
     value: Value,
+    static_eval: Value,
     depth: Depth,
     move: Move,
     bound: TableBound,
@@ -50,6 +51,7 @@ pub const TranspositionEntry = struct {
 
     pub const empty: @This() = .{
         .value = 0,
+        .static_eval = types.value_none,
         .depth = 0,
         .move = .none,
         .bound = .none,
@@ -75,14 +77,14 @@ pub fn readTranspositionTable(key: Key) TranspositionEntry {
         return .empty;
 
     const entry: TranspositionEntry = transposition_table.tt[transpositionIndex(key)];
-    if (entry.bound != .none and entry.isEqualKey(key)) {
+    if (entry.isEqualKey(key)) {
         return entry;
     } else {
         return .empty;
     }
 }
 
-pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth, move: types.Move, bound: TableBound) void {
+pub fn writeTranspositionTable(key: Key, score: types.Value, static_eval: types.Value, depth: types.Depth, move: types.Move, bound: TableBound) void {
     if (transposition_table.tt.len == 0)
         return;
 
@@ -98,6 +100,7 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, depth: types.Depth,
     // WIP: Always replace for now
     entry.key16 = TranspositionEntry.reduce(key);
     entry.value = score;
+    entry.static_eval = static_eval;
     entry.depth = depth;
     entry.move = move;
     entry.bound = bound;
