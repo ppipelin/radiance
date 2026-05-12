@@ -500,7 +500,7 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
     try initOptions(allocator, &options);
     defer deinitOptions(allocator, &options);
 
-    var buffer: [64]u8 = undefined;
+    var buffer: [2048]u8 = undefined;
     const w: std.Io.Writer.Discarding = .init(&buffer);
     var stdout_discarding: std.Io.Writer = w.writer;
 

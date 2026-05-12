@@ -6,7 +6,7 @@ const types = @import("types.zig");
 
 var io: std.Io = undefined;
 var allocator: std.mem.Allocator = undefined;
-var buffer: []u8 = undefined;
+var buffer: [2048]u8 = undefined;
 var stdout_helper: std.Io.Writer.Discarding = undefined;
 
 var threads: std.ArrayListUnmanaged(Thread) = .empty;
@@ -14,14 +14,12 @@ var threads: std.ArrayListUnmanaged(Thread) = .empty;
 pub fn init(io_: std.Io, allocator_: std.mem.Allocator) !void {
     io = io_;
     allocator = allocator_;
-    buffer = try allocator.alloc(u8, 2048);
-    stdout_helper = .init(buffer);
+    stdout_helper = .init(&buffer);
 }
 
 pub fn deinit() void {
     terminateThreads();
     threads.deinit(allocator);
-    allocator.free(buffer);
 }
 
 // const Thread = std.Thread;
