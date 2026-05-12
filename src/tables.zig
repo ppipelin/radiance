@@ -41,12 +41,17 @@ pub const TranspositionHolder = struct {
 
 pub var transposition_table: TranspositionHolder = undefined;
 
-pub const TranspositionEntry = struct {
+pub const TranspositionEntry = extern struct {
     value: Value,
     static_eval: Value,
-    depth: Depth,
     move: Move,
-    bound: TableBound,
+    depth: Depth,
+    // bound: TableBound,
+    flags: packed struct(u8) {
+        bound: TableBound,
+        pv: u1 = 0,
+        age: u5 = 0,
+    },
     key16: u16,
 
     pub const empty: @This() = .{

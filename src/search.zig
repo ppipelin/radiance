@@ -323,6 +323,7 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
     var beta = beta_;
     var depth = depth_;
 
+    // should be done per node then agregated
     _ = interface.nodes_searched.fetchAdd(1, .monotonic);
 
     // 1. Quiescence search at depth 0

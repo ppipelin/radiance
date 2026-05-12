@@ -26,7 +26,6 @@ pub fn deinit() void {
 const Thread = struct {
     thread: std.Thread = undefined,
     stopping: bool = false,
-    search: search = .{},
     pos: *position.Position = undefined,
     states: interface.StateList = .empty,
 
