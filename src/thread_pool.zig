@@ -52,7 +52,6 @@ pub fn addThread(stdout: *std.Io.Writer, noalias pos: *position.Position, states
 }
 
 pub fn terminateThreads() void {
-    interface.g_stop.store(true, .release);
     for (threads.items) |*thread| {
         thread.terminateThread();
     }
