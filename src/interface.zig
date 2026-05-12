@@ -373,7 +373,6 @@ pub fn displayBestMove(stdout: *std.Io.Writer, move: types.Move) !void {
 
 fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
     limits = .{};
-    g_stop.store(false, .release);
 
     limits.start = types.now(io);
 

@@ -46,10 +46,9 @@ pub const TranspositionEntry = extern struct {
     static_eval: Value,
     move: Move,
     depth: Depth,
-    // bound: TableBound,
     flags: packed struct(u8) {
         bound: TableBound,
-        pv: u1 = 0,
+        is_pv: bool = false,
         age: u5 = 0,
     },
     key16: u16,
@@ -59,7 +58,7 @@ pub const TranspositionEntry = extern struct {
         .static_eval = types.value_none,
         .depth = 0,
         .move = .none,
-        .bound = .none,
+        .flags = .{ .bound = .none, .is_pv = false, .age = 0 },
         .key16 = 0,
     };
 
@@ -108,7 +107,9 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, static_eval: types.
     entry.static_eval = static_eval;
     entry.depth = depth;
     entry.move = move;
-    entry.bound = bound;
+    entry.flags.bound = bound;
+    entry.flags.is_pv = false;
+    entry.flags.age = 0;
     // }
 }
 

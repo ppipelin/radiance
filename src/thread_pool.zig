@@ -51,6 +51,7 @@ pub fn addThread(stdout: *std.Io.Writer, noalias pos: *position.Position, states
 }
 
 pub fn terminateThreads() void {
+    interface.g_stop.store(true, .release);
     for (threads.items) |*thread| {
         thread.terminateThread();
     }
@@ -59,6 +60,8 @@ pub fn terminateThreads() void {
 
 pub fn startThinking(stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     terminateThreads();
+
+    interface.g_stop.store(false, .release);
 
     const threads_nb: usize = @intCast(try std.fmt.parseInt(u128, options.get("Threads").?.current_value, 10));
     try threads.ensureTotalCapacity(allocator, threads_nb);

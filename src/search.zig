@@ -348,14 +348,14 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
     const key: tables.Key = pos.state.material_key;
 
     const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
-    const tt_hit: bool = tt_entry.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
+    const tt_hit: bool = tt_entry.flags.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
 
     // Update the mate score retrieved from the table to consider the current ply
     const tt_value: types.Value = types.valueFromTT(tt_entry.value, ss[0].ply);
     const tt_static: types.Value = tt_entry.static_eval;
     const tt_depth: types.Depth = tt_entry.depth;
     const tt_move: types.Move = tt_entry.move;
-    const tt_bound: types.TableBound = tt_entry.bound;
+    const tt_bound: types.TableBound = tt_entry.flags.bound;
     if (tt_hit) {
         if (!is_null_move and !pv_node and tt_depth >= depth) {
             switch (tt_bound) {
@@ -420,7 +420,7 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
 
         // Null move pruning
         if (!is_null_move and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and pos.state.static_eval > beta) {
-            const tapered: types.Depth = @min(@divTrunc(pos.state.static_eval -| beta, variable.getValue("null_move_taper")), 6);
+            const tapered: types.Depth = @intCast(@min(@divTrunc(pos.state.static_eval -| beta, variable.getValue("null_move_taper")), 6));
             const r: types.Depth = tapered + @divTrunc(depth, 3) + 5;
             try pos.moveNull(&s);
             const null_score: types.Value = -try abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, root_moves, limits, eval, -beta, -beta + 1, depth -| r, is_960, true);
@@ -478,7 +478,7 @@ fn abSearch(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeTyp
             continue;
         }
 
-        const depth_reduced_lmr: types.Depth = @max(1, depth - 4);
+        const depth_reduced_lmr: types.Depth = @max(1, depth -| 4);
 
         if (!root_node and !types.isValueMate(best_score)) {
             // SEE pruning
@@ -647,7 +647,7 @@ fn quiesce(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType
     // Transposition table probe
     const key: tables.Key = pos.state.material_key;
     const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
-    const tt_hit: bool = tt_entry.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
+    const tt_hit: bool = tt_entry.flags.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
     var tt_value: types.Value = -types.value_none;
     var tt_depth: types.Depth = 0;
     var tt_move: types.Move = .none;
@@ -656,7 +656,7 @@ fn quiesce(io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType
         tt_value = tt_entry.value;
         tt_depth = tt_entry.depth;
         tt_move = tt_entry.move;
-        tt_bound = tt_entry.bound;
+        tt_bound = tt_entry.flags.bound;
 
         // Update the mate score retrieved from the table to consider the current ply
         tt_value = types.valueFromTT(tt_value, ss[0].ply);
@@ -846,7 +846,7 @@ fn info(io: std.Io, stdout: *std.Io.Writer, pv: []types.Move, limits: interface.
     var hashfull: u128 = 0;
     if (hash_size >= 1000) {
         for (0..1000) |i| {
-            if (tables.transposition_table.tt[i].bound != .none)
+            if (tables.transposition_table.tt[i].flags.bound != .none)
                 hashfull += 1;
         }
     } else {
