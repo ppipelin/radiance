@@ -88,7 +88,7 @@ pub fn readTranspositionTable(key: Key) TranspositionEntry {
     }
 }
 
-pub fn writeTranspositionTable(key: Key, score: types.Value, static_eval: types.Value, depth: types.Depth, move: types.Move, bound: TableBound) void {
+pub fn writeTranspositionTable(key: Key, score: types.Value, static_eval: types.Value, depth: types.Depth, move: types.Move, bound: TableBound, age: u5) void {
     if (transposition_table.tt.len == 0)
         return;
 
@@ -99,18 +99,17 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, static_eval: types.
     // - Different hash
     // - Different age
     // - Lower depth
-    // if (entry.bound == .none or (bound == .exact or !entry.isEqualKey(key) or entry.depth <= depth + 4)) {
-
-    // WIP: Always replace for now
-    entry.key16 = TranspositionEntry.reduce(key);
-    entry.value = score;
-    entry.static_eval = static_eval;
-    entry.depth = depth;
-    entry.move = move;
-    entry.flags.bound = bound;
-    entry.flags.is_pv = false;
-    entry.flags.age = 0;
-    // }
+    if (entry.flags.bound == .none or bound == .exact or !entry.isEqualKey(key) or entry.depth <= depth + 4 or entry.flags.age != age) {
+        // WIP: Always replace for now
+        entry.key16 = TranspositionEntry.reduce(key);
+        entry.value = score;
+        entry.static_eval = static_eval;
+        entry.depth = depth;
+        entry.move = move;
+        entry.flags.bound = bound;
+        entry.flags.is_pv = false;
+        entry.flags.age = age;
+    }
 }
 
 /// Allocates capacity of transposition table in Mega bytes

@@ -11,6 +11,7 @@ const Search = @This();
 histories: tables.Histories = .{},
 root_moves: [types.max_moves]RootMove = @splat(.{}),
 root_moves_len: usize = 0,
+age: u5 = 0,
 
 const NodeType = enum {
     non_pv,
@@ -182,6 +183,9 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     interface.nodes_searched.store(0, .release);
     interface.seldepth = 0;
 
+    self.root_moves_len = 0;
+    self.age +%= 1;
+
     if (limits.movetime > 0) {
         interface.remaining = limits.movetime;
         const remaining_float: f128 = interface.remaining;
@@ -198,7 +202,6 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         }
     }
 
-    self.root_moves_len = 0;
     var stack: [200 + 10]Stack = @splat(Stack{});
     var pv: [200]types.Move = @splat(.none); // useless
     var ss: [*]Stack = &stack;
@@ -394,7 +397,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
             pos.state.static_eval = tt_static;
         } else {
             pos.state.static_eval = eval(pos.*);
-            tables.writeTranspositionTable(key, types.value_none, pos.state.static_eval, 0, .none, .none);
+            tables.writeTranspositionTable(key, types.value_none, pos.state.static_eval, 0, .none, .none, self.age);
         }
     }
 
@@ -592,7 +595,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
                             tables.updateHistory(&self.histories.history[pos.state.turn.index()][malus_move.getFromTo()], -bonus);
                         }
                     }
-                    tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), pos.state.static_eval, depth, move, .lowerbound);
+                    tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), pos.state.static_eval, depth, move, .lowerbound, self.age);
                     return best_score;
                 } else {
                     alpha = score; // Update alpha! Always alpha < beta
