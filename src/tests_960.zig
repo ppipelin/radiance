@@ -1,7 +1,7 @@
 //! This module provides tests for the 960 support of the program
 
 const position = @import("position.zig");
-const search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -40,10 +40,10 @@ test "CastleIntersect" {
     try expectEqual(24, move_len);
 
     pos = try position.Position.setFen(&s, "rk3r2/8/8/pppppppp/8/8/8/R4RK1 w Qkq -");
-    try expectEqual(20, search.perftTest(allocator, &pos, 1, true) catch unreachable);
-    try expectEqual(459, search.perftTest(allocator, &pos, 2, true) catch unreachable);
-    try expectEqual(9_665, search.perftTest(allocator, &pos, 3, true) catch unreachable);
-    try expectEqual(228_080, search.perftTest(allocator, &pos, 4, true) catch unreachable);
+    try expectEqual(20, Search.perftTest(allocator, &pos, 1, true) catch unreachable);
+    try expectEqual(459, Search.perftTest(allocator, &pos, 2, true) catch unreachable);
+    try expectEqual(9_665, Search.perftTest(allocator, &pos, 3, true) catch unreachable);
+    try expectEqual(228_080, Search.perftTest(allocator, &pos, 4, true) catch unreachable);
 }
 
 test "CastleMixed" {
@@ -69,18 +69,18 @@ test "CastleCheck" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "1rk1rbbq/2p2ppp/1p2p3/3pPP2/5P2/QN6/PPPP3P/1RNKRB2 b KQq -");
 
-    try expectEqual(23, search.perftTest(allocator, &pos, 1, true) catch unreachable);
-    try expectEqual(806, search.perftTest(allocator, &pos, 2, true) catch unreachable);
-    try expectEqual(17_730, search.perftTest(allocator, &pos, 3, true) catch unreachable);
-    try expectEqual(641_118, search.perftTest(allocator, &pos, 4, true) catch unreachable);
-    try expectEqual(14_466_362, search.perftTest(allocator, &pos, 5, true) catch unreachable);
+    try expectEqual(23, Search.perftTest(allocator, &pos, 1, true) catch unreachable);
+    try expectEqual(806, Search.perftTest(allocator, &pos, 2, true) catch unreachable);
+    try expectEqual(17_730, Search.perftTest(allocator, &pos, 3, true) catch unreachable);
+    try expectEqual(641_118, Search.perftTest(allocator, &pos, 4, true) catch unreachable);
+    try expectEqual(14_466_362, Search.perftTest(allocator, &pos, 5, true) catch unreachable);
 
     pos = try position.Position.setFen(&s, "1rk1rbbq/2p2ppp/1p2p3/3pPP2/5P2/QN6/PPPP3P/1RNKRB2 b KQq");
     var s2: position.State = position.State{};
     try pos.movePiece(try types.Move.initFromStr(pos, "e6f5"), &s2);
     var s3: position.State = position.State{};
     try pos.movePiece(try types.Move.initFromStr(pos, "a3a8"), &s3);
-    try expectEqual(21, search.perftTest(allocator, &pos, 1, true) catch unreachable);
-    try expectEqual(749, search.perftTest(allocator, &pos, 2, true) catch unreachable);
-    try expectEqual(15_546, search.perftTest(allocator, &pos, 3, true) catch unreachable);
+    try expectEqual(21, Search.perftTest(allocator, &pos, 1, true) catch unreachable);
+    try expectEqual(749, Search.perftTest(allocator, &pos, 2, true) catch unreachable);
+    try expectEqual(15_546, Search.perftTest(allocator, &pos, 3, true) catch unreachable);
 }

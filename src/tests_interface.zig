@@ -1,7 +1,7 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
 const position = @import("position.zig");
-const search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const thread_pool = @import("thread_pool.zig");
@@ -254,6 +254,7 @@ test "SearchLeakNoInterface" {
     var limits = interface.limits;
     limits.depth = 8;
 
+    var search: Search = .{};
     try search.iterativeDeepening(io, allocator, &stdout, &pos, 0, limits, evaluate.evaluateShannon, options);
     try search.iterativeDeepening(io, allocator, &stdout, &pos, 0, limits, evaluate.evaluateTable, options);
     try pos.moveNull(&s);

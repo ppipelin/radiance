@@ -1,6 +1,6 @@
 const interface = @import("interface.zig");
 const position = @import("position.zig");
-const search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const types = @import("types.zig");
 
@@ -28,6 +28,7 @@ const Thread = struct {
     stopping: bool = false,
     pos: *position.Position = undefined,
     states: interface.StateList = .empty,
+    search: Search = .{},
 
     fn terminateThread(self: *Thread) void {
         self.thread.join();
@@ -42,8 +43,8 @@ pub fn addThread(stdout: *std.Io.Writer, noalias pos: *position.Position, states
     current_thread.pos = try pos.clone(allocator, states, &current_thread.states);
     current_thread.thread = std.Thread.spawn(
         .{ .stack_size = 64 * 1024 * 1024 },
-        search.iterativeDeepening,
-        .{ io, allocator, stdout, current_thread.pos, threads.items.len - 1, limits, eval, options },
+        Search.iterativeDeepening,
+        .{ &current_thread.search, io, allocator, stdout, current_thread.pos, threads.items.len - 1, limits, eval, options },
     ) catch |err| {
         try stdout.print("Could not spawn thread! With error {}\n", .{err});
         return;
@@ -66,7 +67,7 @@ pub fn startThinking(stdout: *std.Io.Writer, noalias pos: *position.Position, st
     const threads_nb: usize = @intCast(try std.fmt.parseInt(u128, options.get("Threads").?.current_value, 10));
     try threads.ensureTotalCapacity(allocator, threads_nb);
 
-    // return search.iterativeDeepening(io, allocator, stdout, pos, limits, eval, options);
+    // return Search.iterativeDeepening(io, allocator, stdout, pos, limits, eval, options);
     // Start main thread
 
     try addThread(stdout, pos, states, limits, eval, options);

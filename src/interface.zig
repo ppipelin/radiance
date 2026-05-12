@@ -1,7 +1,7 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
 const position = @import("position.zig");
-const search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const types = @import("types.zig");
 const tables = @import("tables.zig");
@@ -456,7 +456,7 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
 
     const t = std.Io.Timestamp.now(io, .real);
     if (limits.perft > 0) {
-        const nodes = if (is_960) try search.perft(allocator, stdout, pos, limits.perft, true, true) else try search.perft(allocator, stdout, pos, limits.perft, false, true);
+        const nodes = if (is_960) try Search.perft(allocator, stdout, pos, limits.perft, true, true) else try Search.perft(allocator, stdout, pos, limits.perft, false, true);
         const nodes_f: f64 = @floatFromInt(nodes);
         const time_f: f64 = @floatFromInt(std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real)).toMilliseconds());
         try stdout.print("info nodes {} time {d:.0} ({d:.1} Mnps)\n", .{ nodes, time_f, (nodes_f / (time_f / 1e3) / 1e6) });
@@ -468,9 +468,9 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
         if (std.ascii.eqlIgnoreCase(search_mode, "Random")) {
             try stdout.print("bestmove ", .{});
             if (is_960) {
-                try (try search.searchRandom(io, pos, true)).printUCI(stdout);
+                try (try Search.searchRandom(io, pos, true)).printUCI(stdout);
             } else {
-                try (try search.searchRandom(io, pos, false)).printUCI(stdout);
+                try (try Search.searchRandom(io, pos, false)).printUCI(stdout);
             }
             try stdout.print("\n", .{});
         } else if (std.ascii.eqlIgnoreCase(search_mode, "NegamaxAlphaBeta")) {

@@ -482,8 +482,16 @@ pub const black_pawn_attacks = [64]Bitboard{
 ////// Evaluation //////
 
 pub const max_history = 15000;
-pub var history: [Color.nb()][types.board_size2 * types.board_size2]types.Value = @splat(@splat(0));
-pub var history_capture: [PieceType.nb()][types.board_size2][PieceType.nb()]types.Value = @splat(@splat(@splat(0)));
+
+pub const FromToHistory = [Color.nb()][types.board_size2 * types.board_size2]Value;
+pub const PieceToHistory = [Piece.nb()][types.board_size2]Value;
+pub const PieceToPieceHistory = [Piece.nb()][types.board_size2][PieceType.nb()]Value;
+pub const ContinuationHistory = [Piece.nb()][types.board_size2]PieceToHistory;
+
+pub const Histories = struct {
+    history: FromToHistory = @splat(@splat(0)),
+    // history_capture: PieceToPieceHistory = @splat(@splat(@splat(0))),
+};
 
 pub fn updateHistory(history_value: *Value, bonus: Value) void {
     const clamped: i32 = std.math.clamp(bonus, -max_history, max_history);

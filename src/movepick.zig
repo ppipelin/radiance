@@ -1,5 +1,5 @@
 const position = @import("position.zig");
-const search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -26,7 +26,7 @@ pub const MovePick = struct {
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
 
-    pub fn nextMove(noalias self: *MovePick, noalias pos: *position.Position, pv_move: types.Move, comptime is_960: bool) !types.Move {
+    pub fn nextMove(noalias self: *MovePick, noalias pos: *position.Position, pv_move: types.Move, histories: tables.Histories, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
             pos.updateAttacked(is_960);
@@ -68,7 +68,7 @@ pub const MovePick = struct {
         // Sort captures
         if (self.stage == 3 or self.stage == 13) {
             var scores: [types.max_moves]types.Value = undefined;
-            pos.scoreMoves(self.moves_capture[0..self.capture_len], .capture, &scores);
+            pos.scoreMoves(self.moves_capture[0..self.capture_len], .capture, histories, &scores);
             position.orderMoves(self.moves_capture[0..self.capture_len], &scores);
             self.stage += 1;
         }
@@ -122,7 +122,7 @@ pub const MovePick = struct {
         // Sort quiets
         if (self.stage == 7) {
             var scores: [types.max_moves]types.Value = undefined;
-            pos.scoreMoves(self.moves_quiet[0..self.quiet_len], .quiet, &scores);
+            pos.scoreMoves(self.moves_quiet[0..self.quiet_len], .quiet, histories, &scores);
             position.orderMoves(self.moves_quiet[0..self.quiet_len], &scores);
             self.stage += 1;
         }
@@ -169,7 +169,7 @@ pub const MovePick = struct {
     // Return false otherwise
     fn extractMove(pos: position.Position, moves: []types.Move, threshold: types.Value) bool {
         for (moves, 1..) |_, i| {
-            if (search.seeGreaterEqual(pos, moves[0], threshold)) {
+            if (Search.seeGreaterEqual(pos, moves[0], threshold)) {
                 return true;
             } else if (i < moves.len) {
                 std.mem.swap(types.Move, &moves[0], &moves[i]);

@@ -1021,7 +1021,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn scoreMoves(self: Position, list: []Move, comptime flag: GenerationType, scores: []Value) void {
+    pub fn scoreMoves(self: Position, list: []Move, comptime flag: GenerationType, histories: tables.Histories, scores: []Value) void {
         for (list, 0..) |move, i| {
             scores[i] = 0;
 
@@ -1043,7 +1043,7 @@ pub const Position = struct {
                     scores[i] += variable.getValue("castle_bonus");
                 }
 
-                scores[i] += @divTrunc(variable.getValue("history") *| tables.history[self.state.turn.index()][move.getFromTo()], 10);
+                scores[i] += @divTrunc(variable.getValue("history") *| histories.history[self.state.turn.index()][move.getFromTo()], 10);
 
                 // TODO: threatByLesser
             }
