@@ -9,7 +9,8 @@ const variable = @import("variable.zig");
 const Search = @This();
 
 histories: tables.Histories = .{},
-root_moves: std.ArrayListUnmanaged(RootMove) = .empty,
+root_moves: [types.max_moves]RootMove = @splat(.{}),
+root_moves_len: usize = 0,
 
 const NodeType = enum {
     non_pv,
@@ -17,7 +18,7 @@ const NodeType = enum {
     root,
 };
 
-pub const RootMove = struct {
+const RootMove = struct {
     score: types.Value = -types.value_infinite,
     previous_score: types.Value = -types.value_infinite,
     average_score: types.Value = -types.value_infinite,
@@ -197,6 +198,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         }
     }
 
+    self.root_moves_len = 0;
     var stack: [200 + 10]Stack = @splat(Stack{});
     var pv: [200]types.Move = @splat(.none); // useless
     var ss: [*]Stack = &stack;
@@ -231,8 +233,6 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     pos.scoreMoves(move_list[0..move_len], .all, self.histories, &scores);
     position.orderMoves(move_list[0..move_len], &scores);
 
-    try self.root_moves.ensureTotalCapacity(allocator, move_len);
-
     for (move_list[0..move_len]) |move| {
         // searchmove constraint if exists
         if (limits.searchmoves.items.len > 0) {
@@ -242,27 +242,28 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         var pv_rm: std.ArrayListUnmanaged(types.Move) = .empty;
         try pv_rm.ensureTotalCapacity(allocator, 200);
         pv_rm.appendAssumeCapacity(move);
-        self.root_moves.appendAssumeCapacity(RootMove{ .pv = pv_rm });
+        self.root_moves[self.root_moves_len] = RootMove{ .pv = pv_rm };
+        self.root_moves_len += 1;
     }
 
     // Reorder root moves
     // Used for multi threading
-    // const target: usize = @mod(thread_idx, self.root_moves.items.len);
-    // std.mem.swap(RootMove, &self.root_moves.items[target], &self.root_moves.items[0]);
+    // const target: usize = @mod(thread_idx, self.root_moves_len);
+    // std.mem.swap(RootMove, &self.root_moves[target], &self.root_moves[0]);
 
     var depth: types.Depth = @intCast(1 + @divTrunc(thread_idx, 2));
     while (depth <= limits.depth) : (depth += 1) {
         // Some variables have to be reset
-        for (self.root_moves.items) |*root_move| {
+        for (self.root_moves[0..self.root_moves_len]) |*root_move| {
             root_move.previous_score = root_move.score;
             root_move.score = -types.value_infinite;
         }
 
         // Reset aspiration window starting size
-        const prev: types.ValueExtended = @intCast(@abs(self.root_moves.items[0].average_score_squared));
+        const prev: types.ValueExtended = @intCast(@abs(self.root_moves[0].average_score_squared));
         var delta: types.Value = std.math.lossyCast(types.Value, 5 + @divTrunc(prev, 10000));
-        var alpha: types.Value = @max(self.root_moves.items[0].average_score -| delta, -types.value_infinite);
-        var beta: types.Value = @min(self.root_moves.items[0].average_score +| delta, types.value_infinite);
+        var alpha: types.Value = @max(self.root_moves[0].average_score -| delta, -types.value_infinite);
+        var beta: types.Value = @min(self.root_moves[0].average_score +| delta, types.value_infinite);
 
         // Aspiration window
         // Disable by alpha = -types.value_infinite; beta = types.value_infinite;
@@ -289,26 +290,26 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
                 break;
             }
 
-            std.sort.insertion(RootMove, self.root_moves.items, {}, RootMove.sort);
+            std.sort.insertion(RootMove, self.root_moves[0..self.root_moves_len], {}, RootMove.sort);
 
             delta +|= @divTrunc(delta, 3);
         }
 
         // Even if outofTime we keep a better move if there is one
-        std.sort.insertion(RootMove, self.root_moves.items, {}, RootMove.sort);
+        std.sort.insertion(RootMove, self.root_moves[0..self.root_moves_len], {}, RootMove.sort);
 
         if (depth > 1 and outOfTime(io, limits)) {
             break;
         }
 
-        try info(io, stdout, self.root_moves.items[0].pv.items, limits, depth, self.root_moves.items[0].score, options);
+        try info(io, stdout, self.root_moves[0].pv.items, limits, depth, self.root_moves[0].score, options);
         try stdout.flush();
     }
 
     // Even if outofTime we keep a better move if there is one
-    const move: types.Move = self.root_moves.items[0].pv.items[0];
+    const move: types.Move = self.root_moves[0].pv.items[0];
 
-    for (self.root_moves.items) |*root_move| {
+    for (self.root_moves[0..self.root_moves_len]) |*root_move| {
         root_move.pv.deinit(allocator);
     }
 
@@ -444,8 +445,8 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
     var mp: movepick.MovePick = .{ .tt_move = tt_move };
 
     var pv_move: types.Move = types.Move.none;
-    if (root_node and self.root_moves.items[0].pv.items.len > 0) {
-        pv_move = self.root_moves.items[0].pv.items[0];
+    if (root_node and self.root_moves[0].pv.items.len > 0) {
+        pv_move = self.root_moves[0].pv.items[0];
     }
 
     // 7. Loop over all legal moves
@@ -544,7 +545,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
             return -types.value_none;
 
         if (root_node) {
-            for (self.root_moves.items) |*root_move| {
+            for (self.root_moves[0..self.root_moves_len]) |*root_move| {
                 if (root_move.pv.items[0] != move)
                     continue;
 
