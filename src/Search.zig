@@ -249,13 +249,14 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         self.root_moves_len += 1;
     }
 
-    // Reorder root moves
-    // Used for multi threading
-    const target: usize = @mod(thread_idx, self.root_moves_len);
-    std.mem.swap(RootMove, &self.root_moves[target], &self.root_moves[0]);
-
     var depth: types.Depth = @intCast(1 + @divTrunc(thread_idx, 2));
     while (depth <= limits.depth) : (depth += 1) {
+
+        // Reorder root moves
+        // Used for multi threading
+        const target: usize = @mod(thread_idx, self.root_moves_len);
+        std.mem.swap(RootMove, &self.root_moves[target], &self.root_moves[0]);
+
         // Some variables have to be reset
         for (self.root_moves[0..self.root_moves_len]) |*root_move| {
             root_move.previous_score = root_move.score;
