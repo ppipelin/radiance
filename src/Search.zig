@@ -12,6 +12,15 @@ histories: tables.Histories = .{},
 root_moves: [types.max_moves]RootMove = @splat(.{}),
 root_moves_len: usize = 0,
 age: u5 = 0,
+nodes_searched: u64 = 0,
+
+pub fn reset(self: *Search) void {
+    self.histories = .{};
+    self.root_moves = @splat(.{});
+    self.root_moves_len = 0;
+    self.age = 0;
+    self.nodes_searched = 0;
+}
 
 const NodeType = enum {
     non_pv,
@@ -42,23 +51,6 @@ const Stack = struct {
     killers: [2]?types.Move = [_]?types.Move{ null, null },
     ply: u8 = 0,
 };
-
-inline fn elapsed(io: std.Io, limits: interface.Limits) types.TimePoint {
-    return (types.now(io) - limits.start);
-}
-
-inline fn outOfTime(io: std.Io, limits: interface.Limits) bool {
-    if (interface.g_stop.load(.acquire))
-        return true;
-
-    const uninitialized: bool = interface.remaining == 0 and limits.nodes == 0;
-    if (limits.infinite or uninitialized) return false;
-
-    if (limits.nodes != 0) {
-        return interface.nodes_searched.load(.acquire) >= interface.remaining_computed;
-    }
-    return elapsed(io, limits) > interface.remaining_computed;
-}
 
 pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, depth: types.Depth, comptime is_960: bool, verbose: bool) !u64 {
     var nodes: u64 = 0;
@@ -174,14 +166,15 @@ pub fn searchRandom(io: std.Io, noalias pos: *position.Position, comptime is_960
     return move_list[rand.intRangeAtMost(u8, 0, @intCast(move_len - 1))];
 }
 
+/// Has to be called by thread_pool only
 pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, thread_idx: usize, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
     interface.remaining = 0;
     interface.increment = 0;
     interface.remaining_computed = 0;
-    interface.nodes_searched.store(0, .release);
     interface.seldepth = 0;
+    self.nodes_searched = 0;
 
     self.root_moves_len = 0;
     self.age +%= 1;
@@ -280,7 +273,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
                 },
             }
 
-            if (depth > 1 and outOfTime(io, limits))
+            if (depth > 1 and interface.outOfTime(io, limits))
                 break;
 
             // In case of failing low/high increase aspiration window and re-search, otherwise exit the loop.
@@ -302,7 +295,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         // Even if outofTime we keep a better move if there is one
         std.sort.insertion(RootMove, self.root_moves[0..self.root_moves_len], {}, RootMove.sort);
 
-        if (depth > 1 and outOfTime(io, limits)) {
+        if (depth > 1 and interface.outOfTime(io, limits)) {
             break;
         }
 
@@ -330,7 +323,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
     var depth = depth_;
 
     // should be done per node then agregated
-    _ = interface.nodes_searched.fetchAdd(1, .monotonic);
+    self.nodes_searched += 1;
 
     // 1. Quiescence search at depth 0
     if (depth <= 0) {
@@ -431,7 +424,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
             try pos.moveNull(&s);
             const null_score: types.Value = -try self.abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, limits, eval, -beta, -beta + 1, depth -| r, is_960, true);
             try pos.unMoveNull();
-            if (depth > 1 and outOfTime(io, limits))
+            if (depth > 1 and interface.outOfTime(io, limits))
                 return -types.value_none;
 
             // Do not return unproven mate
@@ -545,7 +538,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
         try pos.unMovePiece(move);
 
         // Useless ?
-        if (depth > 1 and outOfTime(io, limits))
+        if (depth > 1 and interface.outOfTime(io, limits))
             return -types.value_none;
 
         if (root_node) {
@@ -626,7 +619,7 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
 
     var alpha = alpha_;
 
-    _ = interface.nodes_searched.fetchAdd(1, .monotonic);
+    self.nodes_searched += 1;
     if (interface.seldepth < ss[0].ply + 1) {
         interface.seldepth = ss[0].ply + 1;
     }
@@ -684,7 +677,7 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
 
     if (alpha < stand_pat)
         alpha = stand_pat;
-    if (outOfTime(io, limits))
+    if (interface.outOfTime(io, limits))
         return alpha;
 
     // Loop over all legal captures
@@ -736,7 +729,7 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
             }
         }
 
-        if (outOfTime(io, limits))
+        if (interface.outOfTime(io, limits))
             break;
     }
 
@@ -846,7 +839,7 @@ fn update_pv(pv: []types.Move, move: types.Move, childPv: []types.Move) void {
 }
 
 fn info(io: std.Io, stdout: *std.Io.Writer, pv: []types.Move, limits: interface.Limits, depth: types.Depth, score: types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
-    const time: u64 = @intCast(elapsed(io, limits));
+    const time: u64 = @intCast(interface.elapsed(io, limits));
 
     const hash_size: u128 = @divTrunc(try std.fmt.parseInt(u128, options.get("Hash").?.current_value, 10) * 1_000_000, @sizeOf(tables.TranspositionEntry));
     var hashfull: u128 = 0;
@@ -859,7 +852,8 @@ fn info(io: std.Io, stdout: *std.Io.Writer, pv: []types.Move, limits: interface.
         hashfull = 1000;
     }
 
-    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, interface.seldepth, interface.nodes_searched.load(.acquire), @divTrunc(interface.nodes_searched.load(.acquire) * 1000, @max(1, time)), time, hashfull });
+    const nodes_searched: u64 = interface.queryNodes();
+    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, interface.seldepth, nodes_searched, @divTrunc(nodes_searched * 1000, @max(1, time)), time, hashfull });
 
     if (types.isValueMate(score)) {
         const mate_distance: types.Value = try std.math.divCeil(types.Value, types.value_mate - @as(types.Value, @intCast(@abs(score))), 2);

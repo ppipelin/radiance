@@ -240,7 +240,7 @@ test "SearchLeak" {
 
 test "SearchLeakNoInterface" {
     var output: [4096]u8 = undefined;
-    var stdout = std.Io.Writer.fixed(&output);
+    var stdout: std.Io.Writer.Discarding = .init(&output);
 
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
@@ -249,15 +249,22 @@ test "SearchLeakNoInterface" {
     try interface.initOptions(allocator, &options);
     defer interface.deinitOptions(allocator, &options);
 
-    var s: position.State = position.State{};
-    var pos: position.Position = try position.Position.setFen(&s, position.start_fen);
+    var states: interface.StateList = .empty;
+    try states.ensureTotalCapacity(allocator, 1024); // Necessary because extending invalidates pointers
+    defer states.deinit(allocator);
+
+    try thread_pool.init(io, allocator);
+    defer thread_pool.deinit();
+
+    states.appendAssumeCapacity(.{});
+
+    var pos: position.Position = try position.Position.setFen(&states.items[0], position.start_fen);
     var limits = interface.limits;
     limits.depth = 8;
 
-    var search: Search = .{};
-    try search.iterativeDeepening(io, allocator, &stdout, &pos, 0, limits, evaluate.evaluateShannon, options);
-    try search.iterativeDeepening(io, allocator, &stdout, &pos, 0, limits, evaluate.evaluateTable, options);
-    try pos.moveNull(&s);
+    try thread_pool.startThinking(&stdout.writer, &pos, states, limits, evaluate.evaluateShannon, options);
+    try thread_pool.startThinking(&stdout.writer, &pos, states, limits, evaluate.evaluateTable, options);
+    try pos.moveNull(&states.items[0]);
 }
 
 // test "Bench" {

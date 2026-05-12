@@ -13,7 +13,6 @@ pub var limits: Limits = Limits{};
 pub var remaining: types.TimePoint = 0;
 pub var increment: types.TimePoint = 0;
 pub var remaining_computed: types.TimePoint = 0;
-pub var nodes_searched: std.atomic.Value(u64) = .init(0);
 pub var seldepth: u64 = 0;
 
 pub const StateList = std.ArrayListUnmanaged(position.State);
@@ -364,13 +363,6 @@ fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states
     }
 }
 
-pub fn displayBestMove(stdout: *std.Io.Writer, move: types.Move) !void {
-    try stdout.print("bestmove ", .{});
-    try move.printUCI(stdout);
-    try stdout.print("\n", .{});
-    try stdout.flush();
-}
-
 fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
     limits = .{};
 
@@ -570,16 +562,53 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
         } else {
             try cmd_go(io, allocator, &stdout_discarding, &pos, states, &tokens, options);
         }
-        // Make sure threads are terminated
-        thread_pool.terminateThreads();
+        // Make sure the thread has finished
+        thread_pool.finishThreads();
+
         // Then add counted nodes to total
-        total_nodes += interface.nodes_searched.load(.acquire);
+        total_nodes += interface.queryNodes();
+
+        // Finally clear the thread
+        thread_pool.clearThreads();
     }
 
-    const elapsed = std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real));
+    const elapsed_time = std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real));
 
-    try stdout.print("{d} nodes {d:.0} nps\n", .{ total_nodes, (@as(f32, @floatFromInt(total_nodes)) / @as(f32, @floatFromInt(elapsed.toMilliseconds())) * 1e3) });
+    try stdout.print("{d} nodes {d:.0} nps\n", .{ total_nodes, (@as(f32, @floatFromInt(total_nodes)) / @as(f32, @floatFromInt(elapsed_time.toMilliseconds())) * 1e3) });
     if (verbose)
-        try stdout.print("Time elapsed: {f}\n", .{elapsed});
+        try stdout.print("Time elapsed: {f}\n", .{elapsed_time});
     try stdout.flush();
+}
+
+pub fn displayBestMove(stdout: *std.Io.Writer, move: types.Move) !void {
+    try stdout.print("bestmove ", .{});
+    try move.printUCI(stdout);
+    try stdout.print("\n", .{});
+    try stdout.flush();
+}
+
+pub inline fn elapsed(io: std.Io, lim: Limits) types.TimePoint {
+    return (types.now(io) - lim.start);
+}
+
+pub inline fn outOfTime(io: std.Io, lim: Limits) bool {
+    if (interface.g_stop.load(.acquire))
+        return true;
+
+    const uninitialized: bool = interface.remaining == 0 and lim.nodes == 0;
+    if (lim.infinite or uninitialized) return false;
+
+    if (lim.nodes != 0) {
+        return queryNodes() >= interface.remaining_computed;
+    }
+    return elapsed(io, lim) > interface.remaining_computed;
+}
+
+pub inline fn queryNodes() u64 {
+    var total_nodes: u64 = 0;
+    for (thread_pool.threads.items) |thread| {
+        total_nodes += thread.search.nodes_searched;
+    }
+
+    return total_nodes;
 }

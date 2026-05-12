@@ -9,12 +9,13 @@ var allocator: std.mem.Allocator = undefined;
 var buffer: [2048]u8 = undefined;
 var stdout_helper: std.Io.Writer.Discarding = undefined;
 
-var threads: std.ArrayListUnmanaged(Thread) = .empty;
+pub var threads: std.ArrayListUnmanaged(Thread) = .empty;
 
 pub fn init(io_: std.Io, allocator_: std.mem.Allocator) !void {
     io = io_;
     allocator = allocator_;
     stdout_helper = .init(&buffer);
+    threads = .empty;
 }
 
 pub fn deinit() void {
@@ -30,10 +31,14 @@ const Thread = struct {
     states: interface.StateList = .empty,
     search: Search = .{},
 
-    fn terminateThread(self: *Thread) void {
-        self.thread.join();
+    inline fn clearThread(self: *Thread) void {
         allocator.destroy(self.pos);
         self.states.deinit(allocator);
+    }
+
+    fn terminateThread(self: *Thread) void {
+        self.thread.join();
+        self.clearThread();
     }
 };
 
@@ -49,6 +54,21 @@ pub fn addThread(stdout: *std.Io.Writer, noalias pos: *position.Position, states
         try stdout.print("Could not spawn thread! With error {}\n", .{err});
         return;
     };
+}
+
+/// Has to be followed by clearThreads()
+pub fn finishThreads() void {
+    for (threads.items) |*thread| {
+        thread.thread.join();
+    }
+}
+
+/// Has to be preceded by finishThreads()
+pub fn clearThreads() void {
+    for (threads.items) |*thread| {
+        thread.clearThread();
+    }
+    threads.clearRetainingCapacity();
 }
 
 pub fn terminateThreads() void {
