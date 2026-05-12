@@ -242,13 +242,15 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         self.root_moves_len += 1;
     }
 
-    var depth: types.Depth = @intCast(1 + @divTrunc(thread_idx, 2));
+    var depth: types.Depth = 1;
+    _ = thread_idx;
+    // var depth: types.Depth = @intCast(1 + @divTrunc(thread_idx, 2));
     while (depth <= limits.depth) : (depth += 1) {
 
         // Reorder root moves
         // Used for multi threading
-        const target: usize = @mod(thread_idx, self.root_moves_len);
-        std.mem.swap(RootMove, &self.root_moves[target], &self.root_moves[0]);
+        // const target: usize = @mod(thread_idx, self.root_moves_len);
+        // std.mem.swap(RootMove, &self.root_moves[target], &self.root_moves[0]);
 
         // Some variables have to be reset
         for (self.root_moves[0..self.root_moves_len]) |*root_move| {
@@ -322,7 +324,6 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
     var beta = beta_;
     var depth = depth_;
 
-    // should be done per node then agregated
     self.nodes_searched += 1;
 
     // 1. Quiescence search at depth 0
