@@ -13,6 +13,7 @@ root_moves: [types.max_moves]RootMove = @splat(.{}),
 root_moves_len: usize = 0,
 age: u5 = 0,
 nodes_searched: u64 = 0,
+seldepth: types.Depth = 0,
 
 pub fn reset(self: *Search) void {
     self.histories = .{};
@@ -20,6 +21,7 @@ pub fn reset(self: *Search) void {
     self.root_moves_len = 0;
     self.age = 0;
     self.nodes_searched = 0;
+    self.seldepth = 0;
 }
 
 const NodeType = enum {
@@ -175,6 +177,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     interface.remaining_computed = 0;
     interface.seldepth = 0;
     self.nodes_searched = 0;
+    self.seldepth = 0;
 
     self.root_moves_len = 0;
     self.age +%= 1;
@@ -621,8 +624,8 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
     var alpha = alpha_;
 
     self.nodes_searched += 1;
-    if (interface.seldepth < ss[0].ply + 1) {
-        interface.seldepth = ss[0].ply + 1;
+    if (self.seldepth < ss[0].ply + 1) {
+        self.seldepth = ss[0].ply + 1;
     }
 
     // In order to get the quiescence search to terminate, plies are usually restricted to moves that deal directly with the threat,
@@ -854,7 +857,8 @@ fn info(io: std.Io, stdout: *std.Io.Writer, pv: []types.Move, limits: interface.
     }
 
     const nodes_searched: u64 = interface.queryNodes();
-    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, interface.seldepth, nodes_searched, @divTrunc(nodes_searched * 1000, @max(1, time)), time, hashfull });
+    const seldepth: u64 = interface.querySeldepth();
+    try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, seldepth, nodes_searched, @divTrunc(nodes_searched * 1000, @max(1, time)), time, hashfull });
 
     if (types.isValueMate(score)) {
         const mate_distance: types.Value = try std.math.divCeil(types.Value, types.value_mate - @as(types.Value, @intCast(@abs(score))), 2);

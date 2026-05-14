@@ -612,3 +612,13 @@ pub inline fn queryNodes() u64 {
 
     return total_nodes;
 }
+
+pub inline fn querySeldepth() u64 {
+    var current_seldepth: u64 = 0;
+    for (thread_pool.threads.items) |thread| {
+        if (current_seldepth < thread.search.seldepth)
+            current_seldepth = thread.search.seldepth;
+    }
+
+    return current_seldepth;
+}
