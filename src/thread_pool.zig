@@ -87,22 +87,15 @@ pub fn startThinking(stdout: *std.Io.Writer, noalias pos: *position.Position, st
     const threads_nb: usize = @intCast(try std.fmt.parseInt(u128, options.get("Threads").?.current_value, 10));
     try threads.ensureTotalCapacity(allocator, threads_nb);
 
-    // return Search.iterativeDeepening(io, allocator, stdout, pos, limits, eval, options);
     // Start main thread
-
     try addThread(stdout, pos, states, limits, eval, options);
 
-    // Start helper threads if multi-threaded
     if (threads_nb == 1)
         return;
 
+    // Start helper threads if multi-threaded
     for (1..threads_nb) |_| {
-        // TODO: Permute rootmoves
-        // 1 2 3 4
-        // 2 1 3 4
-        // 3 2 1 4
-        // 4 2 3 1
+        // go infinite for them and stop using variable ?
         try addThread(&stdout_helper.writer, pos, states, limits, eval, options);
     }
-    // go infinite for them and stop using variable ?
 }

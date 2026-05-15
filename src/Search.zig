@@ -20,13 +20,17 @@ histories: tables.Histories = .{},
 root_moves: [types.max_moves]RootMove = @splat(.{}),
 root_moves_len: usize = 0,
 
-pub fn reset(self: *Search) void {
+pub fn nextIteration(self: *Search) void {
+    self.remaining = 0;
+    self.increment = 0;
+    self.remaining_computed = 0;
+    self.nodes_searched = 0;
+    self.seldepth = 0;
+    self.age +%= 1;
+
     self.histories = .{};
     self.root_moves = @splat(.{});
     self.root_moves_len = 0;
-    self.age = 0;
-    self.nodes_searched = 0;
-    self.seldepth = 0;
 }
 
 const NodeType = enum {
@@ -177,14 +181,7 @@ pub fn searchRandom(io: std.Io, noalias pos: *position.Position, comptime is_960
 pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, thread_idx: usize, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
-    self.remaining = 0;
-    self.increment = 0;
-    self.remaining_computed = 0;
-    self.nodes_searched = 0;
-    self.seldepth = 0;
-
-    self.root_moves_len = 0;
-    self.age +%= 1;
+    self.nextIteration();
 
     if (self.limits.movetime > 0) {
         self.remaining = self.limits.movetime;
@@ -196,8 +193,8 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         if (self.limits.nodes != 0) {
             self.remaining_computed = @intFromFloat(@as(f32, @floatFromInt(self.limits.nodes)) * 0.95);
         } else {
-            const remaining_float: f128 = @floatFromInt(self.remaining);
-            const increment_float: f128 = @floatFromInt(self.increment);
+            const remaining_float: f128 = self.remaining;
+            const increment_float: f128 = self.increment;
             self.remaining_computed = @intFromFloat(@min(remaining_float * 0.95, remaining_float / 30.0 + increment_float));
         }
     }
