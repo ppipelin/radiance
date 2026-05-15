@@ -9,11 +9,6 @@ const thread_pool = @import("thread_pool.zig");
 const variable = @import("variable.zig");
 
 pub var g_stop: std.atomic.Value(bool) = .init(false);
-pub var limits: Limits = Limits{};
-pub var remaining: types.TimePoint = 0;
-pub var increment: types.TimePoint = 0;
-pub var remaining_computed: types.TimePoint = 0;
-pub var seldepth: u64 = 0;
 
 pub const StateList = std.ArrayListUnmanaged(position.State);
 
@@ -364,7 +359,7 @@ fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states
 }
 
 fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
-    limits = .{};
+    var limits: Limits = .{};
 
     limits.start = types.now(io);
 
@@ -585,23 +580,6 @@ pub fn displayBestMove(stdout: *std.Io.Writer, move: types.Move) !void {
     try move.printUCI(stdout);
     try stdout.print("\n", .{});
     try stdout.flush();
-}
-
-pub inline fn elapsed(io: std.Io, lim: Limits) types.TimePoint {
-    return (types.now(io) - lim.start);
-}
-
-pub inline fn outOfTime(io: std.Io, lim: Limits) bool {
-    if (interface.g_stop.load(.acquire))
-        return true;
-
-    const uninitialized: bool = interface.remaining == 0 and lim.nodes == 0;
-    if (lim.infinite or uninitialized) return false;
-
-    if (lim.nodes != 0) {
-        return queryNodes() >= interface.remaining_computed;
-    }
-    return elapsed(io, lim) > interface.remaining_computed;
 }
 
 pub inline fn queryNodes() u64 {

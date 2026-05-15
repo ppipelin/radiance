@@ -46,10 +46,11 @@ pub fn addThread(stdout: *std.Io.Writer, noalias pos: *position.Position, states
     const current_thread: *Thread = threads.addOneAssumeCapacity();
     current_thread.* = .{}; // Initialization
     current_thread.pos = try pos.clone(allocator, states, &current_thread.states);
+    current_thread.search.limits = limits;
     current_thread.thread = std.Thread.spawn(
         .{ .stack_size = 64 * 1024 * 1024 },
         Search.iterativeDeepening,
-        .{ &current_thread.search, io, allocator, stdout, current_thread.pos, threads.items.len - 1, limits, eval, options },
+        .{ &current_thread.search, io, allocator, stdout, current_thread.pos, threads.items.len - 1, eval, options },
     ) catch |err| {
         try stdout.print("Could not spawn thread! With error {}\n", .{err});
         return;
