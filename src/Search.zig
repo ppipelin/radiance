@@ -858,7 +858,7 @@ fn info(self: *Search, io: std.Io, stdout: *std.Io.Writer, pv: []types.Move, dep
     }
 
     const nodes_searched: u64 = interface.queryNodes();
-    const seldepth: u64 = interface.querySeldepth();
+    const seldepth: types.Depth = interface.querySeldepth();
     try stdout.print("info depth {} seldepth {} nodes {} nps {} time {} hashfull {} score ", .{ depth, seldepth, nodes_searched, @divTrunc(nodes_searched * 1000, @max(1, time)), time, hashfull });
 
     if (types.isValueMate(score)) {

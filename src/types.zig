@@ -563,7 +563,7 @@ pub const GenerationType = enum(u3) {
 
 pub const Value = i16;
 pub const ValueExtended = i64;
-pub const Depth = u8;
+pub const Depth = Value;
 
 pub const max_moves = 218;
 
