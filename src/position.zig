@@ -7,7 +7,6 @@ const variable = @import("variable.zig");
 const Bitboard = types.Bitboard;
 const Color = types.Color;
 const Direction = types.Direction;
-const File = types.File;
 const GenerationType = types.GenerationType;
 const Key = tables.Key;
 const Move = types.Move;

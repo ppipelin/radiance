@@ -2,7 +2,6 @@ const evaluate = @import("evaluate.zig");
 const position = @import("position.zig");
 const std = @import("std");
 const types = @import("types.zig");
-const tables = @import("tables.zig");
 const variable = @import("variable.zig");
 
 const Tuple = std.meta.Tuple;

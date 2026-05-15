@@ -1,7 +1,5 @@
 const interface = @import("interface.zig");
 const magic = @import("magic.zig");
-const position = @import("position.zig");
-const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const thread_pool = @import("thread_pool.zig");
