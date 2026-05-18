@@ -1020,7 +1020,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn scoreMoves(self: Position, list: []Move, comptime flag: GenerationType, histories: tables.Histories, scores: []Value) void {
+    pub fn scoreMoves(self: Position, list: []Move, comptime flag: GenerationType, noalias histories: *const tables.Histories, scores: []Value) void {
         for (list, 0..) |move, i| {
             scores[i] = 0;
 

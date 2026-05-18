@@ -259,7 +259,7 @@ test "SearchLeakNoInterface" {
     states.appendAssumeCapacity(.{});
 
     var pos: position.Position = try position.Position.setFen(&states.items[0], position.start_fen);
-    var limits = interface.limits;
+    var limits: interface.Limits = .{};
     limits.depth = 8;
 
     try thread_pool.startThinking(&stdout.writer, &pos, states, limits, evaluate.evaluateShannon, options);
