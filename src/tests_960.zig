@@ -77,9 +77,9 @@ test "CastleCheck" {
 
     pos = try position.Position.setFen(&s, "1rk1rbbq/2p2ppp/1p2p3/3pPP2/5P2/QN6/PPPP3P/1RNKRB2 b KQq");
     var s2: position.State = position.State{};
-    try pos.movePiece(try types.Move.initFromStr(pos, "e6f5"), &s2);
+    try pos.movePiece(try types.Move.initFromStr(&pos, "e6f5"), &s2);
     var s3: position.State = position.State{};
-    try pos.movePiece(try types.Move.initFromStr(pos, "a3a8"), &s3);
+    try pos.movePiece(try types.Move.initFromStr(&pos, "a3a8"), &s3);
     try expectEqual(21, Search.perftTest(allocator, &pos, 1, true) catch unreachable);
     try expectEqual(749, Search.perftTest(allocator, &pos, 2, true) catch unreachable);
     try expectEqual(15_546, Search.perftTest(allocator, &pos, 3, true) catch unreachable);

@@ -329,7 +329,7 @@ pub const Move = packed struct(u16) {
         return Move{ .flags = flags.index(), .from = @intCast(from.index()), .to = @intCast(to.index()) };
     }
 
-    pub inline fn initFromStr(pos: position.Position, str: []const u8) !Move {
+    pub inline fn initFromStr(pos: *const position.Position, str: []const u8) !Move {
         if ((str[0] - 'a' >= board_size or str[1] - '1' >= board_size or str[2] - 'a' >= board_size or str[3] - '1' >= board_size))
             return error.MoveBeyondBoard;
 

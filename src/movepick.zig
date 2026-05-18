@@ -80,7 +80,7 @@ pub const MovePick = struct {
 
         // Positive captures
         if (self.stage == 4) {
-            if (extractMove(pos.*, self.moves_capture[self.index_capture..self.capture_len], 0)) {
+            if (extractMove(pos, self.moves_capture[self.index_capture..self.capture_len], 0)) {
                 self.index_capture += 1;
                 return self.moves_capture[self.index_capture - 1];
             }
@@ -167,7 +167,7 @@ pub const MovePick = struct {
 
     // Find first move that satisfies threshold and put it first
     // Return false otherwise
-    fn extractMove(pos: position.Position, moves: []types.Move, threshold: types.Value) bool {
+    fn extractMove(pos: *const position.Position, moves: []types.Move, threshold: types.Value) bool {
         for (moves, 1..) |_, i| {
             if (Search.seeGreaterEqual(pos, moves[0], threshold)) {
                 return true;

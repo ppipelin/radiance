@@ -55,7 +55,7 @@ pub fn pawnStructure(bb_pawn: types.Bitboard, comptime color: types.Color) types
 }
 
 // Chebyshev distance of kings
-inline fn distanceKings(pos: position.Position) types.Value {
+inline fn distanceKings(pos: *const position.Position) types.Value {
     var bb_king: types.Bitboard = pos.bb_pieces[types.PieceType.king.index()];
     std.debug.assert(@popCount(bb_king) == 2);
     const k1: types.Square = types.popLsb(&bb_king);
@@ -64,7 +64,7 @@ inline fn distanceKings(pos: position.Position) types.Value {
     return @intCast(@max(@abs(@as(types.Value, k1.rank().index()) - @as(types.Value, k2.rank().index())), @abs(@as(types.Value, k1.file().index()) - @as(types.Value, k2.file().index()))));
 }
 
-fn evaluateShannonColor(pos: position.Position, comptime col: types.Color) types.Value {
+fn evaluateShannonColor(pos: *const position.Position, comptime col: types.Color) types.Value {
     const bb_us: types.Bitboard = pos.bb_colors[col.index()];
     const bb_them: types.Bitboard = pos.bb_colors[col.invert().index()];
 
@@ -103,18 +103,18 @@ fn evaluateShannonColor(pos: position.Position, comptime col: types.Color) types
         50 * (malus_doubled_pawn + malus_blocked_pawn + malus_isolated_pawn);
 }
 
-pub fn evaluateMaterialist(pos: position.Position) types.Value {
+pub fn evaluateMaterialist(pos: *const position.Position) types.Value {
     return (if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w);
 }
 
-pub fn evaluateShannon(pos: position.Position) types.Value {
+pub fn evaluateShannon(pos: *const position.Position) types.Value {
     switch (pos.state.turn) {
         inline else => |turn| return evaluateShannonColor(pos, turn) - evaluateShannonColor(pos, turn.invert()),
     }
 }
 
 // TODO: take into account pinned ?
-pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.Value {
+pub fn mobilityBonus(pos: *const position.Position, comptime color: types.Color) types.Value {
     const bb_us: types.Bitboard = pos.bb_colors[color.index()];
     const bb_them: types.Bitboard = pos.bb_colors[color.invert().index()];
     const bb_all: types.Bitboard = pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()];
@@ -153,7 +153,7 @@ pub fn mobilityBonus(pos: position.Position, comptime color: types.Color) types.
     return bonus;
 }
 
-pub fn spaceBonus(pos: position.Position) types.Value {
+pub fn spaceBonus(pos: *const position.Position) types.Value {
     var bonus: types.Value = 0;
 
     // Vertical bonus
@@ -204,7 +204,7 @@ pub fn bishopOppositePawnBonus(bishops: types.Bitboard, pawns: types.Bitboard) t
 }
 
 // TODO: Add pawn structure hash
-pub fn evaluateTable(pos: position.Position) types.Value {
+pub fn evaluateTable(pos: *const position.Position) types.Value {
     var score: types.Value = pos.score_material_w - pos.score_material_b;
     const endgame: bool = pos.endgame(pos.state.turn);
 

@@ -42,7 +42,7 @@ const Thread = struct {
     }
 };
 
-pub fn addThread(stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
+pub fn addThread(stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, limits: interface.Limits, eval: *const fn (pos: *const position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const current_thread: *Thread = threads.addOneAssumeCapacity();
     current_thread.* = .{}; // Initialization
     current_thread.pos = try pos.clone(allocator, states, &current_thread.states);
@@ -79,7 +79,7 @@ pub fn terminateThreads() void {
     threads.clearRetainingCapacity();
 }
 
-pub fn startThinking(stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, limits: interface.Limits, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
+pub fn startThinking(stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, limits: interface.Limits, eval: *const fn (pos: *const position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     terminateThreads();
 
     interface.g_stop.store(false, .release);
