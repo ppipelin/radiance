@@ -818,7 +818,7 @@ pub const Position = struct {
                                 Move.generateMoveFrom(MoveFlags.en_passant, from_en_passant & bb_us & self.bb_pieces[PieceType.pawn.index()] & ~self.state.pinned[self.state.turn.index()], self.state.en_passant, list, len);
                             }
 
-                            var attackers: Bitboard = tables.getAttackers(self.*, color, checker_sq, bb_all) & ~self.state.pinned[self.state.turn.index()];
+                            var attackers: Bitboard = tables.getAttackers(self, color, checker_sq, bb_all) & ~self.state.pinned[self.state.turn.index()];
                             // Can be a promotion
                             if (checker_sq.rank() == Rank.r8.relativeRank(color)) {
                                 const attacking_pawns: Bitboard = attackers & self.bb_pieces[PieceType.pawn.index()];
@@ -831,7 +831,7 @@ pub const Position = struct {
                     PieceType.knight => {
                         if (gen_type == .all or gen_type == .capture) {
                             // Pinned knight cannot move
-                            var attackers: Bitboard = tables.getAttackers(self.*, color, checker_sq, bb_all) & ~self.state.pinned[self.state.turn.index()];
+                            var attackers: Bitboard = tables.getAttackers(self, color, checker_sq, bb_all) & ~self.state.pinned[self.state.turn.index()];
                             // Can be a promotion
                             if (checker_sq.rank() == Rank.r8.relativeRank(color)) {
                                 const attacking_pawns: Bitboard = attackers & self.bb_pieces[PieceType.pawn.index()];

@@ -70,7 +70,7 @@ fn eval(book: []const Triplet) !f32 {
         const pos: position.Position = try position.Position.setFen(&s, triplet[0]);
         const multiply: types.Value = if (pos.state.turn == .white) 1 else -1;
         // std.debug.print("eval {}, sigm {}, real {}, error^2 {d:.2}, fen {s}\n", .{ multiply * evaluate.evaluateTable(pos), sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(pos))), triplet[1].index(), std.math.pow(f32, sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(pos))) - triplet[1].index(), 2), triplet[0] });
-        difference += std.math.pow(f32, sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(pos))) - triplet[1].index(), 2);
+        difference += std.math.pow(f32, sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(&pos))) - triplet[1].index(), 2);
     }
     // std.debug.print("mean difference {}\n", .{difference / @as(f32, @floatFromInt(book.len))});
     return difference;

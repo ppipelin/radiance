@@ -179,11 +179,11 @@ test "SeeBasicQueen" {
     var s: position.State = position.State{};
     const pos: position.Position = try position.Position.setFen(&s, "1k1r4/1pp4p/p7/4q3/8/P5P1/1PP4P/2K1R3 w");
 
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e1e5"), -100));
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e1e5"), 0));
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e1e5"), 100));
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e1e5"), tables.material[types.PieceType.queen.index()]));
-    try std.testing.expect(!Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e1e5"), tables.material[types.PieceType.queen.index()] + 1));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "e1e5"), -100));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "e1e5"), 0));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "e1e5"), 100));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "e1e5"), tables.material[types.PieceType.queen.index()]));
+    try std.testing.expect(!Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "e1e5"), tables.material[types.PieceType.queen.index()] + 1));
 }
 
 test "SeeBasicPawn" {
@@ -194,10 +194,10 @@ test "SeeBasicPawn" {
 
     const pos: position.Position = try position.Position.setFen(&s, "1k1r4/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w");
 
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e1e5"), -100));
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e1e5"), 0));
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e1e5"), tables.material[types.PieceType.pawn.index()]));
-    try std.testing.expect(!Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "e1e5"), tables.material[types.PieceType.pawn.index()] + 1));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "e1e5"), -100));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "e1e5"), 0));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "e1e5"), tables.material[types.PieceType.pawn.index()]));
+    try std.testing.expect(!Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "e1e5"), tables.material[types.PieceType.pawn.index()] + 1));
 }
 
 test "SeeComplex" {
@@ -207,15 +207,15 @@ test "SeeComplex" {
     var s: position.State = position.State{};
     const pos: position.Position = try position.Position.setFen(&s, "3k4/8/6rn/8/6p1/5P2/4Q3/3K2R1 w");
 
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), -100));
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), 0));
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), tables.material[types.PieceType.pawn.index()]));
-    try std.testing.expect(!Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), tables.material[types.PieceType.pawn.index()] + 1));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "f3g4"), -100));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "f3g4"), 0));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "f3g4"), tables.material[types.PieceType.pawn.index()]));
+    try std.testing.expect(!Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "f3g4"), tables.material[types.PieceType.pawn.index()] + 1));
 
     // Rook takes first is negative
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g1g4"), -tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.knight.index()] + tables.material[types.PieceType.pawn.index()]));
-    try std.testing.expect(!Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g1g4"), -tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.knight.index()] + tables.material[types.PieceType.pawn.index()] + 1));
-    try std.testing.expect(!Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g1g4"), 0));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "g1g4"), -tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.knight.index()] + tables.material[types.PieceType.pawn.index()]));
+    try std.testing.expect(!Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "g1g4"), -tables.material[types.PieceType.rook.index()] + tables.material[types.PieceType.knight.index()] + tables.material[types.PieceType.pawn.index()] + 1));
+    try std.testing.expect(!Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "g1g4"), 0));
 }
 
 test "SeeComplexNoCapture" {
@@ -225,9 +225,9 @@ test "SeeComplexNoCapture" {
     var s: position.State = position.State{};
     const pos: position.Position = try position.Position.setFen(&s, "3k4/8/6rn/8/8/6P1/4Q3/3K2R1 w");
 
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g3g4"), -100));
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g3g4"), 0));
-    try std.testing.expect(!Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g3g4"), 1));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "g3g4"), -100));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "g3g4"), 0));
+    try std.testing.expect(!Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "g3g4"), 1));
 }
 
 test "SeeComplexNoCaptureLoss" {
@@ -237,8 +237,8 @@ test "SeeComplexNoCaptureLoss" {
     var s: position.State = position.State{};
     const pos: position.Position = try position.Position.setFen(&s, "3k4/8/6rn/7b/8/6P1/4Q3/3K2R1 w");
 
-    try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g3g4"), -tables.material[types.PieceType.pawn.index()]));
-    try std.testing.expect(!Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "g3g4"), 0));
+    try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "g3g4"), -tables.material[types.PieceType.pawn.index()]));
+    try std.testing.expect(!Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "g3g4"), 0));
 }
 
 // test "SeePin" {
@@ -248,10 +248,10 @@ test "SeeComplexNoCaptureLoss" {
 //     var s: position.State = position.State{};
 //     const pos: position.Position = try position.Position.setFen(&s, "kr3r2/6nb/6b1/5p2/1Q2P3/3B4/2B5/1K3R2 w");
 
-//     try std.testing.expect(Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), -tables.material[types.PieceType.pawn.index()]));
-//     try std.testing.expect(!Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), 0));
-//     try std.testing.expect(!Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), tables.material[types.PieceType.pawn.index()]));
-//     try std.testing.expect(!Search.seeGreaterEqual(pos, try types.Move.initFromStr(pos, "f3g4"), tables.material[types.PieceType.pawn.index()] + 1));
+//     try std.testing.expect(Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "f3g4"), -tables.material[types.PieceType.pawn.index()]));
+//     try std.testing.expect(!Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "f3g4"), 0));
+//     try std.testing.expect(!Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "f3g4"), tables.material[types.PieceType.pawn.index()]));
+//     try std.testing.expect(!Search.seeGreaterEqual(&pos, try types.Move.initFromStr(&pos, "f3g4"), tables.material[types.PieceType.pawn.index()] + 1));
 // }
 
 test "MovegenEnPassant" {

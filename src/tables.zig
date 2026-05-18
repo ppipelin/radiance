@@ -415,7 +415,7 @@ pub fn getAttacksAllFiltered(comptime pt: PieceType, comptime color: Color, bloc
     return attacks;
 }
 
-pub inline fn getAttackers(pos: position.Position, comptime color: Color, sq: Square, blockers: Bitboard) Bitboard {
+pub inline fn getAttackers(pos: *const position.Position, comptime color: Color, sq: Square, blockers: Bitboard) Bitboard {
     const p = getAttacks(PieceType.pawn, color.invert(), sq, blockers) & pos.bb_pieces[PieceType.pawn.index()];
     const n = getAttacks(PieceType.knight, color, sq, blockers) & pos.bb_pieces[PieceType.knight.index()];
     const b = getAttacks(PieceType.bishop, color, sq, blockers) & (pos.bb_pieces[PieceType.bishop.index()] | pos.bb_pieces[PieceType.queen.index()]);
@@ -423,7 +423,7 @@ pub inline fn getAttackers(pos: position.Position, comptime color: Color, sq: Sq
     return (p | n | b | r) & pos.bb_colors[color.index()];
 }
 
-pub inline fn getAttackersAll(pos: position.Position, sq: Square, blockers: Bitboard) Bitboard {
+pub inline fn getAttackersAll(pos: *const position.Position, sq: Square, blockers: Bitboard) Bitboard {
     const p_white = getAttacks(PieceType.pawn, .white, sq, blockers) & pos.bb_pieces[PieceType.pawn.index()];
     const p_black = getAttacks(PieceType.pawn, .black, sq, blockers) & pos.bb_pieces[PieceType.pawn.index()];
     const n = getAttacks(PieceType.knight, .white, sq, blockers) & pos.bb_pieces[PieceType.knight.index()];

@@ -219,9 +219,9 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             existing_command = true;
             const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
             if (std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
-                try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(pos)});
+                try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(&pos)});
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
-                try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(pos)});
+                try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos)});
             }
         }
 
@@ -353,7 +353,7 @@ fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states
 
         while (token != null) : (token = tokens_rest_iterator.next()) {
             states.appendAssumeCapacity(position.State{});
-            try pos.movePiece(try types.Move.initFromStr(pos.*, token.?), &states.items[states.items.len - 1]);
+            try pos.movePiece(try types.Move.initFromStr(pos, token.?), &states.items[states.items.len - 1]);
         }
     }
 }
@@ -369,7 +369,7 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
             var has_param: bool = false;
             while (tokens.next()) |token_value| {
                 has_param = true;
-                try limits.searchmoves.append(allocator, try types.Move.initFromStr(pos.*, token_value));
+                try limits.searchmoves.append(allocator, try types.Move.initFromStr(pos, token_value));
             }
             if (!has_param) {
                 return error.MissingParameter;

@@ -178,7 +178,7 @@ pub fn searchRandom(io: std.Io, noalias pos: *position.Position, comptime is_960
 }
 
 /// Has to be called by thread_pool only
-pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, thread_idx: usize, eval: *const fn (pos: position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
+pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, thread_idx: usize, eval: *const fn (pos: *const position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
     self.nextIteration();
@@ -320,7 +320,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     return;
 }
 
-fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
+fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, eval: *const fn (pos: *const position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
@@ -332,7 +332,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
 
     // 1. Quiescence search at depth 0
     if (depth <= 0) {
-        // return eval(pos.*);
+        // return eval(pos);
         return self.quiesce(io, allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, eval, alpha, beta, is_null_move);
     }
 
@@ -395,7 +395,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
             // }
             pos.state.static_eval = tt_static;
         } else {
-            pos.state.static_eval = eval(pos.*);
+            pos.state.static_eval = eval(pos);
             tables.writeTranspositionTable(key, types.value_none, pos.state.static_eval, 0, .none, .none, self.age);
         }
     }
@@ -411,7 +411,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
         const razoring_threshold: types.Value = alpha -| tables.material[types.PieceType.rook.index()] -| tables.material[types.PieceType.pawn.index()] *| depth *| depth;
         const razoring: bool = pos.state.static_eval < razoring_threshold;
         if (!pv_node and razoring) {
-            // return eval(pos.*);
+            // return eval(pos);
             return self.quiesce(io, allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, eval, alpha, beta, is_null_move);
         }
 
@@ -619,7 +619,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
     return best_score;
 }
 
-fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, eval: *const fn (pos: position.Position) types.Value, alpha_: types.Value, beta: types.Value, is_null_move: bool) !types.Value {
+fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, eval: *const fn (pos: *const position.Position) types.Value, alpha_: types.Value, beta: types.Value, is_null_move: bool) !types.Value {
     const pv_node: bool = nodetype == NodeType.pv;
 
     var alpha = alpha_;
@@ -631,7 +631,7 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
 
     // In order to get the quiescence search to terminate, plies are usually restricted to moves that deal directly with the threat,
     // such as moves that capture and recapture (often called a 'capture search') in chess
-    const stand_pat: types.Value = eval(pos.*);
+    const stand_pat: types.Value = eval(pos);
     if (stand_pat >= beta)
         return beta;
 
@@ -703,7 +703,7 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
             // if ((if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w) +| capture_value < alpha -| margin)
             //     continue;
 
-            if (!seeGreaterEqual(pos.*, move, variable.getValue("see_qs")))
+            if (!seeGreaterEqual(pos, move, variable.getValue("see_qs")))
                 continue;
         }
 
@@ -744,7 +744,7 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
 // Static exchange evaluation greater or equal
 // Greater or equal is useful for move-ordering and allows faster return than evaluating full SEE
 // threshold corresponds to the value we have to gain
-pub fn seeGreaterEqual(pos: position.Position, move: types.Move, threshold: types.Value) bool {
+pub fn seeGreaterEqual(pos: *const position.Position, move: types.Move, threshold: types.Value) bool {
     // std.debug.assert(move.isCapture());
 
     if (move.isEnPassant())
