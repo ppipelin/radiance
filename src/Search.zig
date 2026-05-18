@@ -29,7 +29,6 @@ pub fn nextIteration(self: *Search) void {
     self.age +%= 1;
 
     self.histories = .{};
-    self.root_moves = @splat(.{});
     self.root_moves_len = 0;
 }
 
@@ -246,6 +245,10 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         self.root_moves_len += 1;
     }
 
+    defer for (self.root_moves[0..self.root_moves_len]) |*root_move| {
+        root_move.pv.deinit(allocator);
+    };
+
     var depth: types.Depth = 1;
     _ = thread_idx;
     // var depth: types.Depth = @intCast(1 + @divTrunc(thread_idx, 2));
@@ -311,10 +314,6 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
 
     // Even if outofTime we keep a better move if there is one
     const move: types.Move = self.root_moves[0].pv.items[0];
-
-    for (self.root_moves[0..self.root_moves_len]) |*root_move| {
-        root_move.pv.deinit(allocator);
-    }
 
     try interface.displayBestMove(stdout, move);
     return;
