@@ -24,7 +24,7 @@
 ## Search
 
 - [Principal Variation Search](https://www.chessprogramming.org/Principal_Variation_Search)
-- [Alpha-Beta](https://www.chessprogramming.org/Alpha-Beta) Pruning
+- [Alpha-Beta](https://www.chessprogramming.org/Alpha-Beta) Pruning through [Negamax](https://www.chessprogramming.org/Negamax)
 - [Aspiration Window](https://www.chessprogramming.org/Aspiration_Windows)
 - [Late Move Reductions](https://www.chessprogramming.org/Late_Move_Reductions)
 - Late Move Pruning
@@ -35,6 +35,7 @@
 - Razoring
 - Internal iterative reductions
 - [Quiescence Search](https://www.chessprogramming.org/Quiescence_Search)
+- Multi threading using [lazy SMP](https://www.chessprogramming.org/Lazy_SMP)
 - Threefold Repetition
 - Time Management
 

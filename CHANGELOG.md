@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Lazy SMP
 - Late move pruning
+
+### Changed
+
+- Passing position and histories as const reference instead of by value
 
 ## [4.4] - 2026-04-23
 
