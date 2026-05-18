@@ -355,8 +355,10 @@ test "MovepickMvvLva" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "4k3/8/7p/3q2B1/8/8/1K6/2rR2p1 w - -");
 
-    var move: types.Move = try mp.nextMove(&pos, .none, .{}, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, .{}, false)) {
+    const histories: tables.Histories = .{};
+
+    var move: types.Move = try mp.nextMove(&pos, .none, &histories, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, &histories, false)) {
         try types.Move.printUCI(move, &stdout);
     }
     var buffer_out: []u8 = stdout.buffered();
@@ -370,8 +372,8 @@ test "MovepickMvvLva" {
 
     pos = try position.Position.setFen(&s, "3k4/8/6rn/8/6p1/5P2/4Q3/3K2R1 w");
 
-    move = try mp.nextMove(&pos, .none, .{}, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, .{}, false)) {
+    move = try mp.nextMove(&pos, .none, &histories, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, &histories, false)) {
         try types.Move.printUCI(move, &stdout);
     }
 
@@ -392,8 +394,10 @@ test "MovepickSee" {
     var s: position.State = position.State{};
     var pos: position.Position = try position.Position.setFen(&s, "3kr3/8/4r1rn/8/4p1p1/5B1P/4Q3/3K2R1 w"); // win with second pawn
 
-    var move: types.Move = try mp.nextMove(&pos, .none, .{}, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, .{}, false)) {
+    const histories: tables.Histories = .{};
+
+    var move: types.Move = try mp.nextMove(&pos, .none, &histories, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, &histories, false)) {
         try types.Move.printUCI(move, &stdout);
     }
 
@@ -406,8 +410,8 @@ test "MovepickSee" {
     mp.reset();
     _ = stdout.consumeAll();
 
-    move = try mp.nextMove(&pos, .none, .{}, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, .{}, false)) {
+    move = try mp.nextMove(&pos, .none, &histories, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, &histories, false)) {
         try types.Move.printUCI(move, &stdout);
     }
 
@@ -418,8 +422,8 @@ test "MovepickSee" {
     mp.reset();
     _ = stdout.consumeAll();
 
-    move = try mp.nextMove(&pos, .none, .{}, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, .{}, false)) {
+    move = try mp.nextMove(&pos, .none, &histories, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(&pos, .none, &histories, false)) {
         try types.Move.printUCI(move, &stdout);
     }
 

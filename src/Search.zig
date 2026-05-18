@@ -230,7 +230,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
 
     // Order moves
     var scores: [types.max_moves]types.Value = undefined;
-    pos.scoreMoves(move_list[0..move_len], .all, self.histories, &scores);
+    pos.scoreMoves(move_list[0..move_len], .all, &self.histories, &scores);
     position.orderMoves(move_list[0..move_len], &scores);
 
     for (move_list[0..move_len]) |move| {
@@ -454,8 +454,8 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
     // 7. Loop over all legal moves
     var previous_quiets: [types.max_moves]types.Move = @splat(.none);
     var previous_captures: [types.max_moves]types.Move = @splat(.none);
-    var move: types.Move = try mp.nextMove(pos, pv_move, self.histories, is_960);
-    while (move != types.Move.none) : (move = try mp.nextMove(pos, pv_move, self.histories, is_960)) {
+    var move: types.Move = try mp.nextMove(pos, pv_move, &self.histories, is_960);
+    while (move != types.Move.none) : (move = try mp.nextMove(pos, pv_move, &self.histories, is_960)) {
         if (is_null_move and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }
@@ -689,8 +689,8 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
     var mp: movepick.MovePick = .{ .stage = 10 };
 
     // Loop over all legal moves
-    var move: types.Move = try mp.nextMove(pos, types.Move.none, self.histories, false);
-    while (move != types.Move.none) : (move = try mp.nextMove(pos, types.Move.none, self.histories, false)) {
+    var move: types.Move = try mp.nextMove(pos, types.Move.none, &self.histories, false);
+    while (move != types.Move.none) : (move = try mp.nextMove(pos, types.Move.none, &self.histories, false)) {
         if (is_null_move and pos.board[move.getTo().index()].pieceToPieceType() == types.PieceType.king) {
             return -types.value_mate;
         }

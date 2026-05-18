@@ -26,7 +26,7 @@ pub const MovePick = struct {
     index_capture: u8 = 0,
     index_quiet: u8 = 0,
 
-    pub fn nextMove(noalias self: *MovePick, noalias pos: *position.Position, pv_move: types.Move, histories: tables.Histories, comptime is_960: bool) !types.Move {
+    pub fn nextMove(noalias self: *MovePick, noalias pos: *position.Position, pv_move: types.Move, noalias histories: *const tables.Histories, comptime is_960: bool) !types.Move {
         if (self.stage == 0 or self.stage == 10) {
             self.stage += 1;
             pos.updateAttacked(is_960);
