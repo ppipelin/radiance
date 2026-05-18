@@ -20,7 +20,7 @@ histories: tables.Histories = .{},
 root_moves: [types.max_moves]RootMove = @splat(.{}),
 root_moves_len: usize = 0,
 
-pub fn nextIteration(self: *Search) void {
+pub fn nextSearch(self: *Search) void {
     self.remaining = 0;
     self.increment = 0;
     self.remaining_computed = 0;
@@ -28,7 +28,6 @@ pub fn nextIteration(self: *Search) void {
     self.seldepth = 0;
     self.age +%= 1;
 
-    self.histories = .{};
     self.root_moves_len = 0;
 }
 
@@ -180,7 +179,7 @@ pub fn searchRandom(io: std.Io, noalias pos: *position.Position, comptime is_960
 pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, thread_idx: usize, eval: *const fn (pos: *const position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
-    self.nextIteration();
+    self.nextSearch();
 
     if (self.limits.movetime > 0) {
         self.remaining = self.limits.movetime;
