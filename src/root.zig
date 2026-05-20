@@ -12,7 +12,6 @@ pub fn main(init: std.process.Init) !void {
     defer tables.deinitAll(allocator);
 
     try thread_pool.init(init.io, allocator);
-    defer thread_pool.deinit();
 
     var stdout_buffer: [16 * 1024]u8 = undefined;
     var stdout_writer: std.Io.File.Writer = std.Io.File.stdout().writerStreaming(init.io, &stdout_buffer); // Can use &.{} for no buffer
@@ -47,4 +46,6 @@ pub fn main(init: std.process.Init) !void {
     }
 
     try stdout.flush();
+
+    try thread_pool.deinit();
 }

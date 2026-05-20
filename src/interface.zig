@@ -112,14 +112,12 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
         var existing_command: bool = false;
 
         if (std.ascii.eqlIgnoreCase("quit", primary_token) or std.ascii.eqlIgnoreCase("exit", primary_token)) {
-            existing_command = true;
-            g_stop.store(true, .release);
             break;
         }
 
         if (std.ascii.eqlIgnoreCase("stop", primary_token)) {
             existing_command = true;
-            g_stop.store(true, .release);
+            try thread_pool.stopSearchs();
             try stdout.print("Stopped search\n", .{});
         }
 
@@ -151,6 +149,8 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
         if (std.ascii.eqlIgnoreCase("ucinewgame", primary_token)) {
             existing_command = true;
             pos = try position.Position.setFen(&states.items[0], position.start_fen);
+            try thread_pool.reset();
+            @memset(tables.transposition_table.tt, .empty);
         }
 
         if (std.ascii.eqlIgnoreCase("position", primary_token)) {
@@ -168,7 +168,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
 
             cmd_go(io, allocator, stdout, &pos, states, &tokens, options) catch |err| {
                 try stdout.print("Command go failed with error {}\n", .{err});
-                thread_pool.terminateThreads();
+                try thread_pool.stopSearchs();
             };
         }
 
@@ -249,8 +249,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
         try stdout.flush();
     }
 
-    g_stop.store(true, .release);
-    thread_pool.terminateThreads(); // Terminate before options and states are deallocated
+    try thread_pool.terminateThreads(); // Terminate before options and states are deallocated
 }
 
 fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
@@ -296,8 +295,13 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
             } else if (value_parsed < option.min) {
                 return error.LowerBoundBreached;
             }
+
             if (std.ascii.eqlIgnoreCase(name, "Hash")) {
                 try tables.setTranspositionTableCapacity(try std.fmt.parseInt(usize, value, 10));
+            }
+
+            if (std.ascii.eqlIgnoreCase(name, "Threads")) {
+                try thread_pool.setThreads(try std.fmt.parseInt(usize, value, 10));
             }
 
             // If option name is tunable edit variable.tunables
@@ -361,9 +365,14 @@ fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states
 }
 
 fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, states: interface.StateList, tokens: anytype, options: std.StringArrayHashMapUnmanaged(Option)) !void {
-    var limits: Limits = .{};
+    var thread_data: thread_pool.ThreadData = .{
+        .stdout = stdout,
+        .pos = pos,
+        .states = states,
+        .options = options,
+    };
 
-    limits.start = types.now(io);
+    thread_data.limits.start = types.now(io);
 
     while (tokens.next()) |token_name| {
         // Needs to be the last command on the line
@@ -371,81 +380,81 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
             var has_param: bool = false;
             while (tokens.next()) |token_value| {
                 has_param = true;
-                try limits.searchmoves.append(allocator, try types.Move.initFromStr(pos, token_value));
+                try thread_data.limits.searchmoves.append(allocator, try types.Move.initFromStr(pos, token_value));
             }
             if (!has_param) {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("wtime", token_name)) {
             if (tokens.next()) |token_value| {
-                limits.time[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
+                thread_data.limits.time[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
             } else {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("btime", token_name)) {
             if (tokens.next()) |token_value| {
-                limits.time[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
+                thread_data.limits.time[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
             } else {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("winc", token_name)) {
             if (tokens.next()) |token_value| {
-                limits.inc[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
+                thread_data.limits.inc[types.Color.white.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
             } else {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("binc", token_name)) {
             if (tokens.next()) |token_value| {
-                limits.inc[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
+                thread_data.limits.inc[types.Color.black.index()] = try std.fmt.parseInt(types.TimePoint, token_value, 10);
             } else {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("movestogo", token_name)) {
             if (tokens.next()) |token_value| {
-                limits.movestogo = try std.fmt.parseInt(u8, token_value, 10);
+                thread_data.limits.movestogo = try std.fmt.parseInt(u8, token_value, 10);
             } else {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("depth", token_name)) {
             if (tokens.next()) |token_value| {
-                limits.depth = try std.fmt.parseInt(u8, token_value, 10);
+                thread_data.limits.depth = try std.fmt.parseInt(u8, token_value, 10);
             } else {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("nodes", token_name)) {
             if (tokens.next()) |token_value| {
-                limits.nodes = try std.fmt.parseInt(u32, token_value, 10);
+                thread_data.limits.nodes = try std.fmt.parseInt(u32, token_value, 10);
             } else {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("movetime", token_name)) {
             if (tokens.next()) |token_value| {
-                limits.movetime = try std.fmt.parseInt(types.TimePoint, token_value, 10);
+                thread_data.limits.movetime = try std.fmt.parseInt(types.TimePoint, token_value, 10);
             } else {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("mate", token_name)) {
             if (tokens.next()) |token_value| {
-                limits.mate = try std.fmt.parseInt(u8, token_value, 10);
+                thread_data.limits.mate = try std.fmt.parseInt(u8, token_value, 10);
             } else {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("perft", token_name)) {
             if (tokens.next()) |token_value| {
-                limits.perft = try std.fmt.parseInt(u8, token_value, 10);
+                thread_data.limits.perft = try std.fmt.parseInt(u8, token_value, 10);
             } else {
                 return error.MissingParameter;
             }
         } else if (std.ascii.eqlIgnoreCase("infinite", token_name)) {
-            limits.infinite = true;
+            thread_data.limits.infinite = true;
         } else if (std.ascii.eqlIgnoreCase("ponder", token_name)) {}
     }
 
     const is_960: bool = std.ascii.eqlIgnoreCase(options.get("UCI_Chess960").?.current_value, "true");
 
     const t = std.Io.Timestamp.now(io, .real);
-    if (limits.perft > 0) {
-        const nodes = if (is_960) try Search.perft(allocator, stdout, pos, limits.perft, true, true) else try Search.perft(allocator, stdout, pos, limits.perft, false, true);
+    if (thread_data.limits.perft > 0) {
+        const nodes = if (is_960) try Search.perft(allocator, stdout, pos, thread_data.limits.perft, true, true) else try Search.perft(allocator, stdout, pos, thread_data.limits.perft, false, true);
         const nodes_f: f64 = @floatFromInt(nodes);
         const time_f: f64 = @floatFromInt(std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real)).toMilliseconds());
         try stdout.print("info nodes {} time {d:.0} ({d:.1} Mnps)\n", .{ nodes, time_f, (nodes_f / (time_f / 1e3) / 1e6) });
@@ -464,12 +473,13 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
             try stdout.print("\n", .{});
         } else if (std.ascii.eqlIgnoreCase(search_mode, "NegamaxAlphaBeta")) {
             if (std.ascii.eqlIgnoreCase(evaluation_mode, "Materialist")) {
-                try thread_pool.startThinking(stdout, pos, states, limits, evaluate.evaluateMaterialist, options);
+                thread_data.eval = evaluate.evaluateMaterialist;
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
-                try thread_pool.startThinking(stdout, pos, states, limits, evaluate.evaluateShannon, options);
+                thread_data.eval = evaluate.evaluateShannon;
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
-                try thread_pool.startThinking(stdout, pos, states, limits, evaluate.evaluateTable, options);
+                thread_data.eval = evaluate.evaluateTable;
             }
+            try thread_pool.startThinking(thread_data);
         } else {
             try stdout.print("Search mode {s} not implemented\n", .{search_mode});
         }
@@ -559,14 +569,12 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
         } else {
             try cmd_go(io, allocator, &stdout_discarding, &pos, states, &tokens, options);
         }
+
         // Make sure the thread has finished
-        thread_pool.finishThreads();
+        try thread_pool.finishSearchs();
 
         // Then add counted nodes to total
         total_nodes += interface.queryNodes();
-
-        // Finally clear the thread
-        thread_pool.clearThreads();
     }
 
     const elapsed_time = std.Io.Timestamp.durationTo(t, std.Io.Timestamp.now(io, .real));
