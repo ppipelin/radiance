@@ -238,6 +238,8 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 \\  stop
                 \\  ponderhit
                 \\  d
+                \\  bench
+                \\  benchv
                 \\  eval
                 \\  quit
                 \\

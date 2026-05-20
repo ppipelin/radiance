@@ -105,18 +105,19 @@ zig build test --release=safe
 
 ### Commands
 
+- `license`
 - `uci`
 - `isready`
 - `setoption name <string> [value <string>]`
+- `ucinewgame`
 - `position [(fen <string> | startpos | kiwi | lasker) [moves <string>...]]`
-- `eval`
 - `go [movetime <int> | wtime <int> | btime <int> | winc <int> | binc <int> | nodes <int> | depth <int> | searchmoves <string>... | infinite | perft <int>]`
+- `stop`
+- `d`
 - `bench`
 - `benchv`
-- `stop`
+- `eval`
 - `quit`
-- `ucinewgame`
-- `d`
 
 ### Archive
 
