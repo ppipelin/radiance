@@ -480,7 +480,8 @@ pub const black_pawn_attacks = [64]Bitboard{
 
 ////// Evaluation //////
 
-pub const max_history = 15000;
+pub const max_history: Value = 1 << 14;
+pub const shift_history: Value = @ctz(max_history);
 
 pub const FromToHistory = [Color.nb()][types.board_size2 * types.board_size2]Value;
 pub const PieceToHistory = [Piece.nb()][types.board_size2]Value;
@@ -496,7 +497,7 @@ pub fn updateHistory(history_value: *Value, bonus: Value) void {
     const clamped: i32 = std.math.clamp(bonus, -max_history, max_history);
     const magnitude: i32 = @intCast(@abs(clamped));
     const current_value: i32 = history_value.*;
-    history_value.* += @intCast(clamped - @divTrunc(current_value * magnitude, max_history));
+    history_value.* += @intCast(clamped - ((current_value * magnitude) >> shift_history));
 }
 
 // Start position total 14152, max 20952

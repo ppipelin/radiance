@@ -31,8 +31,6 @@ pub fn nextSearch(self: *Search) !void {
     self.seldepth = 0;
     self.age +%= 1;
 
-    try thread_pool.reset();
-
     self.root_moves_len = 0;
 }
 
@@ -592,7 +590,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
 
                 // Fail high
                 if (score >= beta) {
-                    const bonus: types.Value = @intCast(depth);
+                    const bonus: types.Value = @intCast(depth * depth);
 
                     if (!move.isCapture()) {
                         tables.updateHistory(&self.histories.history[pos.state.turn.index()][move.getFromTo()], bonus);

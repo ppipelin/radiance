@@ -16,7 +16,6 @@ pub var threads: std.ArrayListUnmanaged(*Thread) = .empty;
 const ThreadState = enum(u8) {
     wait,
     search,
-    reset,
     terminate,
 };
 
@@ -102,9 +101,6 @@ const Thread = struct {
                     try self.search.iterativeDeepening(io, allocator, self.data.stdout, local_pos, self.thread_idx, self.data.eval, self.data.options);
                     try self.data.stdout.flush();
                 },
-                .reset => {
-                    self.search.histories = .{};
-                },
                 else => {},
             }
 
@@ -174,7 +170,6 @@ pub fn stopSearchs() !void {
 
 pub fn reset() !void {
     for (threads.items) |thread| {
-        // try thread.changeState(.reset);
         thread.search.histories = .{};
     }
 }
