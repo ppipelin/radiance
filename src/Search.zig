@@ -650,21 +650,16 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
 
     // Transposition table probe
     const key: tables.Key = pos.state.material_key;
+
     const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
     const tt_hit: bool = tt_entry.flags.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
-    var tt_value: types.Value = -types.value_none;
-    var tt_depth: types.Depth = 0;
-    var tt_move: types.Move = .none;
-    var tt_bound: types.TableBound = .upperbound;
+
+    // Update the mate score retrieved from the table to consider the current ply
+    const tt_value: types.Value = types.valueFromTT(tt_entry.value, ss[0].ply);
+    // const tt_static: types.Value = tt_entry.static_eval;
+    const tt_move: types.Move = tt_entry.move;
+    const tt_bound: types.TableBound = tt_entry.flags.bound;
     if (tt_hit) {
-        tt_value = tt_entry.value;
-        tt_depth = tt_entry.depth;
-        tt_move = tt_entry.move;
-        tt_bound = tt_entry.flags.bound;
-
-        // Update the mate score retrieved from the table to consider the current ply
-        tt_value = types.valueFromTT(tt_value, ss[0].ply);
-
         // At non-PV nodes check for early transposition table cutoff
         if (!is_null_move and !pv_node and tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
             return tt_value;
@@ -686,7 +681,7 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
         return alpha;
 
     // Loop over all legal captures
-    var mp: movepick.MovePick = .{ .stage = 10 };
+    var mp: movepick.MovePick = .{ .stage = 10, .tt_move = tt_move };
 
     // Loop over all legal moves
     var move: types.Move = try mp.nextMove(pos, types.Move.none, &self.histories, false);
