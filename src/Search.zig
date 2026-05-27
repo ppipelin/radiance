@@ -629,9 +629,21 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
         self.seldepth = ss[0].ply + 1;
     }
 
+    // Transposition table probe
+    const key: tables.Key = pos.state.material_key;
+
+    const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
+    const tt_hit: bool = tt_entry.flags.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
+
+    // Update the mate score retrieved from the table to consider the current ply
+    const tt_value: types.Value = types.valueFromTT(tt_entry.value, ss[0].ply);
+    const tt_static: types.Value = tt_entry.static_eval;
+    const tt_move: types.Move = tt_entry.move;
+    const tt_bound: types.TableBound = tt_entry.flags.bound;
+
     // In order to get the quiescence search to terminate, plies are usually restricted to moves that deal directly with the threat,
     // such as moves that capture and recapture (often called a 'capture search') in chess
-    const stand_pat: types.Value = eval(pos);
+    const stand_pat: types.Value = if (tt_static != types.value_none) tt_static else eval(pos);
     if (stand_pat >= beta)
         return beta;
 
@@ -648,17 +660,6 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
         ss[0].pv.?[0] = types.Move.none;
     }
 
-    // Transposition table probe
-    const key: tables.Key = pos.state.material_key;
-
-    const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
-    const tt_hit: bool = tt_entry.flags.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
-
-    // Update the mate score retrieved from the table to consider the current ply
-    const tt_value: types.Value = types.valueFromTT(tt_entry.value, ss[0].ply);
-    // const tt_static: types.Value = tt_entry.static_eval;
-    const tt_move: types.Move = tt_entry.move;
-    const tt_bound: types.TableBound = tt_entry.flags.bound;
     if (tt_hit) {
         // At non-PV nodes check for early transposition table cutoff
         if (!is_null_move and !pv_node and tt_bound == if (tt_value >= beta) types.TableBound.lowerbound else types.TableBound.upperbound) {
