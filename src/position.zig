@@ -1115,17 +1115,17 @@ pub const Position = struct {
 
     pub fn printDebug(self: Position) void {
         var buffer: [512]u8 = undefined;
-        const writer = std.debug.lockStderrWriter(&buffer);
-        defer std.debug.unlockStderrWriter();
-        self.print(writer);
+        const stderr = std.debug.lockStderr(&buffer);
+        defer std.debug.unlockStderr();
+        self.print(&stderr.file_writer.interface);
     }
 
     pub fn printFenDebug(self: Position) void {
         var buffer: [90]u8 = undefined;
-        const writer = std.debug.lockStderrWriter(&buffer);
-        defer std.debug.unlockStderrWriter();
+        const stderr = std.debug.lockStderr(&buffer);
+        defer std.debug.unlockStderr();
         const fen = self.getFen(&buffer);
-        writer.print("fen: {s}\n", .{fen}) catch unreachable;
+        stderr.file_writer.interface.print("fen: {s}\n", .{fen}) catch unreachable;
     }
 
     pub fn getFen(noalias self: *const Position, fen: []u8) []u8 {

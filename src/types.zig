@@ -510,10 +510,10 @@ pub const Move = packed struct(u16) {
 
     pub fn printUCIDebug(self: Move) void {
         var buffer: [64]u8 = undefined;
-        const writer = std.debug.lockStderrWriter(&buffer);
-        defer std.debug.unlockStderrWriter();
-        self.printUCI(writer) catch unreachable;
-        writer.print(" with flag {}\n", .{self.getFlags()}) catch unreachable;
+        const stderr = std.debug.lockStderr(&buffer);
+        defer std.debug.unlockStderr();
+        self.printUCI(&stderr.file_writer.interface) catch unreachable;
+        stderr.file_writer.interface.print(" with flag {}\n", .{self.getFlags()}) catch unreachable;
     }
 };
 
