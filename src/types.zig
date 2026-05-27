@@ -395,7 +395,7 @@ pub const Move = packed struct(u16) {
 
     pub inline fn getFromTo(self: Move) u12 {
         const bits: u16 = @bitCast(self);
-        return @truncate(bits);
+        return @intCast(bits >> 4);
     }
 
     pub inline fn isCastle(self: Move) bool {
