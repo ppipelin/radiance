@@ -603,12 +603,10 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
                 }
             }
         }
-        if (move != best_move) {
-            if (move.isCapture()) {
-                previous_captures[move_count_captures - 1] = move;
-            } else {
-                previous_quiets[move_count_quiets - 1] = move;
-            }
+        if (move.isCapture()) {
+            previous_captures[move_count_captures - 1] = move;
+        } else {
+            previous_quiets[move_count_quiets - 1] = move;
         }
     }
 
