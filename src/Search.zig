@@ -591,11 +591,13 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
 
                     if (!move.isCapture()) {
                         tables.updateHistory(&self.histories.history[pos.state.turn.index()][move.getFromTo()], bonus);
-                        // Apply maluses to previous moves
-                        for (previous_quiets[0..(move_count_quiets - 1)]) |malus_move| {
-                            tables.updateHistory(&self.histories.history[pos.state.turn.index()][malus_move.getFromTo()], -bonus);
-                        }
                     }
+
+                    // Apply maluses to previous moves
+                    for (previous_quiets[0..(move_count_quiets -| 1)]) |malus_move| {
+                        tables.updateHistory(&self.histories.history[pos.state.turn.index()][malus_move.getFromTo()], -bonus);
+                    }
+
                     tables.writeTranspositionTable(key, types.valueToTT(score, ss[0].ply), pos.state.static_eval, depth, move, .lowerbound, self.age);
                     return best_score;
                 } else {
