@@ -31,6 +31,11 @@ pub fn nextSearch(self: *Search) !void {
     self.seldepth = 0;
     self.age +%= 1;
 
+    for (&self.histories.history) |*color_history| {
+        for (color_history) |*entry| {
+            entry.* = @divTrunc(entry.*, 2);
+        }
+    }
     self.root_moves_len = 0;
 }
 
