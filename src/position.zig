@@ -1042,7 +1042,7 @@ pub const Position = struct {
                     scores[i] += variable.getValue("castle_bonus");
                 }
 
-                scores[i] += @divTrunc(variable.getValue("history") *| histories.history[self.state.turn.index()][move.getFromTo()], 10);
+                scores[i] += @intCast(@divTrunc(@as(i32, variable.getValue("history")) *| @as(i32, histories.history[self.state.turn.index()][move.getFromTo()]), 10));
 
                 // TODO: threatByLesser
             }

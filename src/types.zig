@@ -429,8 +429,8 @@ pub const Move = packed struct(u16) {
 
         pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
             // Assert there were no undefined value
-            std.debug.assert(ctx.scores[a] <= tables.max_history * 2);
-            std.debug.assert(ctx.scores[b] <= tables.max_history * 2);
+            std.debug.assert(ctx.scores[a] <= tables.max_history + 4000);
+            std.debug.assert(ctx.scores[b] <= tables.max_history + 4000);
             return ctx.scores[a] > ctx.scores[b];
         }
     };

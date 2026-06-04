@@ -262,8 +262,20 @@ test "SearchLeakNoInterface" {
     var limits: interface.Limits = .{};
     limits.depth = 8;
 
-    try thread_pool.startThinking(&stdout.writer, &pos, states, limits, evaluate.evaluateShannon, options);
-    try thread_pool.startThinking(&stdout.writer, &pos, states, limits, evaluate.evaluateTable, options);
+    var thread_data: thread_pool.ThreadData = .{
+        .stdout = &stdout.writer,
+        .pos = &pos,
+        .states = states,
+        .limits = limits,
+        .options = options,
+    };
+
+    thread_data.eval = evaluate.evaluateShannon;
+    try thread_pool.startThinking(thread_data);
+    try thread_pool.finishSearchs();
+    thread_data.eval = evaluate.evaluateTable;
+    try thread_pool.startThinking(thread_data);
+    try thread_pool.finishSearchs();
     try pos.moveNull(&states.items[0]);
 }
 

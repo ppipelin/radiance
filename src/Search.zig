@@ -3,11 +3,13 @@ const movepick = @import("movepick.zig");
 const position = @import("position.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
+const thread_pool = @import("thread_pool.zig");
 const types = @import("types.zig");
 const variable = @import("variable.zig");
 
 const Search = @This();
 
+should_stop: bool = false,
 limits: interface.Limits = .{},
 remaining: types.TimePoint = 0,
 increment: types.TimePoint = 0,
@@ -20,13 +22,16 @@ histories: tables.Histories = .{},
 root_moves: [types.max_moves]RootMove = @splat(.{}),
 root_moves_len: usize = 0,
 
-pub fn nextSearch(self: *Search) void {
+pub fn nextSearch(self: *Search) !void {
+    self.should_stop = false;
     self.remaining = 0;
     self.increment = 0;
     self.remaining_computed = 0;
     self.nodes_searched = 0;
     self.seldepth = 0;
     self.age +%= 1;
+
+    try thread_pool.reset();
 
     self.root_moves_len = 0;
 }
@@ -179,7 +184,7 @@ pub fn searchRandom(io: std.Io, noalias pos: *position.Position, comptime is_960
 pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, thread_idx: usize, eval: *const fn (pos: *const position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
-    self.nextSearch();
+    try self.nextSearch();
 
     if (self.limits.movetime > 0) {
         self.remaining = self.limits.movetime;
@@ -885,7 +890,7 @@ pub inline fn elapsed(self: *Search, io: std.Io) types.TimePoint {
 }
 
 pub inline fn outOfTime(self: *Search, io: std.Io) bool {
-    if (interface.g_stop.load(.acquire))
+    if (self.should_stop or interface.g_stop.load(.acquire))
         return true;
 
     const uninitialized: bool = self.remaining == 0 and self.limits.nodes == 0;
