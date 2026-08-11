@@ -222,7 +222,6 @@ test "SearchLeak" {
     defer tables.deinitAll(allocator);
 
     try thread_pool.init(io, allocator);
-    defer thread_pool.deinit();
 
     const input =
         \\position kiwi
@@ -236,6 +235,8 @@ test "SearchLeak" {
     var stdout = std.Io.Writer.fixed(&output);
 
     try interface.loop(io, allocator, &stdin, &stdout);
+
+    try thread_pool.deinit();
 }
 
 test "SearchLeakNoInterface" {
@@ -254,7 +255,6 @@ test "SearchLeakNoInterface" {
     defer states.deinit(allocator);
 
     try thread_pool.init(io, allocator);
-    defer thread_pool.deinit();
 
     states.appendAssumeCapacity(.{});
 
@@ -277,6 +277,8 @@ test "SearchLeakNoInterface" {
     try thread_pool.startThinking(thread_data);
     try thread_pool.finishSearchs();
     try pos.moveNull(&states.items[0]);
+
+    try thread_pool.deinit();
 }
 
 // test "Bench" {

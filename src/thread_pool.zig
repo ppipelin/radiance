@@ -70,8 +70,6 @@ const Thread = struct {
 
     fn terminateThread(self: *Thread) !void {
         self.search.should_stop = true;
-        // self.state = .terminate;
-        // self.cond.signal(io);
         try self.changeState(.terminate);
         self.thread.join();
     }
@@ -142,7 +140,7 @@ pub fn removeThread() !void {
 }
 
 pub fn terminateThreads() !void {
-    stopSearchs() catch unreachable;
+    try stopSearchs();
     for (threads.items) |thread| {
         try thread.terminateThread();
         allocator.destroy(thread);

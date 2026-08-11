@@ -10,7 +10,7 @@ test "MovegenAccessions" {
     tables.initAll(allocator);
     defer tables.deinitAll(allocator);
 
-    const iterations: u64 = 1000;
+    const iterations: u64 = 2000;
 
     // Dictionary
     var t = std.Io.Timestamp.now(io, .real);
