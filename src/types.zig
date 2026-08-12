@@ -566,13 +566,14 @@ pub const ValueExtended = i64;
 pub const Depth = Value;
 
 pub const max_moves = 218;
+pub const max_plies = 200;
 
 pub const value_zero: Value = 0;
 pub const value_draw: Value = 0;
 pub const value_stalemate: Value = 0;
 
 pub const value_mate: Value = 32000;
-pub const value_mate_in_max_depth: Value = value_mate - 200;
+pub const value_mate_in_max_depth: Value = value_mate - max_plies;
 pub const value_mated_in_max_depth: Value = -value_mate_in_max_depth;
 pub const value_infinite: Value = value_mate + 1;
 pub const value_none: Value = value_mate + 2;

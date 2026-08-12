@@ -60,8 +60,8 @@ const RootMove = struct {
 
 // Keep the informations between nodes at different depth
 const Stack = struct {
-    // pv: [200]types.Move = @splat(.none),
-    pv: ?*[200]types.Move = null,
+    // pv: [types.max_plies]types.Move = @splat(.none),
+    pv: ?*[types.max_plies]types.Move = null,
     killers: [2]?types.Move = [_]?types.Move{ null, null },
     ply: u8 = 0,
 };
@@ -202,12 +202,12 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         }
     }
 
-    var stack: [200 + 10]Stack = @splat(Stack{});
-    var pv: [200]types.Move = @splat(.none); // useless
+    var stack: [types.max_plies + 10]Stack = @splat(Stack{});
+    var pv: [types.max_plies]types.Move = @splat(.none); // useless
     var ss: [*]Stack = &stack;
     ss = ss + 7;
 
-    for (0..200) |i| {
+    for (0..types.max_plies) |i| {
         ss[i].ply = @intCast(i);
     }
     ss[0].pv = &pv;
@@ -243,7 +243,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
                 continue;
         }
         var pv_rm: std.ArrayListUnmanaged(types.Move) = .empty;
-        try pv_rm.ensureTotalCapacity(allocator, 200);
+        try pv_rm.ensureTotalCapacity(allocator, types.max_plies);
         pv_rm.appendAssumeCapacity(move);
         self.root_moves[self.root_moves_len] = RootMove{ .pv = pv_rm };
         self.root_moves_len += 1;
@@ -341,7 +341,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
 
     // 2. Initialize data
     var s: position.State = position.State{};
-    var pv: [200]types.Move = @splat(.none);
+    var pv: [types.max_plies]types.Move = @splat(.none);
     var score: types.Value = -types.value_none;
     var best_score: types.Value = -types.value_none;
     var best_move: types.Move = types.Move.none;
@@ -656,7 +656,7 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
 
     // Initialize data
     var s: position.State = position.State{};
-    var pv: [200]types.Move = @splat(.none);
+    var pv: [types.max_plies]types.Move = @splat(.none);
     var score: types.Value = -types.value_none;
     var best_score: types.Value = -types.value_none;
     var best_move: types.Move = types.Move.none;
