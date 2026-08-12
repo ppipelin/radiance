@@ -264,6 +264,7 @@ pub const Piece = enum(u8) {
     }
 
     pub inline fn pieceToPieceType(self: Piece) PieceType {
+        @setEvalBranchQuota(2000);
         return switch (self) {
             Piece.b_pawn, Piece.w_pawn => PieceType.pawn,
             Piece.b_knight, Piece.w_knight => PieceType.knight,
@@ -515,6 +516,23 @@ pub const Move = packed struct(u16) {
         self.printUCI(&stderr.file_writer.interface) catch unreachable;
         stderr.file_writer.interface.print(" with flag {}\n", .{self.getFlags()}) catch unreachable;
     }
+};
+
+pub const RichMove = struct {
+    move: Move = .none,
+    from_piece: Piece = .none,
+    to_piece: Piece = .none,
+    is_unmove: bool = false,
+    turn: Color = .white,
+
+    /// A none RichMove
+    pub const none: RichMove = .{
+        .move = .none,
+        .from_piece = .none,
+        .to_piece = .none,
+        .is_unmove = false,
+        .turn = .white,
+    };
 };
 
 pub const prom_move_type_string = [_][]const u8{ "", "", "", "", "", "", "", "", "n", "b", "r", "q", "n", "b", "r", "q" };

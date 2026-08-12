@@ -14,6 +14,7 @@ const MoveFlags = types.MoveFlags;
 const Piece = types.Piece;
 const PieceType = types.PieceType;
 const Rank = types.Rank;
+const RichMove = types.RichMove;
 const Square = types.Square;
 const Value = types.Value;
 
@@ -82,6 +83,8 @@ pub const Position = struct {
     rook_initial: [4]Square = [_]Square{ Square.none, Square.none, Square.none, Square.none },
 
     // Score
+    unresolved_eval: [types.max_plies]RichMove = @splat(.none),
+    unresolved_eval_len: usize = 0,
     score_mg: Value = 0,
     score_eg: Value = 0,
     score_king_w: Value = 0,
@@ -111,6 +114,10 @@ pub const Position = struct {
         }
 
         pos.state = &new_states.items[new_states.items.len - 1];
+
+        @memcpy(pos.unresolved_eval[0..self.unresolved_eval_len], self.unresolved_eval[0..self.unresolved_eval_len]);
+        pos.unresolved_eval_len = self.unresolved_eval_len;
+
         return pos;
     }
 
@@ -120,7 +127,9 @@ pub const Position = struct {
         const removeFilter: Bitboard = ~sq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] &= removeFilter;
         self.bb_colors[p.pieceToColor().index()] &= removeFilter;
+    }
 
+    pub inline fn removeEval(noalias self: *Position, p: Piece, sq: Square) void {
         if (p.pieceToColor().isWhite()) {
             self.score_mg -= tables.psq[p.pieceToPieceType().index()][0][sq.index() ^ 56];
             self.score_eg -= tables.psq[p.pieceToPieceType().index()][1][sq.index() ^ 56];
@@ -138,7 +147,9 @@ pub const Position = struct {
         const addFilter: Bitboard = sq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] |= addFilter;
         self.bb_colors[p.pieceToColor().index()] |= addFilter;
+    }
 
+    pub inline fn addEval(noalias self: *Position, p: Piece, sq: Square) void {
         if (p.pieceToColor().isWhite()) {
             self.score_mg += tables.psq[p.pieceToPieceType().index()][0][sq.index() ^ 56];
             self.score_eg += tables.psq[p.pieceToPieceType().index()][1][sq.index() ^ 56];
@@ -164,6 +175,11 @@ pub const Position = struct {
         const removeFilter: Bitboard = removeSq.sqToBB() | addSq.sqToBB();
         self.bb_pieces[p.pieceToPieceType().index()] ^= removeFilter;
         self.bb_colors[p.pieceToColor().index()] ^= removeFilter;
+    }
+
+    inline fn removeAddEval(noalias self: *Position, p: Piece, removeSq: Square, addSq: Square) void {
+        if (removeSq == addSq)
+            return;
 
         // self.score_material unchanged
         if (p.pieceToColor().isWhite()) {
@@ -365,12 +381,23 @@ pub const Position = struct {
         }
 
         self.updateCheckersPinned();
+
+        self.unresolved_eval[self.unresolved_eval_len] = .{ .move = move, .from_piece = from_piece, .to_piece = to_piece, .is_unmove = false, .turn = self.state.turn.invert() };
+        self.unresolved_eval_len += 1;
     }
 
     pub fn unMovePiece(noalias self: *Position, move: Move) !void {
         const from: Square = move.getFrom();
         var to: Square = move.getTo();
         var to_piece: Piece = self.board[to.index()];
+
+        // Directly remove in the queue if unmove directly corresponds to last of queue
+        if (self.unresolved_eval_len > 0 and !self.unresolved_eval[self.unresolved_eval_len - 1].is_unmove and @as(u16, @bitCast(self.unresolved_eval[self.unresolved_eval_len - 1].move)) == @as(u16, @bitCast(move))) {
+            self.unresolved_eval_len -= 1;
+        } else {
+            self.unresolved_eval[self.unresolved_eval_len] = .{ .move = move, .from_piece = to_piece, .to_piece = self.state.last_captured_piece, .is_unmove = true, .turn = self.state.turn.invert() };
+            self.unresolved_eval_len += 1;
+        }
 
         if (move.getFlags() == MoveFlags.oo) {
             to = Square.g1.relativeSquare(self.state.turn.invert()); // Needed for 960 UCI
@@ -731,6 +758,158 @@ pub const Position = struct {
                 self.state.pinned[self.state.turn.invert().index()] ^= bb_between;
             }
         }
+    }
+
+    pub fn updateEval(noalias self: *Position) void {
+        for (self.unresolved_eval[0..self.unresolved_eval_len]) |move| {
+            const from: Square = move.move.getFrom();
+            const to: Square = move.move.getTo();
+            const from_piece: Piece = move.from_piece;
+            const to_piece: Piece = move.to_piece;
+
+            const turn: Color = move.turn;
+
+            switch (move.move.getFlags()) {
+                .quiet, .double_push => {
+                    if (!move.is_unmove) {
+                        self.removeAddEval(from_piece, from, to);
+                    } else {
+                        self.removeAddEval(from_piece, to, from);
+                    }
+                },
+                .capture => {
+                    if (!move.is_unmove) {
+                        self.removeEval(to_piece, to);
+                        self.removeAddEval(from_piece, from, to);
+                    } else {
+                        self.addEval(to_piece, to);
+                        self.removeAddEval(from_piece, to, from);
+                    }
+                },
+                .en_passant => {
+                    if (!move.is_unmove) {
+                        if (turn.isWhite()) {
+                            self.removeEval(.b_pawn, to.add(.south));
+                        } else {
+                            self.removeEval(.w_pawn, to.add(.north));
+                        }
+                        self.removeAddEval(from_piece, from, to);
+                    } else {
+                        if (turn.isWhite()) {
+                            self.addEval(.b_pawn, to.add(.south));
+                        } else {
+                            self.addEval(.w_pawn, to.add(.north));
+                        }
+                        self.removeAddEval(from_piece, to, from);
+                    }
+                },
+                .oo => {
+                    // Remove add rook
+                    const from_rook: Square = self.rook_initial[1 + @as(usize, @intFromBool(turn.invert().isWhite())) * 2];
+
+                    if (!move.is_unmove) {
+                        self.removeAddEval(if (turn.isWhite()) .w_rook else .b_rook, from_rook, Square.f1.relativeSquare(turn));
+                        self.removeAddEval(if (turn.isWhite()) .w_king else .b_king, from, Square.g1.relativeSquare(turn));
+                    } else {
+                        self.removeAddEval(if (turn.isWhite()) .w_rook else .b_rook, Square.f1.relativeSquare(turn), from_rook);
+                        self.removeAddEval(if (turn.isWhite()) .w_king else .b_king, Square.g1.relativeSquare(turn), from);
+                    }
+                },
+                .ooo => {
+                    // Remove add rook
+                    const from_rook: Square = self.rook_initial[@as(usize, @intFromBool(turn.invert().isWhite())) * 2];
+
+                    if (!move.is_unmove) {
+                        self.removeAddEval(if (turn.isWhite()) .w_rook else .b_rook, from_rook, Square.d1.relativeSquare(turn));
+                        self.removeAddEval(if (turn.isWhite()) .w_king else .b_king, from, Square.c1.relativeSquare(turn));
+                    } else {
+                        self.removeAddEval(if (turn.isWhite()) .w_rook else .b_rook, Square.d1.relativeSquare(turn), from_rook);
+                        self.removeAddEval(if (turn.isWhite()) .w_king else .b_king, Square.c1.relativeSquare(turn), from);
+                    }
+                },
+                .pr_knight => {
+                    if (!move.is_unmove) {
+                        self.removeEval(from_piece, from);
+                        self.addEval(if (turn.isWhite()) .w_knight else .b_knight, to);
+                    } else {
+                        self.addEval(from_piece, from);
+                        self.removeEval(if (turn.isWhite()) .w_knight else .b_knight, to);
+                    }
+                },
+                .pr_bishop => {
+                    if (!move.is_unmove) {
+                        self.removeEval(from_piece, from);
+                        self.addEval(if (turn.isWhite()) .w_bishop else .b_bishop, to);
+                    } else {
+                        self.addEval(from_piece, from);
+                        self.removeEval(if (turn.isWhite()) .w_bishop else .b_bishop, to);
+                    }
+                },
+                .pr_rook => {
+                    if (!move.is_unmove) {
+                        self.removeEval(from_piece, from);
+                        self.addEval(if (turn.isWhite()) .w_rook else .b_rook, to);
+                    } else {
+                        self.addEval(from_piece, from);
+                        self.removeEval(if (turn.isWhite()) .w_rook else .b_rook, to);
+                    }
+                },
+                .pr_queen => {
+                    if (!move.is_unmove) {
+                        self.removeEval(from_piece, from);
+                        self.addEval(if (turn.isWhite()) .w_queen else .b_queen, to);
+                    } else {
+                        self.addEval(from_piece, from);
+                        self.removeEval(if (turn.isWhite()) .w_queen else .b_queen, to);
+                    }
+                },
+                .prc_knight => {
+                    if (!move.is_unmove) {
+                        self.removeEval(to_piece, to);
+                        self.removeEval(from_piece, from);
+                        self.addEval(if (turn.isWhite()) .w_knight else .b_knight, to);
+                    } else {
+                        self.addEval(to_piece, to);
+                        self.addEval(from_piece, from);
+                        self.removeEval(if (turn.isWhite()) .w_knight else .b_knight, to);
+                    }
+                },
+                .prc_bishop => {
+                    if (!move.is_unmove) {
+                        self.removeEval(to_piece, to);
+                        self.removeEval(from_piece, from);
+                        self.addEval(if (turn.isWhite()) .w_bishop else .b_bishop, to);
+                    } else {
+                        self.addEval(to_piece, to);
+                        self.addEval(from_piece, from);
+                        self.removeEval(if (turn.isWhite()) .w_bishop else .b_bishop, to);
+                    }
+                },
+                .prc_rook => {
+                    if (!move.is_unmove) {
+                        self.removeEval(to_piece, to);
+                        self.removeEval(from_piece, from);
+                        self.addEval(if (turn.isWhite()) .w_rook else .b_rook, to);
+                    } else {
+                        self.addEval(to_piece, to);
+                        self.addEval(from_piece, from);
+                        self.removeEval(if (turn.isWhite()) .w_rook else .b_rook, to);
+                    }
+                },
+                .prc_queen => {
+                    if (!move.is_unmove) {
+                        self.removeEval(to_piece, to);
+                        self.removeEval(from_piece, from);
+                        self.addEval(if (turn.isWhite()) .w_queen else .b_queen, to);
+                    } else {
+                        self.addEval(to_piece, to);
+                        self.addEval(from_piece, from);
+                        self.removeEval(if (turn.isWhite()) .w_queen else .b_queen, to);
+                    }
+                },
+            }
+        }
+        self.unresolved_eval_len = 0;
     }
 
     pub fn updateAttacked(noalias self: *Position, comptime is_960: bool) void {

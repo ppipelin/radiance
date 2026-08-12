@@ -335,6 +335,8 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
 
     // 1. Quiescence search at depth 0
     if (depth <= 0) {
+        // // Trigger lazy evaluation resolution
+        // pos.updateEval();
         // return eval(pos);
         return self.quiesce(io, allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, eval, alpha, beta, is_null_move);
     }
@@ -398,6 +400,8 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
             // }
             pos.state.static_eval = tt_static;
         } else {
+            // Trigger lazy evaluation resolution
+            pos.updateEval();
             pos.state.static_eval = eval(pos);
             tables.writeTranspositionTable(key, types.value_none, pos.state.static_eval, 0, .none, .none, self.age);
         }
@@ -414,6 +418,8 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
         const razoring_threshold: types.Value = alpha -| tables.material[types.PieceType.rook.index()] -| tables.material[types.PieceType.pawn.index()] *| depth *| depth;
         const razoring: bool = pos.state.static_eval < razoring_threshold;
         if (!pv_node and razoring) {
+            // // Trigger lazy evaluation resolution
+            // pos.updateEval();
             // return eval(pos);
             return self.quiesce(io, allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, eval, alpha, beta, is_null_move);
         }
@@ -650,6 +656,11 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
 
     // In order to get the quiescence search to terminate, plies are usually restricted to moves that deal directly with the threat,
     // such as moves that capture and recapture (often called a 'capture search') in chess
+
+    if (tt_static == types.value_none) {
+        // Trigger lazy evaluation resolution
+        pos.updateEval();
+    }
     const stand_pat: types.Value = if (tt_static != types.value_none) tt_static else eval(pos);
     if (stand_pat >= beta)
         return beta;
