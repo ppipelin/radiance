@@ -18,6 +18,7 @@ pub const Limits = struct {
     mate: u8 = 0,
     perft: u8 = 0,
     infinite: bool = false,
+    ponder: bool = false,
     nodes: u32 = 0,
     time: [types.Color.nb()]types.TimePoint = @splat(0),
     inc: [types.Color.nb()]types.TimePoint = @splat(0),
@@ -54,6 +55,7 @@ pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMa
     try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "PSQ var PSQ var Shannon", "PSQ"));
     try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
     try options.put(allocator, "UCI_Chess960", try Option.initCheck(allocator, "false", "false"));
+    try options.put(allocator, "Ponder", try Option.initCheck(allocator, "false", "false"));
     for (variable.tunables) |tunable| {
         const min: i32 = @intCast(tunable.min);
         const max: i32 = @intCast(tunable.max);
@@ -93,7 +95,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
     defer deinitOptions(allocator, &options);
 
     var states: StateList = .empty;
-    try states.ensureTotalCapacity(allocator, 1024); // Necessary because extending invalidates pointers
+    try states.ensureTotalCapacity(allocator, types.max_plies); // Necessary because extending invalidates pointers
     defer states.deinit(allocator);
 
     states.appendAssumeCapacity(position.State{});
@@ -123,7 +125,6 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
         if (std.ascii.eqlIgnoreCase("stop", primary_token)) {
             existing_command = true;
             try thread_pool.stopSearchs();
-            try stdout.print("Stopped search\n", .{});
         }
 
         if (std.ascii.eqlIgnoreCase("license", primary_token) or std.ascii.eqlIgnoreCase("--license", primary_token)) {
@@ -221,7 +222,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
 
         if (std.ascii.eqlIgnoreCase("ponderhit", primary_token)) {
             existing_command = true;
-            try stdout.print("UCI - Received ponderhit\n", .{});
+            try thread_pool.ponderhit();
         }
 
         if (std.ascii.eqlIgnoreCase("d", primary_token)) {
@@ -461,7 +462,9 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
             }
         } else if (std.ascii.eqlIgnoreCase("infinite", token_name)) {
             thread_data.limits.infinite = true;
-        } else if (std.ascii.eqlIgnoreCase("ponder", token_name)) {}
+        } else if (std.ascii.eqlIgnoreCase("ponder", token_name)) {
+            thread_data.limits.ponder = true;
+        }
     }
 
     const is_960: bool = std.ascii.eqlIgnoreCase(options.get("UCI_Chess960").?.current_value, "true");
@@ -661,9 +664,15 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
     try stdout.flush();
 }
 
-pub fn displayBestMove(stdout: *std.Io.Writer, move: types.Move) !void {
+pub fn displayBestMove(stdout: *std.Io.Writer, move: types.Move, ponder_move: types.Move) !void {
     try stdout.print("bestmove ", .{});
     try move.printUCI(stdout);
+
+    if (ponder_move != types.Move.none) {
+        try stdout.print(" ponder ", .{});
+        try ponder_move.printUCI(stdout);
+    }
+
     try stdout.print("\n", .{});
     try stdout.flush();
 }

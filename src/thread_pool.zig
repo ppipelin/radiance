@@ -183,3 +183,17 @@ pub fn startThinking(data: ThreadData) !void {
         try thread.changeState(.search);
     }
 }
+
+pub fn ponderhit() !void {
+    const now = types.now(io);
+
+    for (threads.items) |thread| {
+        if (thread.data.states.items.len == 0) {
+            // try thread.data.stdout.print("go ponder not running, cannot ponderhit\n", .{});
+            break;
+        }
+
+        thread.search.limits.ponder = false;
+        thread.search.limits.start = now;
+    }
+}
