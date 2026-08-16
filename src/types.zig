@@ -567,7 +567,7 @@ pub const ValueExtended = i64;
 pub const Depth = Value;
 
 pub const max_moves = 218;
-pub const max_plies = 200;
+pub const max_plies = 255;
 
 pub const value_zero: Value = 0;
 pub const value_draw: Value = 0;

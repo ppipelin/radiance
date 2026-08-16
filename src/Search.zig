@@ -227,7 +227,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     if (move_len == 0) {
         return error.NoMove;
     } else if (move_len == 1) {
-        try interface.displayBestMove(stdout, move_list[0]);
+        try interface.displayBestMove(stdout, move_list[0], .none);
         return;
     }
 
@@ -319,7 +319,13 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     // Even if outofTime we keep a better move if there is one
     const move: types.Move = self.root_moves[0].pv.items[0];
 
-    try interface.displayBestMove(stdout, move);
+    var ponder_move: types.Move = .none;
+    if (std.ascii.eqlIgnoreCase(options.get("Ponder").?.current_value, "true") and self.root_moves[0].pv.items.len > 1) {
+        ponder_move = self.root_moves[0].pv.items[1];
+    }
+
+    try interface.displayBestMove(stdout, move, ponder_move);
+
     return;
 }
 
@@ -894,7 +900,7 @@ pub inline fn outOfTime(self: *Search, io: std.Io) bool {
         return true;
 
     const uninitialized: bool = self.remaining == 0 and self.limits.nodes == 0;
-    if (self.limits.infinite or uninitialized) return false;
+    if (self.limits.infinite or self.limits.ponder or uninitialized) return false;
 
     if (self.limits.nodes != 0) {
         return interface.queryNodes() >= self.remaining_computed;
