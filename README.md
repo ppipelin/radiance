@@ -111,8 +111,9 @@ zig build test --release=safe
 - `setoption name <string> [value <string>]`
 - `ucinewgame`
 - `position [(fen <string> | startpos | kiwi | lasker) [moves <string>...]]`
-- `go [movetime <int> | wtime <int> | btime <int> | winc <int> | binc <int> | nodes <int> | depth <int> | searchmoves <string>... | infinite | perft <int>]`
+- `go [movetime <int> | wtime <int> | btime <int> | winc <int> | binc <int> | nodes <int> | depth <int> | searchmoves <string>... | infinite | ponder | perft <int>]`
 - `stop`
+- `ponderhit`
 - `d`
 - `bench`
 - `benchv`

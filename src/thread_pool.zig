@@ -96,6 +96,12 @@ const Thread = struct {
                     defer local_states.deinit(allocator);
                     const local_pos: *position.Position = try self.data.pos.clone(allocator, self.data.states, &local_states);
                     defer allocator.destroy(local_pos);
+                    // If I want to hide ponder output
+                    // if (self.data.limits.ponder) {
+                    //     try self.search.iterativeDeepening(io, allocator, &stdout_discard.writer, local_pos, self.thread_idx, self.data.eval, self.data.options);
+                    // } else {
+                    //     try self.search.iterativeDeepening(io, allocator, self.data.stdout, local_pos, self.thread_idx, self.data.eval, self.data.options);
+                    // }
                     try self.search.iterativeDeepening(io, allocator, self.data.stdout, local_pos, self.thread_idx, self.data.eval, self.data.options);
                     try self.data.stdout.flush();
                 },
@@ -182,4 +188,44 @@ pub fn startThinking(data: ThreadData) !void {
         }
         try thread.changeState(.search);
     }
+}
+
+pub fn ponderhit() !void {
+    interface.g_stop.store(true, .release);
+
+    // Make sure the thread has finished
+    try finishSearchs();
+
+    interface.g_stop.store(false, .release);
+
+    const now = types.now(io);
+
+    for (threads.items) |thread| {
+        if (thread.data.states.items.len == 0) {
+            // try thread.data.stdout.print("go ponder not running, cannot ponderhit\n", .{});
+            break;
+        }
+        thread.data.states.appendAssumeCapacity(position.State{});
+        try thread.data.pos.movePiece(thread.search.last_printed_best_move, &thread.data.states.items[thread.data.states.items.len - 1]);
+
+        thread.data.limits.ponder = false;
+        thread.data.limits.start = now;
+
+        std.debug.print("limits {any}\n", .{thread.data.limits});
+        try thread.changeState(.search);
+    }
+
+    //     self.search.limits = self.data.limits;
+    //     self.search.limits.infinite = false;
+
+    //     var local_states: interface.StateList = .empty;
+    //     defer local_states.deinit(allocator);
+    //     const local_pos: *position.Position = try self.data.pos.clone(allocator, self.data.states, &local_states);
+    //     defer allocator.destroy(local_pos);
+    //     // Apply last printed best move when ponderhit
+    //     var s = position.State{};
+    //     try local_pos.movePiece(self.search.last_printed_best_move, &s);
+    //     try self.search.iterativeDeepening(io, allocator, self.data.stdout, local_pos, self.thread_idx, self.data.eval, self.data.options);
+    //     try self.data.stdout.flush();
+    // },
 }

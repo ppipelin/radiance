@@ -22,6 +22,8 @@ histories: tables.Histories = .{},
 root_moves: [types.max_moves]RootMove = @splat(.{}),
 root_moves_len: usize = 0,
 
+last_printed_best_move: types.Move = .none,
+
 pub fn nextSearch(self: *Search) !void {
     self.should_stop = false;
     self.remaining = 0;
@@ -874,6 +876,8 @@ fn info(self: *Search, io: std.Io, stdout: *std.Io.Writer, pv: []types.Move, dep
     try stdout.print("pv ", .{});
     try pvDisplay(stdout, pv);
     try stdout.print("\n", .{});
+
+    self.last_printed_best_move = pv[0];
 }
 
 fn pvDisplay(stdout: *std.Io.Writer, pv: []types.Move) !void {
@@ -894,7 +898,7 @@ pub inline fn outOfTime(self: *Search, io: std.Io) bool {
         return true;
 
     const uninitialized: bool = self.remaining == 0 and self.limits.nodes == 0;
-    if (self.limits.infinite or uninitialized) return false;
+    if (self.limits.infinite or self.limits.ponder or uninitialized) return false;
 
     if (self.limits.nodes != 0) {
         return interface.queryNodes() >= self.remaining_computed;
