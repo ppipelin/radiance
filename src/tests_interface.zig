@@ -24,7 +24,7 @@ test "start_fen" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(io, allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout, null);
 
     try std.testing.expectStringStartsWith(stdout.buffer,
         \\ +---+---+---+---+---+---+---+---+
@@ -65,7 +65,7 @@ test "kiwipete" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(io, allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout, null);
 
     try std.testing.expectStringStartsWith(stdout.buffer,
         \\ +---+---+---+---+---+---+---+---+
@@ -106,7 +106,7 @@ test "start_fenWithSpaces" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(io, allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout, null);
 
     try std.testing.expectStringStartsWith(stdout.buffer,
         \\ +---+---+---+---+---+---+---+---+
@@ -147,7 +147,7 @@ test "ErrorFenPosition" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(io, allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout, null);
 
     try std.testing.expectStringStartsWith(stdout.buffer,
         \\Command position failed with error error.UnknownPiece, reset to startpos
@@ -189,7 +189,7 @@ test "ErrorUnknownPosition" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(io, allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout, null);
 
     try std.testing.expectStringStartsWith(stdout.buffer,
         \\Command position failed with error error.UnknownPositionArgument, reset to startpos
@@ -234,7 +234,7 @@ test "SearchLeak" {
     var output: [4096]u8 = undefined;
     var stdout = std.Io.Writer.fixed(&output);
 
-    try interface.loop(io, allocator, &stdin, &stdout);
+    try interface.loop(io, allocator, &stdin, &stdout, null);
 
     try thread_pool.deinit();
 }
@@ -294,5 +294,5 @@ test "SearchLeakNoInterface" {
 //     var output: [131072]u8 = undefined;
 //     var stdout = std.Io.Writer.fixed(&output);
 
-//     try interface.loop(io,allocator, &stdin, &stdout);
+//     try interface.loop(io,allocator, &stdin, &stdout, null);
 // }

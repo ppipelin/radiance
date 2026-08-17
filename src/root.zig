@@ -23,6 +23,8 @@ pub fn main(init: std.process.Init) !void {
 
     const args = try init.minimal.args.toSlice(init.arena.allocator());
 
+    var args_iter = try init.minimal.args.iterateAllocator(allocator);
+
     if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "compute")) {
         var iterations: u64 = 1;
         if (args.len > 2) {
@@ -35,14 +37,10 @@ pub fn main(init: std.process.Init) !void {
             iterations = try std.fmt.parseInt(u64, args[2], 10);
         }
         try tune.run(init.io, allocator, stdout, iterations);
-    } else if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "bench")) {
-        try interface.cmd_bench(init.io, allocator, stdout, false);
-    } else if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "benchv")) {
-        try interface.cmd_bench(init.io, allocator, stdout, true);
     } else {
         try stdout.print("Radiance {s} by Paul-Elie Pipelin (ppipelin)\n", .{types.computeVersion()});
         try stdout.flush();
-        try interface.loop(init.io, allocator, stdin, stdout);
+        try interface.loop(init.io, allocator, stdin, stdout, &args_iter);
     }
 
     try stdout.flush();
