@@ -777,6 +777,8 @@ pub const Position = struct {
         }
     }
 
+    /// Call self.updateAttacked() before
+    /// self.updateCheckersPinned() should already have been called
     pub fn generateLegalMoves(noalias self: *Position, comptime gen_type: GenerationType, comptime color: Color, list: []Move, len: *usize, comptime is_960: bool) void {
         const bb_us: Bitboard = self.bb_colors[color.index()];
         const bb_them: Bitboard = self.bb_colors[color.invert().index()];

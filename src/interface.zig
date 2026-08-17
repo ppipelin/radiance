@@ -87,7 +87,7 @@ pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnman
     }
 }
 
-pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io.Writer) !void {
+pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io.Writer, args_iter: *std.process.Args.Iterator) !void {
     var options: std.StringArrayHashMapUnmanaged(Option) = .empty;
     try initOptions(allocator, &options);
     defer deinitOptions(allocator, &options);
@@ -99,15 +99,22 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
     states.appendAssumeCapacity(position.State{});
     var pos: position.Position = try position.Position.setFen(&states.items[0], position.start_fen);
 
-    while (true) {
-        const line: []u8 = try stdin.takeDelimiter('\n') orelse break;
+    _ = args_iter.next(); // Discard program path
 
-        const tline: []const u8 = std.mem.trim(u8, line, " \r");
+    while (true) {
+        var tline: []const u8 = undefined;
+
+        // Prior to parsing stdin, parses args_iter
+        if (args_iter.next()) |arg| {
+            tline = arg;
+        } else {
+            const line: []u8 = try stdin.takeDelimiter('\n') orelse break;
+            tline = std.mem.trim(u8, line, " \r");
+        }
 
         var tokens = std.mem.tokenizeScalar(u8, tline, ' ');
-        const token: []const u8 = tokens.next() orelse break;
 
-        const primary_token: []const u8 = token;
+        const primary_token: []const u8 = tokens.next() orelse break;
 
         var existing_command: bool = false;
 
@@ -172,9 +179,18 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             };
         }
 
+        if (std.ascii.eqlIgnoreCase("genfens", primary_token)) {
+            existing_command = true;
+
+            cmd_genfens(io, stdout, &tokens) catch |err| {
+                try stdout.print("Command genfens failed with error {}\n", .{err});
+            };
+        }
+
         if (std.ascii.eqlIgnoreCase("bench", primary_token)) {
             existing_command = true;
             try cmd_bench(io, allocator, stdout, false);
+            break;
         }
 
         if (std.ascii.eqlIgnoreCase("benchv", primary_token)) {
@@ -486,6 +502,68 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
 
         try stdout.flush();
     }
+}
+
+fn cmd_genfens(io: std.Io, stdout: *std.Io.Writer, tokens: anytype) !void {
+    if (tokens.next()) |token_value| {
+        // If we take 10 best first moves branching factor is 10.
+        // For N to be 1% of the data we have to go to depth x such that (10^x = N * 100)
+        const N: u32 = try std.fmt.parseInt(u32, token_value, 10);
+        const depth: u32 = @ceil(@max(4, 2 + @log10(@as(f32, @floatFromInt(N)))));
+
+        const histories: tables.Histories = .{};
+
+        var seed: u64 = @truncate(@abs(std.Io.Timestamp.now(io, .real).toNanoseconds()));
+        if (tokens.next()) |token_name| {
+            if (std.ascii.eqlIgnoreCase("seed", token_name)) {
+                if (tokens.next()) |token_seed| {
+                    seed = try std.fmt.parseInt(u64, token_seed, 10);
+                }
+            }
+        }
+
+        var prng = std.Random.DefaultPrng.init(seed);
+        const rand = prng.random();
+
+        for (0..N) |_| {
+            var states: [types.max_plies]position.State = @splat(position.State{});
+            var pos: position.Position = try position.Position.setFen(&states[0], position.start_fen);
+
+            var checkmated: bool = false;
+
+            for (0..depth) |d| {
+                var move_list: [types.max_moves]types.Move = @splat(.none);
+                var move_len: usize = 0;
+
+                pos.updateAttacked(false);
+                switch (pos.state.turn) {
+                    inline else => |turn| pos.generateLegalMoves(types.GenerationType.all, turn, &move_list, &move_len, false),
+                }
+
+                if (move_len == 0) {
+                    checkmated = true;
+                    break;
+                }
+
+                var scores: [types.max_moves]types.Value = undefined;
+
+                pos.scoreMoves(move_list[0..move_len], .all, &histories, &scores);
+                position.orderMoves(move_list[0..move_len], &scores);
+
+                const selected_idx: usize = rand.intRangeAtMost(u8, 0, @min(10, move_len - 1));
+                try pos.movePiece(move_list[selected_idx], &states[d + 1]);
+            }
+
+            if (checkmated)
+                continue;
+
+            var buffer: [90]u8 = undefined;
+            const fen = pos.getFen(&buffer);
+
+            try stdout.print("info string genfens {s}\n", .{fen});
+        }
+    }
+    try stdout.flush();
 }
 
 pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, verbose: bool) anyerror!void {

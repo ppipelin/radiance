@@ -514,6 +514,7 @@ pub const Move = packed struct(u16) {
         defer std.debug.unlockStderr();
         self.printUCI(&stderr.file_writer.interface) catch unreachable;
         stderr.file_writer.interface.print(" with flag {}\n", .{self.getFlags()}) catch unreachable;
+        stderr.file_writer.flush() catch unreachable;
     }
 };
 
