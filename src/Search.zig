@@ -308,12 +308,12 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         // Even if outofTime we keep a better move if there is one
         std.sort.insertion(RootMove, self.root_moves[0..self.root_moves_len], {}, RootMove.sort);
 
+        try self.info(io, stdout, self.root_moves[0].pv.items, depth, self.root_moves[0].score, options);
+        try stdout.flush();
+
         if (depth > 1 and self.outOfTime(io)) {
             break;
         }
-
-        try self.info(io, stdout, self.root_moves[0].pv.items, depth, self.root_moves[0].score, options);
-        try stdout.flush();
     }
 
     // Even if outofTime we keep a better move if there is one
