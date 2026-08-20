@@ -87,6 +87,7 @@ pub fn printOptions(writer: *std.Io.Writer, options: std.StringArrayHashMapUnman
         }
         try writer.print("\n", .{});
     }
+    try writer.flush();
 }
 
 pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, stdout: *std.Io.Writer, args_iter_: ?*std.process.Args.Iterator) !void {
@@ -136,6 +137,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 \\Read the README.md or LICENSE.md for further information.
                 \\
             , .{});
+            try stdout.flush();
         }
 
         if (std.ascii.eqlIgnoreCase("uci", primary_token)) {
@@ -150,6 +152,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 \\uciok
                 \\
             , .{});
+            try stdout.flush();
         }
 
         if (std.ascii.eqlIgnoreCase("ucinewgame", primary_token)) {
@@ -163,6 +166,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             existing_command = true;
             cmd_position(&pos, &tokens, &states) catch |err| {
                 try stdout.print("Command position failed with error {}, reset to startpos\n", .{err});
+                try stdout.flush();
                 states.clearRetainingCapacity();
                 states.appendAssumeCapacity(position.State{});
                 pos = try position.Position.setFen(&states.items[0], position.start_fen);
@@ -174,6 +178,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
 
             cmd_go(io, allocator, stdout, &pos, states, &tokens, options) catch |err| {
                 try stdout.print("Command go failed with error {}\n", .{err});
+                try stdout.flush();
                 try thread_pool.stopSearchs();
             };
         }
@@ -183,6 +188,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
 
             cmd_genfens(io, stdout, &tokens) catch |err| {
                 try stdout.print("Command genfens failed with error {}\n", .{err});
+                try stdout.flush();
             };
         }
 
@@ -201,12 +207,14 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             existing_command = true;
             for (variable.tunables) |tunable| {
                 try stdout.print("{s}, int, {d}, {d}, {d}, {d}, 0.002\n", .{ tunable.name, tunable.default, tunable.min, tunable.max, tunable.step });
+                try stdout.flush();
             }
         }
 
         if (std.ascii.eqlIgnoreCase("isready", primary_token)) {
             existing_command = true;
             try stdout.print("readyok\n", .{});
+            try stdout.flush();
         }
 
         if (std.ascii.eqlIgnoreCase("setoption", primary_token)) {
@@ -217,6 +225,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 try stdout.print("Command setoption failed with error {}\n", .{err});
                 options.deinit(allocator);
                 options = try tmp_options.clone(allocator);
+                try stdout.flush();
             };
         }
 
@@ -228,6 +237,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
         if (std.ascii.eqlIgnoreCase("d", primary_token)) {
             existing_command = true;
             pos.print(stdout);
+            try stdout.flush();
         }
 
         if (std.ascii.eqlIgnoreCase("eval", primary_token)) {
@@ -238,6 +248,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
                 try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos)});
             }
+            try stdout.flush();
         }
 
         if (!existing_command) {
@@ -259,9 +270,8 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 \\  quit
                 \\
             , .{});
+            try stdout.flush();
         }
-
-        try stdout.flush();
     }
 
     try thread_pool.terminateThreads(); // Terminate before options and states are deallocated
@@ -481,13 +491,11 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
 
         const search_mode: []const u8 = options.get("Search").?.current_value;
         if (std.ascii.eqlIgnoreCase(search_mode, "Random")) {
-            try stdout.print("bestmove ", .{});
-            if (is_960) {
-                try (try Search.searchRandom(io, pos, true)).printUCI(stdout);
-            } else {
-                try (try Search.searchRandom(io, pos, false)).printUCI(stdout);
+            switch (is_960) {
+                inline else => |is_960_current| {
+                    try displayBestMove(stdout, try Search.searchRandom(io, pos, is_960_current), .none);
+                },
             }
-            try stdout.print("\n", .{});
         } else if (std.ascii.eqlIgnoreCase(search_mode, "NegamaxAlphaBeta")) {
             if (std.ascii.eqlIgnoreCase(evaluation_mode, "Materialist")) {
                 thread_data.eval = evaluate.evaluateMaterialist;
@@ -499,9 +507,8 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
             try thread_pool.startThinking(thread_data);
         } else {
             try stdout.print("Search mode {s} not implemented\n", .{search_mode});
+            try stdout.flush();
         }
-
-        try stdout.flush();
     }
 }
 
