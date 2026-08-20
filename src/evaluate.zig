@@ -1,3 +1,4 @@
+const Nnue = @import("Nnue.zig");
 const position = @import("position.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
@@ -293,4 +294,8 @@ pub fn evaluateTable(pos: *const position.Position) types.Value {
     score +|= @truncate(@divTrunc((10_000 - tapered) * pos.score_eg, 10_000));
 
     return if (pos.state.turn.isWhite()) score else -score;
+}
+
+pub fn evaluateNnue(pos: *const position.Position) types.Value {
+    return @intCast(@divTrunc(pos.nnue.forward(), Nnue.SCALE / 100));
 }

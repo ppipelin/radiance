@@ -52,7 +52,7 @@ pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMa
     try options.put(allocator, "Hash", try Option.initSpin(allocator, "256", 0, 65535));
     try tables.setTranspositionTableCapacity(256);
     try options.put(allocator, "Threads", try Option.initSpin(allocator, "1", 1, 1024));
-    try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "PSQ var PSQ var Shannon", "PSQ"));
+    try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "NNUE var NNUE var PSQ var Shannon", "NNUE"));
     try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
     try options.put(allocator, "UCI_Chess960", try Option.initCheck(allocator, "false", "false"));
     try options.put(allocator, "Ponder", try Option.initCheck(allocator, "false", "false"));
@@ -247,6 +247,9 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(&pos)});
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
                 try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos)});
+            } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
+                pos.nnue.fillAccumulator(pos);
+                std.debug.print("forawrd : {}\n", .{pos.nnue.forward()});
             }
             try stdout.flush();
         }
@@ -503,6 +506,8 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
                 thread_data.eval = evaluate.evaluateShannon;
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
                 thread_data.eval = evaluate.evaluateTable;
+            } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
+                thread_data.eval = evaluate.evaluateNnue;
             }
             try thread_pool.startThinking(thread_data);
         } else {

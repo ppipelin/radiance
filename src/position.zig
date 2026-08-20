@@ -1,4 +1,5 @@
 const interface = @import("interface.zig");
+const Nnue = @import("Nnue.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -72,6 +73,7 @@ pub const State = struct {
 pub const Position = struct {
     // Board
     board: [types.board_size2]Piece = @splat(.none),
+    nnue: Nnue = .{},
 
     // Bitboards
     bb_pieces: [PieceType.nb()]Bitboard = @splat(0),
