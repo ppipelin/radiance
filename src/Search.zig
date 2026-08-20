@@ -404,6 +404,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
             // }
             pos.state.static_eval = tt_static;
         } else {
+            pos.nnue.fillAccumulator(pos.*);
             pos.state.static_eval = eval(pos);
             tables.writeTranspositionTable(key, types.value_none, pos.state.static_eval, 0, .none, .none, self.age);
         }
@@ -656,6 +657,8 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
 
     // In order to get the quiescence search to terminate, plies are usually restricted to moves that deal directly with the threat,
     // such as moves that capture and recapture (often called a 'capture search') in chess
+    if (tt_static == types.value_none)
+        pos.nnue.fillAccumulator(pos.*);
     const stand_pat: types.Value = if (tt_static != types.value_none) tt_static else eval(pos);
     if (stand_pat >= beta)
         return beta;
