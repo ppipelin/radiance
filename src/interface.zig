@@ -248,8 +248,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
                 try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos)});
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
-                pos.nnue.fillAccumulator(pos);
-                std.debug.print("forawrd : {}\n", .{pos.nnue.forward()});
+                std.debug.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos)});
             }
             try stdout.flush();
         }

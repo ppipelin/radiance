@@ -97,6 +97,8 @@ pub const Position = struct {
         state.* = State{};
         var pos: Position = Position{};
 
+        pos.nnue.initAccumulator();
+
         pos.state = state;
 
         return pos;
@@ -113,6 +115,7 @@ pub const Position = struct {
         }
 
         pos.state = &new_states.items[new_states.items.len - 1];
+        pos.nnue = self.nnue;
         return pos;
     }
 
@@ -131,6 +134,18 @@ pub const Position = struct {
             self.score_mg -= -tables.psq[p.pieceToPieceType().index()][0][sq.index()];
             self.score_eg -= -tables.psq[p.pieceToPieceType().index()][1][sq.index()];
             self.score_material_b -= tables.material[p.pieceToPieceType().index()];
+        }
+
+        const is_friendly: bool = p.pieceToColor() == self.state.turn;
+        const sq_mirror = sq.index() ^ 56;
+        // Friendly
+        const row_us = Nnue.featureIndex(is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) sq.index() else sq_mirror);
+        // Not friendly
+        const row_them = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) sq_mirror else sq.index());
+
+        for (0..Nnue.hidden_size) |neuron_idx| {
+            self.nnue.accumulator[self.state.turn.index()][neuron_idx] -= Nnue.l0w[row_us][neuron_idx];
+            self.nnue.accumulator[self.state.turn.invert().index()][neuron_idx] -= Nnue.l0w[row_them][neuron_idx];
         }
     }
 
@@ -156,6 +171,18 @@ pub const Position = struct {
                 self.score_king_b = tables.psq[p.pieceToPieceType().index()][1][sq.index()];
             }
         }
+
+        const is_friendly: bool = p.pieceToColor() == self.state.turn;
+        const sq_mirror = sq.index() ^ 56;
+        // Friendly
+        const row_us = Nnue.featureIndex(is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) sq.index() else sq_mirror);
+        // Not friendly
+        const row_them = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) sq_mirror else sq.index());
+
+        for (0..Nnue.hidden_size) |neuron_idx| {
+            self.nnue.accumulator[self.state.turn.index()][neuron_idx] += Nnue.l0w[row_us][neuron_idx];
+            self.nnue.accumulator[self.state.turn.invert().index()][neuron_idx] += Nnue.l0w[row_them][neuron_idx];
+        }
     }
 
     inline fn removeAdd(noalias self: *Position, p: Piece, removeSq: Square, addSq: Square) void {
@@ -178,6 +205,21 @@ pub const Position = struct {
             self.score_eg -= -tables.psq[p.pieceToPieceType().index()][1][removeSq.index()];
             self.score_mg += -tables.psq[p.pieceToPieceType().index()][0][addSq.index()];
             self.score_eg += -tables.psq[p.pieceToPieceType().index()][1][addSq.index()];
+        }
+
+        const is_friendly: bool = p.pieceToColor() == self.state.turn;
+        const addSq_mirror = addSq.index() ^ 56;
+        const removeSq_mirror = removeSq.index() ^ 56;
+        // Friendly
+        const row_us_add = Nnue.featureIndex(is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) addSq.index() else addSq_mirror);
+        const row_us_rem = Nnue.featureIndex(is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) removeSq.index() else removeSq_mirror);
+        // Not friendly
+        const row_them_add = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) addSq_mirror else addSq.index());
+        const row_them_rem = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) removeSq_mirror else removeSq.index());
+
+        for (0..Nnue.hidden_size) |neuron_idx| {
+            self.nnue.accumulator[self.state.turn.index()][neuron_idx] += Nnue.l0w[row_us_add][neuron_idx] - Nnue.l0w[row_us_rem][neuron_idx];
+            self.nnue.accumulator[self.state.turn.invert().index()][neuron_idx] += Nnue.l0w[row_them_add][neuron_idx] - Nnue.l0w[row_them_rem][neuron_idx];
         }
     }
 
@@ -1085,6 +1127,8 @@ pub const Position = struct {
         writer.print("fen: {s}\n", .{fen}) catch unreachable;
 
         writer.print("zobrist: {}\n", .{self.state.material_key}) catch unreachable;
+
+        writer.flush() catch unreachable;
     }
 
     pub fn drawByMaterial(pos: Position) bool {

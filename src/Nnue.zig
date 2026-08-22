@@ -9,23 +9,22 @@ pub const Full = i32;
 const lanes: comptime_int = std.simd.suggestVectorLength(Quantized) orelse 1;
 const Vector = @Vector(lanes, Quantized);
 
-const input_size: usize = 768; // L0
-const hidden_size: usize = 128; // L1
+pub const input_size: usize = 768; // L0
+pub const hidden_size: usize = 128; // L1
 const QA = 255;
 const QB = 64; // Bias is quantized the same way final evaluation is quantized
 pub const SCALE = 400;
 
-input: [input_size]bool = undefined,
 /// Accumulate the value of weights, this corresponds to the first hidden layer
-/// Should be initialized with
-accumulator: [hidden_size * 2]Quantized = undefined,
+/// 0 is friendly for black perspective while 1 is the friendly for white
+/// When fed into forward be careful to put first friendly then not friendly
+accumulator: [2][hidden_size]Quantized = undefined,
 
-var l0w: [input_size][hidden_size]Quantized = undefined;
-var l0b: [hidden_size]Quantized = undefined;
-// var l0b_v: @Vector(hidden_size * 2, Full) = undefined;
-var l1w: [hidden_size * 2]Quantized = undefined;
-var l1w_v: @Vector(hidden_size * 2, Full) = undefined;
-var l1b: Full = undefined;
+pub var l0w: [input_size][hidden_size]Quantized = undefined;
+pub var l0b: [hidden_size]Quantized = undefined;
+pub var l1w: [hidden_size * 2]Quantized = undefined;
+pub var l1w_v: @Vector(hidden_size * 2, Full) = undefined;
+pub var l1b: Full = undefined;
 
 pub fn loadFromBin(data: []const Quantized) void {
     for (0..hidden_size) |col| {
@@ -44,37 +43,19 @@ pub fn loadFromBin(data: []const Quantized) void {
     std.debug.print("anchor {}\n", .{anchor});
 }
 
-fn featureIndex(is_friendly: bool, pt: types.PieceType, sq: usize) usize {
+pub inline fn featureIndex(is_friendly: bool, pt: types.PieceType, sq: usize) usize {
     const skip: usize = if (is_friendly) 0 else 1;
     return (skip * (types.PieceType.nb() - 1) + pt.index() - 1) * types.board_size2 + sq;
 }
 
-pub fn fillAccumulator(self: *Nnue, pos: position.Position) void {
+pub fn initAccumulator(self: *Nnue) void {
     // Initialize accumulator with bias
-    @memcpy(self.accumulator[0..hidden_size], l0b[0..]);
-    @memcpy(self.accumulator[hidden_size..], l0b[0..]);
+    @memcpy(self.accumulator[0][0..], l0b[0..]);
+    @memcpy(self.accumulator[1][0..], l0b[0..]);
+}
 
-    //// Forgot second perspective (hidden_size..)
-    // var cnt: usize = 0;
-    // for (std.enums.values(types.Color)) |col| {
-    //     for (std.enums.values(types.PieceType)) |pt| {
-    //         if (pt == .none)
-    //             continue;
-
-    //         for (0..64) |i| {
-    //             if (pos.bb_colors[col.invert().index()] & pos.bb_pieces[pt.index()] & (@as(u64, 1) << @intCast(i)) != 0) {
-    //                 // Piece is present so we add wait for all neurons of L1
-    //                 for (0..hidden_size) |neuron_idx| {
-    //                     self.accumulator[neuron_idx + col.invert().index() * hidden_size] += l0w[cnt][neuron_idx];
-    //                 }
-    //                 // std.debug.print("{} {} {}\n", .{ col.invert(), pt, i });
-    //             }
-
-    //             cnt += 1;
-    //         }
-    //     }
-    // }
-    // std.debug.assert(cnt == input_size);
+pub fn fillAccumulator(self: *Nnue, pos: position.Position) void {
+    initAccumulator(self);
 
     for (std.enums.values(types.Color)) |abs_col| {
         const is_friendly: bool = abs_col == pos.state.turn;
@@ -93,8 +74,8 @@ pub fn fillAccumulator(self: *Nnue, pos: position.Position) void {
                 const row_them = featureIndex(!is_friendly, pt, if (pos.state.turn.isWhite()) sq_mirror else sq);
 
                 for (0..hidden_size) |neuron_idx| {
-                    self.accumulator[neuron_idx] += l0w[row_us][neuron_idx];
-                    self.accumulator[hidden_size + neuron_idx] += l0w[row_them][neuron_idx];
+                    self.accumulator[pos.state.turn.index()][neuron_idx] += l0w[row_us][neuron_idx];
+                    self.accumulator[pos.state.turn.invert().index()][neuron_idx] += l0w[row_them][neuron_idx];
                 }
             }
         }
@@ -120,8 +101,8 @@ inline fn screlu(vec: FullHiddenVec) FullHiddenVec {
     return clipped * clipped;
 }
 
-pub fn forward(self: *const Nnue) Quantized {
-    const accumulator_v: FullHiddenVec = self.accumulator;
+pub fn forward(self: *const Nnue, col: types.Color) Quantized {
+    const accumulator_v: FullHiddenVec = if (col.isWhite()) self.accumulator[1] ++ self.accumulator[0] else self.accumulator[0] ++ self.accumulator[1];
 
     const l1: FullHiddenVec = accumulator_v;
     const l1_screlu = screlu(l1);

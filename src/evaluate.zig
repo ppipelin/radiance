@@ -297,5 +297,5 @@ pub fn evaluateTable(pos: *const position.Position) types.Value {
 }
 
 pub fn evaluateNnue(pos: *const position.Position) types.Value {
-    return @intCast(@divTrunc(pos.nnue.forward(), Nnue.SCALE / 100));
+    return @intCast(@divTrunc(pos.nnue.forward(pos.state.turn), Nnue.SCALE / 100));
 }
