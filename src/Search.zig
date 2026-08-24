@@ -227,6 +227,22 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     if (move_len == 0) {
         return error.NoMove;
     } else if (move_len == 1) {
+        const key: tables.Key = pos.state.material_key;
+
+        const tt_entry: tables.TranspositionEntry = tables.readTranspositionTable(key);
+        const tt_hit: bool = tt_entry.flags.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
+
+        // Update the mate score retrieved from the table to consider the current ply
+        const score: types.Value = if (tt_hit) types.valueFromTT(tt_entry.value, ss[0].ply) else eval(pos);
+
+        try stdout.print("info depth 0 score ", .{});
+        if (types.isValueMate(score)) {
+            const mate_distance: types.Value = try std.math.divCeil(types.Value, types.value_mate - @as(types.Value, @intCast(@abs(score))), 2);
+            try stdout.print("mate {} \n", .{if (score > 0) mate_distance else -mate_distance});
+        } else {
+            try stdout.print("cp {} \n", .{score});
+        }
+
         try interface.displayBestMove(stdout, move_list[0], .none);
         return;
     }
