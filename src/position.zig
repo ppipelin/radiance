@@ -55,7 +55,7 @@ const CastleInfo = enum(u4) {
 pub const State = struct {
     turn: Color = Color.white,
     castle_info: CastleInfo = CastleInfo.none, // QKqk
-    repetition: i7 = 0, // Zero if no repetition, x positive if happened once x half moves ago, negative indicates repetition
+    repetition: i16 = 0, // Zero if no repetition, x positive if happened once x half moves ago, negative indicates repetition
     half_move: u8 = 0,
     full_move: u32 = 1,
     en_passant: Square = Square.none,
@@ -354,11 +354,11 @@ pub const Position = struct {
         self.state.repetition = 0;
         if (self.state.half_move >= 0 and self.state.previous != null and self.state.previous.?.previous != null) {
             var s2: *State = self.state.previous.?.previous.?;
-            var i: i7 = 4;
+            var i: i16 = 4;
             while (i <= self.state.half_move and s2.previous != null and s2.previous.?.previous != null) : (i += 2) {
                 s2 = s2.previous.?.previous.?;
                 if (s2.material_key == self.state.material_key) {
-                    self.state.repetition = if (s2.repetition != 0) -i else i;
+                    self.state.repetition = if (s2.repetition == 0) -i else i;
                     break;
                 }
             }
