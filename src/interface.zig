@@ -1,5 +1,6 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
+const Nnue = @import("Nnue.zig");
 const position = @import("position.zig");
 const Search = @import("Search.zig");
 const std = @import("std");
@@ -46,6 +47,10 @@ pub const Option = struct {
     pub inline fn initCheck(allocator: std.mem.Allocator, default: []const u8, current: []const u8) !Option {
         return Option{ .type = "check", .default_value = try allocator.dupe(u8, default), .current_value = try allocator.dupe(u8, current) };
     }
+
+    pub inline fn initString(allocator: std.mem.Allocator, default: []const u8, current: []const u8) !Option {
+        return Option{ .type = "string", .default_value = try allocator.dupe(u8, default), .current_value = try allocator.dupe(u8, current) };
+    }
 };
 
 pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
@@ -56,6 +61,7 @@ pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMa
     try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
     try options.put(allocator, "UCI_Chess960", try Option.initCheck(allocator, "false", "false"));
     try options.put(allocator, "Ponder", try Option.initCheck(allocator, "false", "false"));
+    try options.put(allocator, "EvalFile", try Option.initString(allocator, "null.nnue", "null.nnue"));
     for (variable.tunables) |tunable| {
         const min: i32 = @intCast(tunable.min);
         const max: i32 = @intCast(tunable.max);
@@ -221,7 +227,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             existing_command = true;
             var tmp_options: std.StringArrayHashMapUnmanaged(Option) = try options.clone(allocator);
             defer tmp_options.deinit(allocator);
-            cmd_setoption(allocator, &tokens, &options) catch |err| {
+            cmd_setoption(io, allocator, &tokens, &options) catch |err| {
                 try stdout.print("Command setoption failed with error {}\n", .{err});
                 options.deinit(allocator);
                 options = try tmp_options.clone(allocator);
@@ -279,7 +285,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
     try thread_pool.terminateThreads(); // Terminate before options and states are deallocated
 }
 
-fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
+fn cmd_setoption(io: std.Io, allocator: std.mem.Allocator, tokens: anytype, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
     var name: []const u8 = undefined;
     var value: []const u8 = undefined;
 
@@ -338,6 +344,24 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
                     tunable.default = @intCast(value_parsed);
                 }
             }
+        }
+        if (std.ascii.eqlIgnoreCase(name, "EvalFile")) {
+            const max_hidden = 1024;
+            const l0_wb = 768 * max_hidden + max_hidden;
+            const l1_wb = max_hidden * 2 + 1;
+            const buffer: []u8 = try allocator.alloc(u8, (l0_wb + l1_wb) * @sizeOf(Nnue.Quantized) + 64);
+            defer allocator.free(buffer);
+
+            const nnue_bytes = try std.Io.Dir.readFile(std.Io.Dir.cwd(), io, value, buffer);
+
+            var nnue_content: []Nnue.Quantized = try allocator.alloc(Nnue.Quantized, nnue_bytes.len / 2);
+            defer allocator.free(nnue_content);
+
+            for (nnue_content, 0..) |*value_content, i| {
+                value_content.* = std.mem.readInt(Nnue.Quantized, nnue_bytes[i * 2 ..][0..2], .little);
+            }
+
+            Nnue.loadFromBin(nnue_content[0..]);
         }
         allocator.free(option.current_value);
         option.current_value = try allocator.dupe(u8, value);
