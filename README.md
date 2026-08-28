@@ -121,6 +121,7 @@ zig build test --release=safe
 - `benchv`
 - `genfens <int> [seed <int64>]`
 - `eval`
+- `evals`
 - `quit`
 
 ### Archive

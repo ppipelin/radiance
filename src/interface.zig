@@ -246,14 +246,17 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             try stdout.flush();
         }
 
-        if (std.ascii.eqlIgnoreCase("eval", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("eval", primary_token) or std.ascii.eqlIgnoreCase("evals", primary_token)) {
+            const evals: bool = std.ascii.eqlIgnoreCase("evals", primary_token);
             existing_command = true;
             const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
-            if (std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
+            if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
                 try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(&pos)});
-            } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
+            }
+            if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
                 try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos)});
-            } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
+            }
+            if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
                 std.debug.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos)});
             }
             try stdout.flush();

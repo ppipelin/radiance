@@ -97,7 +97,7 @@ fn vectorDiv(comptime T: type, vec: T, add: anytype) T {
 const FullHiddenVec = @Vector(hidden_size * 2, Full);
 
 inline fn screlu(vec: FullHiddenVec) FullHiddenVec {
-    const clipped = std.math.clamp(vec, @as(FullHiddenVec, @splat(0)), @as(FullHiddenVec, @splat(QA)));
+    const clipped: FullHiddenVec = std.math.clamp(vec, @as(FullHiddenVec, @splat(0)), @as(FullHiddenVec, @splat(QA)));
     return clipped * clipped;
 }
 
