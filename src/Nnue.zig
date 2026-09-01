@@ -6,8 +6,9 @@ const Nnue = @This();
 
 pub const Quantized = i16;
 pub const Full = i32;
-const lanes: comptime_int = std.simd.suggestVectorLength(Quantized) orelse 1;
-const Vector = @Vector(lanes, Quantized);
+pub const lanes: comptime_int = std.simd.suggestVectorLength(Quantized) orelse 1;
+pub const Vector = @Vector(lanes, Quantized);
+const FullHiddenVec = @Vector(hidden_size * 2, Full);
 
 pub const input_size: usize = 768; // L0
 pub const hidden_size: usize = 128; // L1
@@ -40,7 +41,6 @@ pub fn loadFromBin(data: []const Quantized) void {
     l1b = data[anchor];
 
     l1w_v = l1w;
-    std.debug.print("anchor {}\n", .{anchor});
 }
 
 pub inline fn featureIndex(is_friendly: bool, pt: types.PieceType, sq: usize) usize {
@@ -93,8 +93,6 @@ fn vectorMult(comptime T: type, vec: T, add: anytype) T {
 fn vectorDiv(comptime T: type, vec: T, add: anytype) T {
     return vec / @as(T, @splat(add));
 }
-
-const FullHiddenVec = @Vector(hidden_size * 2, Full);
 
 inline fn screlu(vec: FullHiddenVec) FullHiddenVec {
     const clipped: FullHiddenVec = std.math.clamp(vec, @as(FullHiddenVec, @splat(0)), @as(FullHiddenVec, @splat(QA)));
