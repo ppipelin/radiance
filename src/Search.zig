@@ -11,6 +11,7 @@ const Search = @This();
 
 should_stop: bool = false,
 limits: interface.Limits = .{},
+last_depth: types.TimePoint = 0,
 remaining: types.TimePoint = 0,
 increment: types.TimePoint = 0,
 remaining_computed: types.TimePoint = 0,
@@ -22,8 +23,9 @@ histories: tables.Histories = .{},
 root_moves: [types.max_moves]RootMove = @splat(.{}),
 root_moves_len: usize = 0,
 
-pub fn nextSearch(self: *Search) !void {
+pub fn nextSearch(self: *Search, io: std.Io) !void {
     self.should_stop = false;
+    self.last_depth = types.now(io);
     self.remaining = 0;
     self.increment = 0;
     self.remaining_computed = 0;
@@ -184,7 +186,7 @@ pub fn searchRandom(io: std.Io, noalias pos: *position.Position, comptime is_960
 pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, thread_idx: usize, eval: *const fn (pos: *const position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
-    try self.nextSearch();
+    try self.nextSearch(io);
 
     if (self.limits.movetime > 0) {
         self.remaining = self.limits.movetime;
@@ -271,8 +273,13 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
 
     var depth: types.Depth = 1;
     _ = thread_idx;
-    // var depth: types.Depth = @intCast(1 + @divTrunc(thread_idx, 2));
+    // Stop when depth is reached
     while (depth <= self.limits.depth) : (depth += 1) {
+        // Stop if next iteration takes too much time
+        if (self.isTimeBased() and (self.remaining_computed - self.elapsed(io)) < @divTrunc((types.now(io) - self.last_depth) * variable.getValue("early_quit_factor"), 10))
+            break;
+
+        self.last_depth = types.now(io);
 
         // Reorder root moves
         // Used for multi threading
@@ -910,6 +917,10 @@ fn pvDisplay(stdout: *std.Io.Writer, pv: []types.Move) !void {
 
 pub inline fn elapsed(self: *Search, io: std.Io) types.TimePoint {
     return (types.now(io) - self.limits.start);
+}
+
+pub fn isTimeBased(self: *Search) bool {
+    return !self.limits.infinite and !self.limits.ponder and self.limits.nodes == 0 and self.remaining != 0;
 }
 
 pub inline fn outOfTime(self: *Search, io: std.Io) bool {

@@ -47,6 +47,8 @@ pub const delta_pruning: Value = 180;
 pub const reverse_futility_factor: Value = 70;
 pub const null_move_taper: Value = 320;
 
+pub const early_quit_factor: Value = 25;
+
 pub var tunables = [_]Tunable{
     .{ .name = "knight_mobility", .default = knight_mobility, .min = 0, .max = 50, .step = 5 },
     .{ .name = "bishop_mobility", .default = bishop_mobility, .min = 0, .max = 50, .step = 5 },
@@ -73,12 +75,14 @@ pub var tunables = [_]Tunable{
 
     .{ .name = "castle_bonus", .default = castle_bonus, .min = 0, .max = 100, .step = 10 },
 
+    .{ .name = "history", .default = history, .min = 0, .max = 100, .step = 10 },
+
     .{ .name = "see_qs", .default = see_qs, .min = -100, .max = 0, .step = 10 },
     .{ .name = "delta_pruning", .default = delta_pruning, .min = 0, .max = 500, .step = 50 },
     .{ .name = "reverse_futility_factor", .default = reverse_futility_factor, .min = 0, .max = 200, .step = 20 },
     .{ .name = "null_move_taper", .default = null_move_taper, .min = 0, .max = 500, .step = 50 },
 
-    .{ .name = "history", .default = history, .min = 0, .max = 100, .step = 10 },
+    .{ .name = "early_quit_factor", .default = early_quit_factor, .min = 0, .max = 50, .step = 5 },
 };
 
 pub fn getValues(buffer: []types.Value) void {
