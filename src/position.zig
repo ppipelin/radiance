@@ -143,9 +143,18 @@ pub const Position = struct {
         // Not friendly
         const row_them = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) sq_mirror else sq.index());
 
-        for (0..Nnue.hidden_size) |neuron_idx| {
-            self.nnue.accumulator[self.state.turn.index()][neuron_idx] -= Nnue.l0w[row_us][neuron_idx];
-            self.nnue.accumulator[self.state.turn.invert().index()][neuron_idx] -= Nnue.l0w[row_them][neuron_idx];
+        var i: usize = 0;
+        while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
+            var a: Nnue.Vector = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
+            var b: Nnue.Vector = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
+            const w: Nnue.Vector = Nnue.l0w[row_us][i..][0..Nnue.lanes].*;
+            const w2: Nnue.Vector = Nnue.l0w[row_them][i..][0..Nnue.lanes].*;
+
+            a -= w;
+            b -= w2;
+
+            self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
+            self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
         }
     }
 
@@ -179,9 +188,18 @@ pub const Position = struct {
         // Not friendly
         const row_them = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) sq_mirror else sq.index());
 
-        for (0..Nnue.hidden_size) |neuron_idx| {
-            self.nnue.accumulator[self.state.turn.index()][neuron_idx] += Nnue.l0w[row_us][neuron_idx];
-            self.nnue.accumulator[self.state.turn.invert().index()][neuron_idx] += Nnue.l0w[row_them][neuron_idx];
+        var i: usize = 0;
+        while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
+            var a: Nnue.Vector = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
+            var b: Nnue.Vector = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
+            const w: Nnue.Vector = Nnue.l0w[row_us][i..][0..Nnue.lanes].*;
+            const w2: Nnue.Vector = Nnue.l0w[row_them][i..][0..Nnue.lanes].*;
+
+            a += w;
+            b += w2;
+
+            self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
+            self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
         }
     }
 
@@ -217,9 +235,20 @@ pub const Position = struct {
         const row_them_add = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) addSq_mirror else addSq.index());
         const row_them_rem = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) removeSq_mirror else removeSq.index());
 
-        for (0..Nnue.hidden_size) |neuron_idx| {
-            self.nnue.accumulator[self.state.turn.index()][neuron_idx] += Nnue.l0w[row_us_add][neuron_idx] - Nnue.l0w[row_us_rem][neuron_idx];
-            self.nnue.accumulator[self.state.turn.invert().index()][neuron_idx] += Nnue.l0w[row_them_add][neuron_idx] - Nnue.l0w[row_them_rem][neuron_idx];
+        var i: usize = 0;
+        while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
+            var a: Nnue.Vector = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
+            var b: Nnue.Vector = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
+            const w1: Nnue.Vector = Nnue.l0w[row_us_add][i..][0..Nnue.lanes].*;
+            const w11: Nnue.Vector = Nnue.l0w[row_us_rem][i..][0..Nnue.lanes].*;
+            const w2: Nnue.Vector = Nnue.l0w[row_them_add][i..][0..Nnue.lanes].*;
+            const w22: Nnue.Vector = Nnue.l0w[row_them_rem][i..][0..Nnue.lanes].*;
+
+            a += w1 - w11;
+            b += w2 - w22;
+
+            self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
+            self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
         }
     }
 
