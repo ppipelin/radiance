@@ -47,7 +47,7 @@ pub const delta_pruning: Value = 180;
 pub const reverse_futility_factor: Value = 70;
 pub const null_move_taper: Value = 320;
 
-pub const early_quit_factor: Value = 25;
+pub const early_quit_factor: Value = 18;
 
 pub var tunables = [_]Tunable{
     .{ .name = "knight_mobility", .default = knight_mobility, .min = 0, .max = 50, .step = 5 },
