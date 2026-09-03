@@ -15,7 +15,9 @@ pub const lanes: comptime_int = std.simd.suggestVectorLength(Quantized) orelse 1
 pub const lanes_full: comptime_int = std.simd.suggestVectorLength(Full) orelse 1;
 
 pub const input_size: usize = 768; // L0
-pub const hidden_size: usize = 128; // L1
+pub const hidden_size: usize = 512; // L1
+pub const output_size: usize = 8; // Output buckets number
+const divisor: usize = @divTrunc(32, output_size);
 const quantization_a = 255;
 const quantization_b = 64;
 pub const quantization_scale = 400;
@@ -27,8 +29,8 @@ accumulator: [2][hidden_size]Quantized = undefined,
 
 pub var l0w: [input_size][hidden_size]Quantized = undefined;
 pub var l0b: [hidden_size]Quantized = undefined;
-pub var l1w: [hidden_size * 2]Quantized = undefined; // Transposed for cache
-pub var l1b: Full = undefined;
+pub var l1w: [output_size][hidden_size * 2]Quantized = undefined; // Transposed for cache
+pub var l1b: [output_size]Full = undefined;
 
 pub fn loadFromBin(data: []const Quantized) void {
     for (0..hidden_size) |col| {
@@ -39,9 +41,14 @@ pub fn loadFromBin(data: []const Quantized) void {
     var anchor = input_size * hidden_size;
     @memcpy(&l0b, data[anchor..(anchor + hidden_size)]);
     anchor = anchor + hidden_size;
-    @memcpy(&l1w, data[anchor..(anchor + hidden_size * 2)]);
-    anchor = anchor + hidden_size * 2;
-    l1b = data[anchor];
+    for (0..output_size) |i| {
+        @memcpy(&l1w[i], data[anchor..(anchor + hidden_size * 2)]);
+        anchor = anchor + hidden_size * 2;
+    }
+
+    for (data[anchor..(anchor + output_size)], 0..) |bias, i| {
+        l1b[i] = @intCast(bias);
+    }
 }
 
 pub inline fn featureIndex(is_friendly: bool, pt: types.PieceType, sq: usize) usize {
@@ -105,24 +112,26 @@ pub fn forward(self: *const Nnue, pos: *const position.Position) Quantized {
     var l1_screlu: FullHiddenVec = undefined;
     screlu(l1, &l1_screlu);
 
+    const output_bucket_idx: usize = @divTrunc(@popCount(pos.bb_colors[types.Color.white.index()] | @popCount(pos.bb_colors[types.Color.black.index()])) - 2, divisor);
+
     var o: Full = 0;
     var cnt: usize = 0;
     while (cnt + lanes_full <= hidden_size * 2) : (cnt += lanes_full) {
         const l1_screlu_simd: FullVec = l1_screlu[cnt..(cnt + lanes_full)][0..lanes_full].*;
-        const l1w_simd: FullVec = l1w[cnt..(cnt + lanes_full)][0..lanes_full].*;
+        const l1w_simd: FullVec = l1w[output_bucket_idx][cnt..(cnt + lanes_full)][0..lanes_full].*;
         const mult: FullVec = l1_screlu_simd * l1w_simd;
         o += @reduce(.Add, mult);
     }
 
     while (cnt < hidden_size * 2) : (cnt += 1) {
-        o += l1_screlu[cnt] * l1w[cnt];
+        o += l1_screlu[cnt] * l1w[output_bucket_idx][cnt];
     }
 
     // Reduce quantization from QA * QA * QB to QA * QB.
     o = @divTrunc(o, quantization_a);
 
     // Add output bias
-    o += l1b;
+    o += l1b[output_bucket_idx];
 
     // Apply quantization_scale
     o *= quantization_scale;
