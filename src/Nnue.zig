@@ -11,7 +11,8 @@ pub const Vector = @Vector(lanes, Quantized);
 const FullHiddenVec = @Vector(hidden_size * 2, Full);
 
 pub const input_size: usize = 768; // L0
-pub const hidden_size: usize = 128; // L1
+pub const hidden_size: usize = 512; // L1
+pub const output_size: usize = 8; // Output buckets number
 const QA = 255;
 const QB = 64; // Bias is quantized the same way final evaluation is quantized
 pub const SCALE = 400;
@@ -23,9 +24,9 @@ accumulator: [2][hidden_size]Quantized = undefined,
 
 pub var l0w: [input_size][hidden_size]Quantized = undefined;
 pub var l0b: [hidden_size]Quantized = undefined;
-pub var l1w: [hidden_size * 2]Quantized = undefined;
-pub var l1w_v: @Vector(hidden_size * 2, Full) = undefined;
-pub var l1b: Full = undefined;
+// pub var l1w: [output_size][hidden_size * 2]Quantized = undefined; // Transposed for cache
+pub var l1w_v: [output_size]@Vector(hidden_size * 2, Full) = undefined;
+pub var l1b: [output_size]Full = undefined;
 
 pub fn loadFromBin(data: []const Quantized) void {
     for (0..hidden_size) |col| {
@@ -36,11 +37,17 @@ pub fn loadFromBin(data: []const Quantized) void {
     var anchor = input_size * hidden_size;
     @memcpy(l0b[0..], data[anchor..(anchor + hidden_size)]);
     anchor = anchor + hidden_size;
-    @memcpy(l1w[0..], data[anchor..(anchor + hidden_size * 2)]);
-    anchor = anchor + hidden_size * 2;
-    l1b = data[anchor];
+    for (0..output_size) |i| {
+        // @memcpy(l1w[i][0..], data[anchor..(anchor + hidden_size * 2)]);
+        l1w_v[i] = data[anchor..(anchor + hidden_size * 2)][0..(hidden_size * 2)].*;
+        anchor = anchor + hidden_size * 2;
+    }
+    // l1b = data[anchor];
+    // @memcpy(l1b[0..], data[anchor..(anchor + output_size)]);
 
-    l1w_v = l1w;
+    for (data[anchor..][0..output_size], 0..) |bias, i| {
+        l1b[i] = @intCast(bias);
+    }
 }
 
 pub inline fn featureIndex(is_friendly: bool, pt: types.PieceType, sq: usize) usize {
@@ -99,19 +106,22 @@ inline fn screlu(vec: FullHiddenVec) FullHiddenVec {
     return clipped * clipped;
 }
 
-pub fn forward(self: *const Nnue, col: types.Color) Quantized {
-    const accumulator_v: FullHiddenVec = if (col.isWhite()) self.accumulator[1] ++ self.accumulator[0] else self.accumulator[0] ++ self.accumulator[1];
+const divisor: usize = @divTrunc(32, output_size);
+pub fn forward(self: *const Nnue, pos: *const position.Position) Quantized {
+    const accumulator_v: FullHiddenVec = if (pos.state.turn.isWhite()) self.accumulator[1] ++ self.accumulator[0] else self.accumulator[0] ++ self.accumulator[1];
 
     const l1: FullHiddenVec = accumulator_v;
     const l1_screlu = screlu(l1);
 
-    var o: Full = @reduce(.Add, l1_screlu * l1w_v);
+    const output_bucket_idx: usize = @divTrunc(@popCount(pos.bb_colors[types.Color.white.index()] | @popCount(pos.bb_colors[types.Color.black.index()])) - 2, divisor);
+
+    var o: Full = @reduce(.Add, l1_screlu * l1w_v[output_bucket_idx]);
 
     // Reduce quantization from QA * QA * QB to QA * QB.
     o = @divTrunc(o, QA);
 
     // Add output bias
-    o += l1b;
+    o += l1b[output_bucket_idx];
 
     // Apply scale
     o *= SCALE;
