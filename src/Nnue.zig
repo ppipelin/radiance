@@ -24,7 +24,7 @@ accumulator: [2][hidden_size]Quantized = undefined,
 
 pub var l0w: [input_size][hidden_size]Quantized = undefined;
 pub var l0b: [hidden_size]Quantized = undefined;
-// pub var l1w: [output_size][hidden_size * 2]Quantized = undefined; // Transposed for cache
+pub var l1w: [output_size][hidden_size * 2]Quantized = undefined; // Transposed for cache
 pub var l1w_v: [output_size]@Vector(hidden_size * 2, Full) = undefined;
 pub var l1b: [output_size]Full = undefined;
 
@@ -38,10 +38,11 @@ pub fn loadFromBin(data: []const Quantized) void {
     @memcpy(l0b[0..], data[anchor..(anchor + hidden_size)]);
     anchor = anchor + hidden_size;
     for (0..output_size) |i| {
-        // @memcpy(l1w[i][0..], data[anchor..(anchor + hidden_size * 2)]);
-        l1w_v[i] = data[anchor..(anchor + hidden_size * 2)][0..(hidden_size * 2)].*;
+        @memcpy(l1w[i][0..], data[anchor..(anchor + hidden_size * 2)]);
+        l1w_v[i] = l1w[i];
         anchor = anchor + hidden_size * 2;
     }
+    // l1w_v = l1w;
     // l1b = data[anchor];
     // @memcpy(l1b[0..], data[anchor..(anchor + output_size)]);
 
