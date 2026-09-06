@@ -35,16 +35,16 @@ pub fn loadFromBin(data: []const Quantized) void {
         }
     }
     var anchor = input_size * hidden_size;
-    @memcpy(l0b[0..], data[anchor..(anchor + hidden_size)]);
+    @memcpy(&l0b, data[anchor..(anchor + hidden_size)]);
     anchor = anchor + hidden_size;
     for (0..output_size) |i| {
-        @memcpy(l1w[i][0..], data[anchor..(anchor + hidden_size * 2)]);
-        l1w_v[i] = l1w[i];
+        @memcpy(&l1w[i], data[anchor..(anchor + hidden_size * 2)]);
+        // l1w_v[i] = l1w[i];
         anchor = anchor + hidden_size * 2;
     }
     // l1w_v = l1w;
     // l1b = data[anchor];
-    // @memcpy(l1b[0..], data[anchor..(anchor + output_size)]);
+    // @memcpy(&l1b, data[anchor..(anchor + output_size)]);
 
     for (data[anchor..][0..output_size], 0..) |bias, i| {
         l1b[i] = @intCast(bias);
@@ -58,8 +58,8 @@ pub inline fn featureIndex(is_friendly: bool, pt: types.PieceType, sq: usize) us
 
 pub fn initAccumulator(self: *Nnue) void {
     // Initialize accumulator with bias
-    @memcpy(self.accumulator[0][0..], l0b[0..]);
-    @memcpy(self.accumulator[1][0..], l0b[0..]);
+    @memcpy(&self.accumulator[0], &l0b);
+    @memcpy(&self.accumulator[1], &l0b);
 }
 
 pub fn fillAccumulator(self: *Nnue, pos: position.Position) void {
