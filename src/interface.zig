@@ -257,7 +257,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos)});
             }
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
-                std.debug.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos)});
+                try stdout.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos)});
             }
             try stdout.flush();
         }
