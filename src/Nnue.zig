@@ -8,7 +8,10 @@ pub const Quantized = i16;
 pub const Full = i32;
 pub const lanes: comptime_int = std.simd.suggestVectorLength(Quantized) orelse 1;
 pub const Vector = @Vector(lanes, Quantized);
-const FullHiddenVec = @Vector(hidden_size * 2, Full);
+pub const VectorFull = @Vector(lanes, Full);
+// const FullHiddenVec = @Vector(hidden_size * 2, Full);
+const QuantizedHiddenVec = [hidden_size * 2]Quantized;
+const FullHiddenVec = [hidden_size * 2]Full;
 
 pub const input_size: usize = 768; // L0
 pub const hidden_size: usize = 512; // L1
@@ -25,7 +28,7 @@ accumulator: [2][hidden_size]Quantized = undefined,
 pub var l0w: [input_size][hidden_size]Quantized = undefined;
 pub var l0b: [hidden_size]Quantized = undefined;
 pub var l1w: [output_size][hidden_size * 2]Quantized = undefined; // Transposed for cache
-pub var l1w_v: [output_size]@Vector(hidden_size * 2, Full) = undefined;
+// pub var l1w_v: [output_size]FullHiddenVec = undefined;
 pub var l1b: [output_size]Full = undefined;
 
 pub fn loadFromBin(data: []const Quantized) void {
@@ -102,21 +105,47 @@ fn vectorDiv(comptime T: type, vec: T, add: anytype) T {
     return vec / @as(T, @splat(add));
 }
 
-inline fn screlu(vec: FullHiddenVec) FullHiddenVec {
-    const clipped: FullHiddenVec = std.math.clamp(vec, @as(FullHiddenVec, @splat(0)), @as(FullHiddenVec, @splat(QA)));
-    return clipped * clipped;
+fn screlu(vec: FullHiddenVec, out: *FullHiddenVec) void {
+    var cnt: usize = 0;
+    while (cnt + lanes <= hidden_size * 2) : (cnt += lanes) {
+        const simd_vect: VectorFull = vec[cnt..(cnt + lanes)][0..lanes].*;
+        const clipped: VectorFull = std.math.clamp(simd_vect, @as(VectorFull, @splat(0)), @as(VectorFull, @splat(QA)));
+        const clipped_squared: VectorFull = clipped * clipped;
+        const clipped_squared_array: [lanes]Full = clipped_squared;
+        @memcpy(out[cnt..(cnt + lanes)], &clipped_squared_array);
+    }
+
+    while (cnt < hidden_size * 2) : (cnt += 1) {
+        const clipped: Full = std.math.clamp(vec[cnt], 0, QA);
+        out[cnt] = clipped * clipped;
+    }
 }
 
 const divisor: usize = @divTrunc(32, output_size);
 pub fn forward(self: *const Nnue, pos: *const position.Position) Quantized {
-    const accumulator_v: FullHiddenVec = if (pos.state.turn.isWhite()) self.accumulator[1] ++ self.accumulator[0] else self.accumulator[0] ++ self.accumulator[1];
+    var l1: FullHiddenVec = undefined;
+    const l1_q: QuantizedHiddenVec = if (pos.state.turn.isWhite()) self.accumulator[1] ++ self.accumulator[0] else self.accumulator[0] ++ self.accumulator[1];
 
-    const l1: FullHiddenVec = accumulator_v;
-    const l1_screlu = screlu(l1);
+    for (l1_q, 0..) |v, i| {
+        l1[i] = @intCast(v);
+    }
+    var l1_screlu: FullHiddenVec = undefined;
+    screlu(l1, &l1_screlu);
 
     const output_bucket_idx: usize = @divTrunc(@popCount(pos.bb_colors[types.Color.white.index()] | @popCount(pos.bb_colors[types.Color.black.index()])) - 2, divisor);
 
-    var o: Full = @reduce(.Add, l1_screlu * l1w_v[output_bucket_idx]);
+    var o: Full = 0;
+    var cnt: usize = 0;
+    while (cnt + lanes <= hidden_size * 2) : (cnt += lanes) {
+        const l1_screlu_simd: VectorFull = l1_screlu[cnt..(cnt + lanes)][0..lanes].*;
+        const l1w_simd: VectorFull = l1w[output_bucket_idx][cnt..(cnt + lanes)][0..lanes].*;
+        const res: VectorFull = l1_screlu_simd * l1w_simd;
+        o += @reduce(.Add, res);
+    }
+
+    while (cnt < hidden_size * 2) : (cnt += 1) {
+        o += l1_screlu[cnt] * l1w[output_bucket_idx][cnt];
+    }
 
     // Reduce quantization from QA * QA * QB to QA * QB.
     o = @divTrunc(o, QA);
