@@ -145,10 +145,10 @@ pub const Position = struct {
 
         var i: usize = 0;
         while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
-            var a: Nnue.Vector = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
-            var b: Nnue.Vector = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
-            const w: Nnue.Vector = Nnue.l0w[row_us][i..][0..Nnue.lanes].*;
-            const w2: Nnue.Vector = Nnue.l0w[row_them][i..][0..Nnue.lanes].*;
+            var a: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
+            var b: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
+            const w: Nnue.QuantizedVec = Nnue.l0w[row_us][i..][0..Nnue.lanes].*;
+            const w2: Nnue.QuantizedVec = Nnue.l0w[row_them][i..][0..Nnue.lanes].*;
 
             a -= w;
             b -= w2;
@@ -190,10 +190,10 @@ pub const Position = struct {
 
         var i: usize = 0;
         while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
-            var a: Nnue.Vector = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
-            var b: Nnue.Vector = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
-            const w: Nnue.Vector = Nnue.l0w[row_us][i..][0..Nnue.lanes].*;
-            const w2: Nnue.Vector = Nnue.l0w[row_them][i..][0..Nnue.lanes].*;
+            var a: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
+            var b: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
+            const w: Nnue.QuantizedVec = Nnue.l0w[row_us][i..][0..Nnue.lanes].*;
+            const w2: Nnue.QuantizedVec = Nnue.l0w[row_them][i..][0..Nnue.lanes].*;
 
             a += w;
             b += w2;
@@ -237,12 +237,12 @@ pub const Position = struct {
 
         var i: usize = 0;
         while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
-            var a: Nnue.Vector = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
-            var b: Nnue.Vector = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
-            const w1: Nnue.Vector = Nnue.l0w[row_us_add][i..][0..Nnue.lanes].*;
-            const w11: Nnue.Vector = Nnue.l0w[row_us_rem][i..][0..Nnue.lanes].*;
-            const w2: Nnue.Vector = Nnue.l0w[row_them_add][i..][0..Nnue.lanes].*;
-            const w22: Nnue.Vector = Nnue.l0w[row_them_rem][i..][0..Nnue.lanes].*;
+            var a: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
+            var b: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
+            const w1: Nnue.QuantizedVec = Nnue.l0w[row_us_add][i..][0..Nnue.lanes].*;
+            const w11: Nnue.QuantizedVec = Nnue.l0w[row_us_rem][i..][0..Nnue.lanes].*;
+            const w2: Nnue.QuantizedVec = Nnue.l0w[row_them_add][i..][0..Nnue.lanes].*;
+            const w22: Nnue.QuantizedVec = Nnue.l0w[row_them_rem][i..][0..Nnue.lanes].*;
 
             a += w1 - w11;
             b += w2 - w22;
