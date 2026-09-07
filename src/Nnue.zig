@@ -7,11 +7,12 @@ const Nnue = @This();
 pub const Quantized = i16;
 pub const Full = i32;
 pub const QuantizedVec = @Vector(lanes, Quantized);
-pub const FullVec = @Vector(lanes, Full);
+pub const FullVec = @Vector(lanes_full, Full);
 const QuantizedHiddenVec = [hidden_size * 2]Quantized;
 const FullHiddenVec = [hidden_size * 2]Full;
 
 pub const lanes: comptime_int = std.simd.suggestVectorLength(Quantized) orelse 1;
+pub const lanes_full: comptime_int = std.simd.suggestVectorLength(Full) orelse 1;
 
 pub const input_size: usize = 768; // L0
 pub const hidden_size: usize = 128; // L1
@@ -82,14 +83,14 @@ pub fn fillAccumulator(self: *Nnue, pos: position.Position) void {
     }
 }
 
-fn screlu(in: FullHiddenVec, out: *FullHiddenVec) void {
+fn screlu(in: QuantizedHiddenVec, out: *FullHiddenVec) void {
     var cnt: usize = 0;
-    while (cnt + lanes <= hidden_size * 2) : (cnt += lanes) {
-        const in_simd: FullVec = in[cnt..(cnt + lanes)][0..lanes].*;
+    while (cnt + lanes_full <= hidden_size * 2) : (cnt += lanes_full) {
+        const in_simd: FullVec = in[cnt..(cnt + lanes_full)][0..lanes_full].*;
         const clipped: FullVec = std.math.clamp(in_simd, @as(FullVec, @splat(0)), @as(FullVec, @splat(quantization_a)));
         const clipped_squared: FullVec = clipped * clipped;
-        const clipped_squared_array: [lanes]Full = clipped_squared;
-        @memcpy(out[cnt..(cnt + lanes)], &clipped_squared_array);
+        const clipped_squared_array: [lanes_full]Full = clipped_squared;
+        @memcpy(out[cnt..(cnt + lanes_full)], &clipped_squared_array);
     }
 
     while (cnt < hidden_size * 2) : (cnt += 1) {
@@ -99,20 +100,16 @@ fn screlu(in: FullHiddenVec, out: *FullHiddenVec) void {
 }
 
 pub fn forward(self: *const Nnue, pos: *const position.Position) Quantized {
-    var l1: FullHiddenVec = undefined;
-    const l1_q: QuantizedHiddenVec = if (pos.state.turn.isWhite()) self.accumulator[1] ++ self.accumulator[0] else self.accumulator[0] ++ self.accumulator[1];
+    const l1: QuantizedHiddenVec = if (pos.state.turn.isWhite()) self.accumulator[1] ++ self.accumulator[0] else self.accumulator[0] ++ self.accumulator[1];
 
-    for (l1_q, 0..) |v, i| {
-        l1[i] = @intCast(v);
-    }
     var l1_screlu: FullHiddenVec = undefined;
     screlu(l1, &l1_screlu);
 
     var o: Full = 0;
     var cnt: usize = 0;
-    while (cnt + lanes <= hidden_size * 2) : (cnt += lanes) {
-        const l1_screlu_simd: FullVec = l1_screlu[cnt..(cnt + lanes)][0..lanes].*;
-        const l1w_simd: FullVec = l1w[cnt..(cnt + lanes)][0..lanes].*;
+    while (cnt + lanes_full <= hidden_size * 2) : (cnt += lanes_full) {
+        const l1_screlu_simd: FullVec = l1_screlu[cnt..(cnt + lanes_full)][0..lanes_full].*;
+        const l1w_simd: FullVec = l1w[cnt..(cnt + lanes_full)][0..lanes_full].*;
         const mult: FullVec = l1_screlu_simd * l1w_simd;
         o += @reduce(.Add, mult);
     }
