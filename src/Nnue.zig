@@ -6,19 +6,20 @@ const Nnue = @This();
 
 pub const Quantized = i16;
 pub const Full = i32;
-pub const lanes: comptime_int = std.simd.suggestVectorLength(Quantized) orelse 1;
-pub const Vector = @Vector(lanes, Quantized);
-pub const VectorFull = @Vector(lanes, Full);
-// const FullHiddenVec = @Vector(hidden_size * 2, Full);
+pub const QuantizedVec = @Vector(lanes, Quantized);
+pub const FullVec = @Vector(lanes, Full);
 const QuantizedHiddenVec = [hidden_size * 2]Quantized;
 const FullHiddenVec = [hidden_size * 2]Full;
+
+pub const lanes: comptime_int = std.simd.suggestVectorLength(Quantized) orelse 1;
 
 pub const input_size: usize = 768; // L0
 pub const hidden_size: usize = 512; // L1
 pub const output_size: usize = 8; // Output buckets number
-const QA = 255;
-const QB = 64; // Bias is quantized the same way final evaluation is quantized
-pub const SCALE = 400;
+const divisor: usize = @divTrunc(32, output_size);
+const quantization_a = 255;
+const quantization_b = 64;
+pub const quantization_scale = 400;
 
 /// Accumulate the value of weights, this corresponds to the first hidden layer
 /// 0 is friendly for black perspective while 1 is the friendly for white
@@ -28,7 +29,6 @@ accumulator: [2][hidden_size]Quantized = undefined,
 pub var l0w: [input_size][hidden_size]Quantized = undefined;
 pub var l0b: [hidden_size]Quantized = undefined;
 pub var l1w: [output_size][hidden_size * 2]Quantized = undefined; // Transposed for cache
-// pub var l1w_v: [output_size]FullHiddenVec = undefined;
 pub var l1b: [output_size]Full = undefined;
 
 pub fn loadFromBin(data: []const Quantized) void {
@@ -42,14 +42,10 @@ pub fn loadFromBin(data: []const Quantized) void {
     anchor = anchor + hidden_size;
     for (0..output_size) |i| {
         @memcpy(&l1w[i], data[anchor..(anchor + hidden_size * 2)]);
-        // l1w_v[i] = l1w[i];
         anchor = anchor + hidden_size * 2;
     }
-    // l1w_v = l1w;
-    // l1b = data[anchor];
-    // @memcpy(&l1b, data[anchor..(anchor + output_size)]);
 
-    for (data[anchor..][0..output_size], 0..) |bias, i| {
+    for (data[anchor..(anchor + output_size)], 0..) |bias, i| {
         l1b[i] = @intCast(bias);
     }
 }
@@ -93,35 +89,22 @@ pub fn fillAccumulator(self: *Nnue, pos: position.Position) void {
     }
 }
 
-fn vectorAdd(comptime T: type, vec: T, add: anytype) T {
-    return vec + @as(T, @splat(add));
-}
-
-fn vectorMult(comptime T: type, vec: T, add: anytype) T {
-    return vec * @as(T, @splat(add));
-}
-
-fn vectorDiv(comptime T: type, vec: T, add: anytype) T {
-    return vec / @as(T, @splat(add));
-}
-
-fn screlu(vec: FullHiddenVec, out: *FullHiddenVec) void {
+fn screlu(in: FullHiddenVec, out: *FullHiddenVec) void {
     var cnt: usize = 0;
     while (cnt + lanes <= hidden_size * 2) : (cnt += lanes) {
-        const simd_vect: VectorFull = vec[cnt..(cnt + lanes)][0..lanes].*;
-        const clipped: VectorFull = std.math.clamp(simd_vect, @as(VectorFull, @splat(0)), @as(VectorFull, @splat(QA)));
-        const clipped_squared: VectorFull = clipped * clipped;
+        const in_simd: FullVec = in[cnt..(cnt + lanes)][0..lanes].*;
+        const clipped: FullVec = std.math.clamp(in_simd, @as(FullVec, @splat(0)), @as(FullVec, @splat(quantization_a)));
+        const clipped_squared: FullVec = clipped * clipped;
         const clipped_squared_array: [lanes]Full = clipped_squared;
         @memcpy(out[cnt..(cnt + lanes)], &clipped_squared_array);
     }
 
     while (cnt < hidden_size * 2) : (cnt += 1) {
-        const clipped: Full = std.math.clamp(vec[cnt], 0, QA);
+        const clipped: Full = std.math.clamp(in[cnt], 0, quantization_a);
         out[cnt] = clipped * clipped;
     }
 }
 
-const divisor: usize = @divTrunc(32, output_size);
 pub fn forward(self: *const Nnue, pos: *const position.Position) Quantized {
     var l1: FullHiddenVec = undefined;
     const l1_q: QuantizedHiddenVec = if (pos.state.turn.isWhite()) self.accumulator[1] ++ self.accumulator[0] else self.accumulator[0] ++ self.accumulator[1];
@@ -137,10 +120,10 @@ pub fn forward(self: *const Nnue, pos: *const position.Position) Quantized {
     var o: Full = 0;
     var cnt: usize = 0;
     while (cnt + lanes <= hidden_size * 2) : (cnt += lanes) {
-        const l1_screlu_simd: VectorFull = l1_screlu[cnt..(cnt + lanes)][0..lanes].*;
-        const l1w_simd: VectorFull = l1w[output_bucket_idx][cnt..(cnt + lanes)][0..lanes].*;
-        const res: VectorFull = l1_screlu_simd * l1w_simd;
-        o += @reduce(.Add, res);
+        const l1_screlu_simd: FullVec = l1_screlu[cnt..(cnt + lanes)][0..lanes].*;
+        const l1w_simd: FullVec = l1w[output_bucket_idx][cnt..(cnt + lanes)][0..lanes].*;
+        const mult: FullVec = l1_screlu_simd * l1w_simd;
+        o += @reduce(.Add, mult);
     }
 
     while (cnt < hidden_size * 2) : (cnt += 1) {
@@ -148,16 +131,16 @@ pub fn forward(self: *const Nnue, pos: *const position.Position) Quantized {
     }
 
     // Reduce quantization from QA * QA * QB to QA * QB.
-    o = @divTrunc(o, QA);
+    o = @divTrunc(o, quantization_a);
 
     // Add output bias
     o += l1b[output_bucket_idx];
 
-    // Apply scale
-    o *= SCALE;
+    // Apply quantization_scale
+    o *= quantization_scale;
 
     // Remove quantization
-    o = @divTrunc(o, QA * QB);
+    o = @divTrunc(o, quantization_a * quantization_b);
 
     return @intCast(o);
 }
