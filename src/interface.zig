@@ -257,7 +257,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos)});
             }
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
-                std.debug.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos)});
+                try stdout.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos)});
             }
             try stdout.flush();
         }
@@ -349,9 +349,8 @@ fn cmd_setoption(io: std.Io, allocator: std.mem.Allocator, tokens: anytype, opti
             }
         }
         if (std.ascii.eqlIgnoreCase(name, "EvalFile")) {
-            const max_hidden = 1024;
-            const l0_wb = 768 * max_hidden + max_hidden;
-            const l1_wb = max_hidden * 2 + 1;
+            const l0_wb = 768 * Nnue.hidden_size + Nnue.hidden_size;
+            const l1_wb = Nnue.hidden_size * 2 + 1;
             const buffer: []u8 = try allocator.alloc(u8, (l0_wb + l1_wb) * @sizeOf(Nnue.Quantized) + 64);
             defer allocator.free(buffer);
 
