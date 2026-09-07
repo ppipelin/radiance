@@ -291,6 +291,30 @@ pub const Piece = enum(u8) {
     }
 };
 
+pub const DirtyPiece = struct {
+    piece: Piece,
+
+    from: Square,
+    to: Square,
+
+    remove_square: Square,
+    add_square: Square,
+
+    remove_piece: Piece,
+    add_piece: Piece,
+
+    /// A none DirtyPiece
+    pub const none: DirtyPiece = .{
+        .piece = .none,
+        .from = .none,
+        .to = .none,
+        .remove_square = .none,
+        .add_square = .none,
+        .remove_piece = .none,
+        .add_piece = .none,
+    };
+};
+
 pub const Color = enum(u1) {
     black,
     white,

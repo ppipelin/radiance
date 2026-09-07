@@ -74,6 +74,7 @@ pub const Position = struct {
     // Board
     board: [types.board_size2]Piece = @splat(.none),
     nnue: Nnue = .{},
+    dirty_pieces: [types.max_plies]types.DirtyPiece = @splat(.none),
 
     // Bitboards
     bb_pieces: [PieceType.nb()]Bitboard = @splat(0),
@@ -113,6 +114,9 @@ pub const Position = struct {
             if (i != 0)
                 new_states.items[new_states.items.len - 1].previous = &new_states.items[new_states.items.len - 2];
         }
+
+        @memcpy(&pos.dirty_pieces, &self.dirty_pieces);
+        pos.dirty_pieces_size = self.dirty_pieces_size;
 
         pos.state = &new_states.items[new_states.items.len - 1];
         pos.nnue = self.nnue;
