@@ -17,7 +17,7 @@ pub const lanes_full: comptime_int = std.simd.suggestVectorLength(Full) orelse 1
 pub const input_size: usize = 768; // L0
 pub const hidden_size: usize = 512; // L1
 pub const output_size: usize = 8; // Output buckets number
-const divisor: usize = @divTrunc(32, output_size);
+const divisor: usize = std.math.divCeil(usize, 32, output_size) catch unreachable;
 const quantization_a = 255;
 const quantization_b = 64;
 pub const quantization_scale = 400;
@@ -106,13 +106,18 @@ fn screlu(in: QuantizedHiddenVec, out: *FullHiddenVec) void {
     }
 }
 
+inline fn outputBucketIdx(pos: *const position.Position) usize {
+    const occupancy: u7 = @popCount(pos.bb_colors[types.Color.white.index()] | pos.bb_colors[types.Color.black.index()]);
+    return @min(output_size - 1, @divTrunc(occupancy - 2, divisor));
+}
+
 pub fn forward(self: *const Nnue, pos: *const position.Position) Quantized {
     const l1: QuantizedHiddenVec = if (pos.state.turn.isWhite()) self.accumulator[1] ++ self.accumulator[0] else self.accumulator[0] ++ self.accumulator[1];
 
     var l1_screlu: FullHiddenVec = undefined;
     screlu(l1, &l1_screlu);
 
-    const output_bucket_idx: usize = @divTrunc(@popCount(pos.bb_colors[types.Color.white.index()] | @popCount(pos.bb_colors[types.Color.black.index()])) - 2, divisor);
+    const output_bucket_idx: usize = outputBucketIdx(pos);
 
     var o: Full = 0;
     var cnt: usize = 0;
