@@ -15,7 +15,7 @@ pub const lanes: comptime_int = std.simd.suggestVectorLength(Quantized) orelse 1
 pub const lanes_full: comptime_int = std.simd.suggestVectorLength(Full) orelse 1;
 
 pub const input_size: usize = 768; // L0
-pub const hidden_size: usize = 128; // L1
+pub const hidden_size: usize = 512; // L1
 const quantization_a = 255;
 const quantization_b = 64;
 pub const quantization_scale = 400;
