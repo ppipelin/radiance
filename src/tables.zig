@@ -112,6 +112,10 @@ pub fn writeTranspositionTable(key: Key, score: types.Value, static_eval: types.
     // }
 }
 
+pub fn resetTranspositionTable() void {
+    @memset(transposition_table.tt, .empty);
+}
+
 /// Allocates capacity of transposition table in Mega bytes
 pub fn setTranspositionTableCapacity(size: usize) !void {
     if (transposition_table.tt.len > 0) {
@@ -119,7 +123,7 @@ pub fn setTranspositionTableCapacity(size: usize) !void {
     } else {
         transposition_table.tt = try transposition_table.allocator.alloc(TranspositionEntry, @divTrunc(size * 1_000_000, @sizeOf(TranspositionEntry)));
     }
-    @memset(transposition_table.tt, .empty);
+    resetTranspositionTable();
 }
 
 // Will store pawn structures once computed

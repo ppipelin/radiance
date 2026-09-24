@@ -159,7 +159,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             existing_command = true;
             pos = try position.Position.setFen(&states.items[0], position.start_fen);
             try thread_pool.reset();
-            @memset(tables.transposition_table.tt, .empty);
+            tables.resetTranspositionTable();
         }
 
         if (std.ascii.eqlIgnoreCase("position", primary_token)) {
@@ -650,6 +650,8 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
         const input = "depth 11";
         var tokens = std.mem.tokenizeScalar(u8, input, ' ');
 
+        tables.resetTranspositionTable();
+
         if (verbose) {
             try cmd_go(io, allocator, stdout, &pos, states, &tokens, options);
         } else {
@@ -669,6 +671,8 @@ pub fn cmd_bench(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Write
     if (verbose)
         try stdout.print("Time elapsed: {f}\n", .{elapsed_time});
     try stdout.flush();
+
+    tables.resetTranspositionTable();
 }
 
 pub fn displayBestMove(stdout: *std.Io.Writer, move: types.Move, ponder_move: types.Move) !void {
