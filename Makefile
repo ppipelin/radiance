@@ -4,6 +4,10 @@ ifndef EXE
 	EXE=radiance
 endif
 
+ifdef EVALFILE
+	evalfile_param = "-Devalfile=$(EVALFILE)"
+endif
+
 window_cmd=cmd /C move .\zig-out\bin\radiance.exe $(EXE).exe
 linux_cmd=mv zig-out/bin/radiance $(EXE)
 
@@ -21,6 +25,6 @@ print-os:
 	$(info OS = $(OS))
 
 default:
-	zig build --release=fast
+	zig build --release=fast $(evalfile_param)
 	@echo $(MV)
 	@$(MV)

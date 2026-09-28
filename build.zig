@@ -25,6 +25,20 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const evalfile = b.option([]const u8, "evalfile", "Path to NNUE file") orelse "src/quantised.bin";
+
+    const wf = b.addWriteFiles();
+    _ = wf.addCopyFile(.{ .cwd_relative = evalfile }, "network.bin");
+
+    const nnue_zig = wf.add("nnue_data.zig",
+        \\pub const bytes align(64) = @embedFile("network.bin").*;
+        \\
+    );
+
+    exe.root_module.addAnonymousImport("nnue_data", .{
+        .root_source_file = nnue_zig,
+    });
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).

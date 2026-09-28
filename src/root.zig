@@ -26,7 +26,7 @@ pub fn main(init: std.process.Init) !void {
 
     var args_iter = try init.minimal.args.iterateAllocator(allocator);
 
-    const nnue_bytes = @embedFile("quantised.bin");
+    const nnue_bytes = @import("nnue_data").bytes;
 
     var nnue_content: [nnue_bytes.len / 2]Nnue.Quantized = undefined;
 
