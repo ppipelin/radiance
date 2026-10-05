@@ -1,7 +1,7 @@
 //! This module provides tests for the 960 support of the program
 
 const position = @import("position.zig");
-const Search = @import("Search.zig");
+const Search = @import("search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");

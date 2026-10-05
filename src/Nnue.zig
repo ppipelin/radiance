@@ -2,8 +2,6 @@ const position = @import("position.zig");
 const std = @import("std");
 const types = @import("types.zig");
 
-const Nnue = @This();
-
 pub const Quantized = i16;
 pub const Full = i32;
 pub const QuantizedVec = @Vector(lanes, Quantized);
@@ -23,7 +21,8 @@ pub const quantization_scale = 400;
 /// Accumulate the value of weights, this corresponds to the first hidden layer
 /// 0 is friendly for black perspective while 1 is the friendly for white
 /// When fed into forward be careful to put first friendly then not friendly
-accumulator: [2][hidden_size]Quantized = undefined,
+pub const Accumulator = [2][hidden_size]Quantized;
+accumulator: Accumulator = undefined,
 
 pub var l0w: [input_size][hidden_size]Quantized = undefined;
 pub var l0b: [hidden_size]Quantized = undefined;
@@ -49,14 +48,14 @@ pub inline fn featureIndex(is_friendly: bool, pt: types.PieceType, sq: usize) us
     return (skip * (types.PieceType.nb() - 1) + pt.index() - 1) * types.board_size2 + sq;
 }
 
-pub fn initAccumulator(self: *Nnue) void {
+pub fn initAccumulator(acc: *Accumulator) void {
     // Initialize accumulator with bias
-    @memcpy(&self.accumulator[0], &l0b);
-    @memcpy(&self.accumulator[1], &l0b);
+    @memcpy(&acc[0], &l0b);
+    @memcpy(&acc[1], &l0b);
 }
 
-pub fn fillAccumulator(self: *Nnue, pos: position.Position) void {
-    initAccumulator(self);
+pub fn fillAccumulator(acc: *Accumulator, pos: position.Position) void {
+    initAccumulator(acc);
 
     for (std.enums.values(types.Color)) |abs_col| {
         const is_friendly: bool = abs_col == pos.state.turn;
@@ -75,8 +74,8 @@ pub fn fillAccumulator(self: *Nnue, pos: position.Position) void {
                 const row_them = featureIndex(!is_friendly, pt, if (pos.state.turn.isWhite()) sq_mirror else sq);
 
                 for (0..hidden_size) |neuron_idx| {
-                    self.accumulator[pos.state.turn.index()][neuron_idx] += l0w[row_us][neuron_idx];
-                    self.accumulator[pos.state.turn.invert().index()][neuron_idx] += l0w[row_them][neuron_idx];
+                    acc[pos.state.turn.index()][neuron_idx] += l0w[row_us][neuron_idx];
+                    acc[pos.state.turn.invert().index()][neuron_idx] += l0w[row_them][neuron_idx];
                 }
             }
         }
@@ -99,8 +98,8 @@ fn screlu(in: QuantizedHiddenVec, out: *FullHiddenVec) void {
     }
 }
 
-pub fn forward(self: *const Nnue, pos: *const position.Position) Quantized {
-    const l1: QuantizedHiddenVec = if (pos.state.turn.isWhite()) self.accumulator[1] ++ self.accumulator[0] else self.accumulator[0] ++ self.accumulator[1];
+pub fn forward(acc: Accumulator, pos: *const position.Position) Quantized {
+    const l1: QuantizedHiddenVec = if (pos.state.turn.isWhite()) acc[1] ++ acc[0] else acc[0] ++ acc[1];
 
     var l1_screlu: FullHiddenVec = undefined;
     screlu(l1, &l1_screlu);

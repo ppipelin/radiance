@@ -2,7 +2,7 @@ const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
 const Nnue = @import("Nnue.zig");
 const position = @import("position.zig");
-const Search = @import("Search.zig");
+const Search = @import("search.zig");
 const std = @import("std");
 const types = @import("types.zig");
 const tables = @import("tables.zig");
@@ -250,14 +250,18 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             const evals: bool = std.ascii.eqlIgnoreCase("evals", primary_token);
             existing_command = true;
             const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
+
+            var stack: [1]Search.Stack = @splat(Search.Stack{});
+            const ss: [*]Search.Stack = &stack;
+
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
-                try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(&pos)});
+                try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(&pos, ss)});
             }
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
-                try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos)});
+                try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos, ss)});
             }
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
-                try stdout.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos)});
+                try stdout.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos, ss)});
             }
             try stdout.flush();
         }

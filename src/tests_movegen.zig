@@ -2,7 +2,7 @@
 
 const movepick = @import("movepick.zig");
 const position = @import("position.zig");
-const Search = @import("Search.zig");
+const Search = @import("search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
