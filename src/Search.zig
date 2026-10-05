@@ -1,5 +1,6 @@
 const interface = @import("interface.zig");
 const movepick = @import("movepick.zig");
+const Nnue = @import("Nnue.zig");
 const position = @import("position.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
@@ -63,6 +64,7 @@ const Stack = struct {
     // pv: [types.max_plies]types.Move = @splat(.none),
     pv: ?*[types.max_plies]types.Move = null,
     killers: [2]?types.Move = [_]?types.Move{ null, null },
+    accumulator: Nnue.Accumulator = undefined,
     ply: u8 = 0,
 };
 

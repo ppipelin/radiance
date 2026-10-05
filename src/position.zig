@@ -73,7 +73,7 @@ pub const State = struct {
 pub const Position = struct {
     // Board
     board: [types.board_size2]Piece = @splat(.none),
-    nnue: Nnue = .{},
+    acc: Nnue.Accumulator = undefined,
     dirty_pieces: [types.max_plies]types.DirtyPiece = @splat(.none),
 
     // Bitboards
@@ -98,7 +98,7 @@ pub const Position = struct {
         state.* = State{};
         var pos: Position = Position{};
 
-        pos.nnue.initAccumulator();
+        Nnue.initAccumulator(&pos.acc);
 
         pos.state = state;
 
@@ -116,10 +116,9 @@ pub const Position = struct {
         }
 
         @memcpy(&pos.dirty_pieces, &self.dirty_pieces);
-        pos.dirty_pieces_size = self.dirty_pieces_size;
 
         pos.state = &new_states.items[new_states.items.len - 1];
-        pos.nnue = self.nnue;
+        @memcpy(&pos.acc, &self.acc);
         return pos;
     }
 
@@ -149,16 +148,16 @@ pub const Position = struct {
 
         var i: usize = 0;
         while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
-            var a: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
-            var b: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
+            var a: Nnue.QuantizedVec = self.acc[self.state.turn.index()][i..][0..Nnue.lanes].*;
+            var b: Nnue.QuantizedVec = self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
             const w: Nnue.QuantizedVec = Nnue.l0w[row_us][i..][0..Nnue.lanes].*;
             const w2: Nnue.QuantizedVec = Nnue.l0w[row_them][i..][0..Nnue.lanes].*;
 
             a -= w;
             b -= w2;
 
-            self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
-            self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
+            self.acc[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
+            self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
         }
     }
 
@@ -194,16 +193,16 @@ pub const Position = struct {
 
         var i: usize = 0;
         while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
-            var a: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
-            var b: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
+            var a: Nnue.QuantizedVec = self.acc[self.state.turn.index()][i..][0..Nnue.lanes].*;
+            var b: Nnue.QuantizedVec = self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
             const w: Nnue.QuantizedVec = Nnue.l0w[row_us][i..][0..Nnue.lanes].*;
             const w2: Nnue.QuantizedVec = Nnue.l0w[row_them][i..][0..Nnue.lanes].*;
 
             a += w;
             b += w2;
 
-            self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
-            self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
+            self.acc[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
+            self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
         }
     }
 
@@ -241,8 +240,8 @@ pub const Position = struct {
 
         var i: usize = 0;
         while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
-            var a: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].*;
-            var b: Nnue.QuantizedVec = self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
+            var a: Nnue.QuantizedVec = self.acc[self.state.turn.index()][i..][0..Nnue.lanes].*;
+            var b: Nnue.QuantizedVec = self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
             const w1: Nnue.QuantizedVec = Nnue.l0w[row_us_add][i..][0..Nnue.lanes].*;
             const w11: Nnue.QuantizedVec = Nnue.l0w[row_us_rem][i..][0..Nnue.lanes].*;
             const w2: Nnue.QuantizedVec = Nnue.l0w[row_them_add][i..][0..Nnue.lanes].*;
@@ -251,8 +250,8 @@ pub const Position = struct {
             a += w1 - w11;
             b += w2 - w22;
 
-            self.nnue.accumulator[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
-            self.nnue.accumulator[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
+            self.acc[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
+            self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
         }
     }
 
