@@ -1,7 +1,7 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
 const position = @import("position.zig");
-const Search = @import("Search.zig");
+const Search = @import("search.zig");
 const std = @import("std");
 const types = @import("types.zig");
 
@@ -24,7 +24,7 @@ pub const ThreadData = struct {
     pos: *position.Position,
     states: interface.StateList,
     limits: interface.Limits = .{},
-    eval: *const fn (pos: *const position.Position) types.Value = evaluate.evaluateTable,
+    eval: *const fn (pos: *const position.Position, ss: [*]Search.Stack) types.Value = evaluate.evaluateTable,
     options: std.StringArrayHashMapUnmanaged(interface.Option) = .empty,
 };
 

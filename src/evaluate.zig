@@ -1,5 +1,6 @@
 const Nnue = @import("Nnue.zig");
 const position = @import("position.zig");
+const Search = @import("search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -104,11 +105,13 @@ fn evaluateShannonColor(pos: *const position.Position, comptime col: types.Color
         50 * (malus_doubled_pawn + malus_blocked_pawn + malus_isolated_pawn);
 }
 
-pub fn evaluateMaterialist(pos: *const position.Position) types.Value {
+pub fn evaluateMaterialist(pos: *const position.Position, ss: [*]Search.Stack) types.Value {
+    _ = ss;
     return (if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w);
 }
 
-pub fn evaluateShannon(pos: *const position.Position) types.Value {
+pub fn evaluateShannon(pos: *const position.Position, ss: [*]Search.Stack) types.Value {
+    _ = ss;
     switch (pos.state.turn) {
         inline else => |turn| return evaluateShannonColor(pos, turn) - evaluateShannonColor(pos, turn.invert()),
     }
@@ -205,7 +208,8 @@ pub fn bishopOppositePawnBonus(bishops: types.Bitboard, pawns: types.Bitboard) t
 }
 
 // TODO: Add pawn structure hash
-pub fn evaluateTable(pos: *const position.Position) types.Value {
+pub fn evaluateTable(pos: *const position.Position, ss: [*]Search.Stack) types.Value {
+    _ = ss;
     var score: types.Value = pos.score_material_w - pos.score_material_b;
     const endgame: bool = pos.endgame(pos.state.turn);
 
@@ -296,6 +300,20 @@ pub fn evaluateTable(pos: *const position.Position) types.Value {
     return if (pos.state.turn.isWhite()) score else -score;
 }
 
-pub fn evaluateNnue(pos: *const position.Position) types.Value {
-    return @intCast(Nnue.forward(pos.acc, pos));
+pub fn evaluateNnue(pos: *const position.Position, ss: [*]Search.Stack) types.Value {
+    // Rewind ss to update accumulator
+    // (and update precedent accumulators)
+    if (!ss[0].accumulator_computed) {
+        for (ss[0].accumulator_ply..ss[0].ply) |i| {
+            // update with dirty piece
+            _ = i;
+            // Nnue.fillAccumulator(&ss[0].accumulator, pos.*);
+            // ss[0].accumulator_ply = ss[0].ply;
+            // break;
+        }
+        Nnue.fillAccumulator(&ss[0].accumulator, pos.*);
+        ss[0].accumulator_computed = true;
+    }
+
+    return @intCast(Nnue.forward(ss[0].accumulator, pos));
 }
