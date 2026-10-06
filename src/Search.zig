@@ -1,6 +1,6 @@
 const interface = @import("interface.zig");
 const movepick = @import("movepick.zig");
-const Nnue = @import("Nnue.zig");
+const nnue = @import("nnue.zig");
 const position = @import("position.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
@@ -62,7 +62,7 @@ const RootMove = struct {
 // Keep the informations between nodes at different depth
 pub const Stack = struct {
     // pv: [types.max_plies]types.Move = @splat(.none),
-    accumulator: Nnue.Accumulator = undefined,
+    accumulator: nnue.Accumulator = undefined,
 
     pv: ?*[types.max_plies]types.Move = null,
     killers: [2]?types.Move = [_]?types.Move{ null, null },
@@ -219,7 +219,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     ss[0].pv = &pv;
 
     // Should not trigger with HCE
-    Nnue.fillAccumulator(&ss[0].accumulator, pos.*);
+    nnue.fillAccumulator(&ss[0].accumulator, pos.*);
     ss[0].accumulator_ply = ss[0].ply;
     ss[0].accumulator_computed = true;
 

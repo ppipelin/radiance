@@ -1,4 +1,4 @@
-const Nnue = @import("Nnue.zig");
+const nnue = @import("nnue.zig");
 const position = @import("position.zig");
 const Search = @import("Search.zig");
 const std = @import("std");
@@ -308,7 +308,7 @@ pub fn evaluateNnue(pos: *const position.Position, ss_: ?[*]Search.Stack) types.
     //     for (ss[0].accumulator_ply..ss[0].ply) |i| {
     //         // update with dirty piece
     //         _ = i;
-    //         // Nnue.fillAccumulator(&ss[0].accumulator, pos.*);
+    //         // nnue.fillAccumulator(&ss[0].accumulator, pos.*);
     //         // ss[0].accumulator_ply = ss[0].ply;
     //         // ss[0].accumulator_computed = true;
     //         // break;
@@ -316,7 +316,7 @@ pub fn evaluateNnue(pos: *const position.Position, ss_: ?[*]Search.Stack) types.
     // }
 
     if (ss_) |ss| {
-        return @intCast(Nnue.forward(&ss[0].accumulator, pos));
+        return @intCast(nnue.forward(&ss[0].accumulator, pos));
     }
     unreachable;
 }

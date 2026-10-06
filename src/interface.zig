@@ -1,6 +1,6 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
-const Nnue = @import("Nnue.zig");
+const nnue = @import("nnue.zig");
 const position = @import("position.zig");
 const Search = @import("Search.zig");
 const std = @import("std");
@@ -264,7 +264,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 var stack: [1]Search.Stack = @splat(Search.Stack{});
                 const ss: [*]Search.Stack = &stack;
 
-                Nnue.fillAccumulator(&ss[0].accumulator, pos);
+                nnue.fillAccumulator(&ss[0].accumulator, pos);
                 ss[0].accumulator_ply = ss[0].ply;
                 ss[0].accumulator_computed = true;
                 try stdout.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos, ss)});
@@ -359,21 +359,21 @@ fn cmd_setoption(io: std.Io, allocator: std.mem.Allocator, tokens: anytype, opti
             }
         }
         if (std.ascii.eqlIgnoreCase(name, "EvalFile")) {
-            const l0_wb = 768 * Nnue.hidden_size + Nnue.hidden_size;
-            const l1_wb = Nnue.hidden_size * 2 + 1;
-            const buffer: []u8 = try allocator.alloc(u8, (l0_wb + l1_wb) * @sizeOf(Nnue.Quantized) + 64);
+            const l0_wb = 768 * nnue.hidden_size + nnue.hidden_size;
+            const l1_wb = nnue.hidden_size * 2 + 1;
+            const buffer: []u8 = try allocator.alloc(u8, (l0_wb + l1_wb) * @sizeOf(nnue.Quantized) + 64);
             defer allocator.free(buffer);
 
             const nnue_bytes = try std.Io.Dir.readFile(std.Io.Dir.cwd(), io, value, buffer);
 
-            var nnue_content: []Nnue.Quantized = try allocator.alloc(Nnue.Quantized, nnue_bytes.len / 2);
+            var nnue_content: []nnue.Quantized = try allocator.alloc(nnue.Quantized, nnue_bytes.len / 2);
             defer allocator.free(nnue_content);
 
             for (nnue_content, 0..) |*value_content, i| {
-                value_content.* = std.mem.readInt(Nnue.Quantized, nnue_bytes[i * 2 ..][0..2], .little);
+                value_content.* = std.mem.readInt(nnue.Quantized, nnue_bytes[i * 2 ..][0..2], .little);
             }
 
-            Nnue.loadFromBin(nnue_content[0..]);
+            nnue.loadFromBin(nnue_content[0..]);
         }
         allocator.free(option.current_value);
         option.current_value = try allocator.dupe(u8, value);

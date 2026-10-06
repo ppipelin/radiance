@@ -1,6 +1,6 @@
 const interface = @import("interface.zig");
 const magic = @import("magic.zig");
-const Nnue = @import("Nnue.zig");
+const nnue = @import("nnue.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const thread_pool = @import("thread_pool.zig");
@@ -28,13 +28,13 @@ pub fn main(init: std.process.Init) !void {
 
     const nnue_bytes = @import("nnue_data").bytes;
 
-    var nnue_content: [nnue_bytes.len / 2]Nnue.Quantized = undefined;
+    var nnue_content: [nnue_bytes.len / 2]nnue.Quantized = undefined;
 
     for (&nnue_content, 0..) |*value, i| {
-        value.* = std.mem.readInt(Nnue.Quantized, nnue_bytes[i * 2 ..][0..2], .little);
+        value.* = std.mem.readInt(nnue.Quantized, nnue_bytes[i * 2 ..][0..2], .little);
     }
 
-    Nnue.loadFromBin(nnue_content[0..]);
+    nnue.loadFromBin(nnue_content[0..]);
 
     if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "compute")) {
         var iterations: u64 = 1;
