@@ -1,7 +1,7 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
 const position = @import("position.zig");
-const Search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const types = @import("types.zig");
 

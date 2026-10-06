@@ -1,5 +1,6 @@
 const interface = @import("interface.zig");
-const Nnue = @import("Nnue.zig");
+const nnue = @import("nnue.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -73,8 +74,6 @@ pub const State = struct {
 pub const Position = struct {
     // Board
     board: [types.board_size2]Piece = @splat(.none),
-    acc: Nnue.Accumulator = undefined,
-    dirty_pieces: [types.max_plies]types.DirtyPiece = @splat(.none),
 
     // Bitboards
     bb_pieces: [PieceType.nb()]Bitboard = @splat(0),
@@ -98,8 +97,6 @@ pub const Position = struct {
         state.* = State{};
         var pos: Position = Position{};
 
-        Nnue.initAccumulator(&pos.acc);
-
         pos.state = state;
 
         return pos;
@@ -115,10 +112,7 @@ pub const Position = struct {
                 new_states.items[new_states.items.len - 1].previous = &new_states.items[new_states.items.len - 2];
         }
 
-        @memcpy(&pos.dirty_pieces, &self.dirty_pieces);
-
         pos.state = &new_states.items[new_states.items.len - 1];
-        @memcpy(&pos.acc, &self.acc);
         return pos;
     }
 
@@ -137,27 +131,6 @@ pub const Position = struct {
             self.score_mg -= -tables.psq[p.pieceToPieceType().index()][0][sq.index()];
             self.score_eg -= -tables.psq[p.pieceToPieceType().index()][1][sq.index()];
             self.score_material_b -= tables.material[p.pieceToPieceType().index()];
-        }
-
-        const is_friendly: bool = p.pieceToColor() == self.state.turn;
-        const sq_mirror = sq.index() ^ 56;
-        // Friendly
-        const row_us = Nnue.featureIndex(is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) sq.index() else sq_mirror);
-        // Not friendly
-        const row_them = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) sq_mirror else sq.index());
-
-        var i: usize = 0;
-        while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
-            var a: Nnue.QuantizedVec = self.acc[self.state.turn.index()][i..][0..Nnue.lanes].*;
-            var b: Nnue.QuantizedVec = self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
-            const w: Nnue.QuantizedVec = Nnue.l0w[row_us][i..][0..Nnue.lanes].*;
-            const w2: Nnue.QuantizedVec = Nnue.l0w[row_them][i..][0..Nnue.lanes].*;
-
-            a -= w;
-            b -= w2;
-
-            self.acc[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
-            self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
         }
     }
 
@@ -183,27 +156,6 @@ pub const Position = struct {
                 self.score_king_b = tables.psq[p.pieceToPieceType().index()][1][sq.index()];
             }
         }
-
-        const is_friendly: bool = p.pieceToColor() == self.state.turn;
-        const sq_mirror = sq.index() ^ 56;
-        // Friendly
-        const row_us = Nnue.featureIndex(is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) sq.index() else sq_mirror);
-        // Not friendly
-        const row_them = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) sq_mirror else sq.index());
-
-        var i: usize = 0;
-        while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
-            var a: Nnue.QuantizedVec = self.acc[self.state.turn.index()][i..][0..Nnue.lanes].*;
-            var b: Nnue.QuantizedVec = self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
-            const w: Nnue.QuantizedVec = Nnue.l0w[row_us][i..][0..Nnue.lanes].*;
-            const w2: Nnue.QuantizedVec = Nnue.l0w[row_them][i..][0..Nnue.lanes].*;
-
-            a += w;
-            b += w2;
-
-            self.acc[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
-            self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
-        }
     }
 
     inline fn removeAdd(noalias self: *Position, p: Piece, removeSq: Square, addSq: Square) void {
@@ -227,35 +179,9 @@ pub const Position = struct {
             self.score_mg += -tables.psq[p.pieceToPieceType().index()][0][addSq.index()];
             self.score_eg += -tables.psq[p.pieceToPieceType().index()][1][addSq.index()];
         }
-
-        const is_friendly: bool = p.pieceToColor() == self.state.turn;
-        const addSq_mirror = addSq.index() ^ 56;
-        const removeSq_mirror = removeSq.index() ^ 56;
-        // Friendly
-        const row_us_add = Nnue.featureIndex(is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) addSq.index() else addSq_mirror);
-        const row_us_rem = Nnue.featureIndex(is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) removeSq.index() else removeSq_mirror);
-        // Not friendly
-        const row_them_add = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) addSq_mirror else addSq.index());
-        const row_them_rem = Nnue.featureIndex(!is_friendly, p.pieceToPieceType(), if (self.state.turn.isWhite()) removeSq_mirror else removeSq.index());
-
-        var i: usize = 0;
-        while (i < Nnue.hidden_size) : (i += Nnue.lanes) {
-            var a: Nnue.QuantizedVec = self.acc[self.state.turn.index()][i..][0..Nnue.lanes].*;
-            var b: Nnue.QuantizedVec = self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].*;
-            const w1: Nnue.QuantizedVec = Nnue.l0w[row_us_add][i..][0..Nnue.lanes].*;
-            const w11: Nnue.QuantizedVec = Nnue.l0w[row_us_rem][i..][0..Nnue.lanes].*;
-            const w2: Nnue.QuantizedVec = Nnue.l0w[row_them_add][i..][0..Nnue.lanes].*;
-            const w22: Nnue.QuantizedVec = Nnue.l0w[row_them_rem][i..][0..Nnue.lanes].*;
-
-            a += w1 - w11;
-            b += w2 - w22;
-
-            self.acc[self.state.turn.index()][i..][0..Nnue.lanes].* = a;
-            self.acc[self.state.turn.invert().index()][i..][0..Nnue.lanes].* = b;
-        }
     }
 
-    pub fn movePiece(noalias self: *Position, move: Move, noalias state: *State) !void {
+    pub fn movePiece(noalias self: *Position, move: Move, noalias state: *State, noalias ss_: ?[*]Search.Stack) !void {
         // Reset data and set as previous
         state.turn = self.state.turn;
         state.castle_info = self.state.castle_info;
@@ -283,6 +209,11 @@ pub const Position = struct {
         // Remove last en_passant
         if (self.state.previous != null and self.state.previous.?.en_passant != Square.none) {
             self.state.material_key ^= tables.hash_en_passant[self.state.previous.?.en_passant.file().index()];
+        }
+
+        if (ss_) |ss| {
+            @memcpy(&ss[0].accumulator, &(ss - 1)[0].accumulator);
+            ss[0].dirty_piece = .none;
         }
 
         switch (from_piece.pieceToPieceType()) {
@@ -332,6 +263,11 @@ pub const Position = struct {
 
                         // Remove
                         self.remove(self.state.last_captured_piece, en_passant_sq);
+                        if (ss_) |ss| {
+                            ss[0].dirty_piece.remove_piece = self.state.last_captured_piece;
+                            ss[0].dirty_piece.remove_square = en_passant_sq;
+                            // nnue.remove(self, &ss[0].accumulator, self.state.last_captured_piece, en_passant_sq);
+                        }
                         self.state.material_key ^= tables.hash_psq[self.state.last_captured_piece.index()][en_passant_sq.index()];
 
                         self.board[en_passant_sq.index()] = Piece.none;
@@ -341,8 +277,18 @@ pub const Position = struct {
                 if (move.isPromotion()) {
                     from_piece = MoveFlags.promoteType(move.getFlags()).pieceTypeToPiece(self.state.turn);
                     self.remove(PieceType.pawn.pieceTypeToPiece(self.state.turn), from);
+                    if (ss_) |ss| {
+                        ss[0].dirty_piece.remove_additional_piece = PieceType.pawn.pieceTypeToPiece(self.state.turn);
+                        ss[0].dirty_piece.remove_additional_square = from;
+                        // nnue.remove(self, &ss[0].accumulator, PieceType.pawn.pieceTypeToPiece(self.state.turn), from);
+                    }
                     self.state.material_key ^= tables.hash_psq[PieceType.pawn.pieceTypeToPiece(self.state.turn).index()][from.index()];
                     self.add(from_piece, from);
+                    if (ss_) |ss| {
+                        ss[0].dirty_piece.add_piece = from_piece;
+                        ss[0].dirty_piece.add_square = from;
+                        // nnue.add(self, &ss[0].accumulator, from_piece, from);
+                    }
                     self.state.material_key ^= tables.hash_psq[from_piece.index()][from.index()];
                 }
                 // Reset rule 50 counter
@@ -379,6 +325,11 @@ pub const Position = struct {
 
                 // Remove captured
                 self.remove(to_piece, move.getTo());
+                if (ss_) |ss| {
+                    ss[0].dirty_piece.remove_piece = to_piece;
+                    ss[0].dirty_piece.remove_square = move.getTo();
+                    // nnue.remove(self, &ss[0].accumulator, to_piece, move.getTo());
+                }
                 self.state.material_key ^= tables.hash_psq[to_piece.index()][to.index()];
 
                 // Reset rule 50 counter
@@ -392,6 +343,11 @@ pub const Position = struct {
             const from_rook: Square = self.rook_initial[1 + @as(usize, self.state.turn.invert().index()) * 2];
             to_piece = self.board[from_rook.index()];
             self.remove(to_piece, from_rook);
+            if (ss_) |ss| {
+                ss[0].dirty_piece.remove_piece = to_piece;
+                ss[0].dirty_piece.remove_square = from_rook;
+                // nnue.remove(self, &ss[0].accumulator, to_piece, from_rook);
+            }
             self.state.material_key ^= tables.hash_psq[to_piece.index()][from_rook.index()];
         } else if (move.getFlags() == MoveFlags.ooo) {
             to = Square.c1.relativeSquare(self.state.turn); // Needed for 960 UCI
@@ -399,11 +355,25 @@ pub const Position = struct {
             const from_rook: Square = self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2];
             to_piece = self.board[from_rook.index()];
             self.remove(to_piece, from_rook);
+            // Should not trigger with HCE
+            if (ss_) |ss| {
+                ss[0].dirty_piece.remove_piece = to_piece;
+                ss[0].dirty_piece.remove_square = from_rook;
+                // nnue.remove(self, &ss[0].accumulator, to_piece, from_rook);
+            }
             self.state.material_key ^= tables.hash_psq[to_piece.index()][from_rook.index()];
         }
 
         // Remove/Add
         self.removeAdd(from_piece, from, to);
+        // Should not trigger with HCE
+        if (ss_) |ss| {
+            ss[0].dirty_piece.piece = from_piece;
+            ss[0].dirty_piece.from = from;
+            ss[0].dirty_piece.to = to;
+            // nnue.removeAdd(self, &ss[0].accumulator, from_piece, from, to);
+        }
+
         self.state.material_key ^= tables.hash_psq[from_piece.index()][from.index()];
         self.state.material_key ^= tables.hash_psq[from_piece.index()][to.index()];
 
@@ -412,16 +382,26 @@ pub const Position = struct {
         self.state.turn = self.state.turn.invert();
         self.state.material_key ^= tables.hash_turn;
 
-        // If castling we move the rook as well
+        // If castling we put back in the correct square the rook that was removed
         switch (move.getFlags()) {
             MoveFlags.oo => {
                 const sq: Square = Square.f1.relativeSquare(self.state.turn.invert());
                 self.add(to_piece, sq);
+                if (ss_) |ss| {
+                    ss[0].dirty_piece.add_piece = to_piece;
+                    ss[0].dirty_piece.add_square = sq;
+                    // nnue.add(self, &ss[0].accumulator, to_piece, sq);
+                }
                 self.state.material_key ^= tables.hash_psq[to_piece.index()][sq.index()];
             },
             MoveFlags.ooo => {
                 const sq: Square = Square.d1.relativeSquare(self.state.turn.invert());
                 self.add(to_piece, sq);
+                if (ss_) |ss| {
+                    ss[0].dirty_piece.add_piece = to_piece;
+                    ss[0].dirty_piece.add_square = sq;
+                    // nnue.add(self, &ss[0].accumulator, to_piece, sq);
+                }
                 self.state.material_key ^= tables.hash_psq[to_piece.index()][sq.index()];
             },
             else => {},
@@ -490,7 +470,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn moveNull(noalias self: *Position, noalias state: *State) !void {
+    pub fn moveNull(noalias self: *Position, noalias state: *State, noalias ss_: ?[*]Search.Stack) !void {
         // Reset data and set as previous
         state.turn = self.state.turn;
         state.castle_info = self.state.castle_info;
@@ -505,6 +485,10 @@ pub const Position = struct {
         state.material_key = self.state.material_key;
         state.previous = self.state;
         self.state = state;
+
+        if (ss_) |ss| {
+            @memcpy(&ss[0].accumulator, &(ss - 1)[0].accumulator);
+        }
 
         if (self.state.previous != null and self.state.previous.?.en_passant != Square.none) {
             self.state.material_key ^= tables.hash_en_passant[self.state.previous.?.en_passant.file().index()];
