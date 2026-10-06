@@ -63,6 +63,7 @@ const RootMove = struct {
 pub const Stack = struct {
     // pv: [types.max_plies]types.Move = @splat(.none),
     accumulator: nnue.Accumulator = undefined,
+    dirty_piece: types.DirtyPiece = .none,
 
     pv: ?*[types.max_plies]types.Move = null,
     killers: [2]?types.Move = [_]?types.Move{ null, null },
@@ -542,6 +543,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
                 break;
         }
 
+        // TODO: Pass null search stack for HCE
         try pos.movePiece(move, &s, ss + 1);
 
         ss[1].pv = &pv;
@@ -748,6 +750,7 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
                 continue;
         }
 
+        // TODO: Pass null search stack for HCE
         try pos.movePiece(move, &s, ss + 1);
 
         if (pos.isDraw()) {

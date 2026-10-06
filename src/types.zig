@@ -294,13 +294,16 @@ pub const Piece = enum(u8) {
 pub const DirtyPiece = struct {
     piece: Piece,
 
+    // Stay .none for promotion
     from: Square,
     to: Square,
 
     remove_square: Square,
+    remove_additional_square: Square, // Used for promo capture
     add_square: Square,
 
     remove_piece: Piece,
+    remove_additional_piece: Piece,
     add_piece: Piece,
 
     /// A none DirtyPiece
@@ -309,8 +312,10 @@ pub const DirtyPiece = struct {
         .from = .none,
         .to = .none,
         .remove_square = .none,
+        .remove_additional_square = .none,
         .add_square = .none,
         .remove_piece = .none,
+        .remove_additional_piece = .none,
         .add_piece = .none,
     };
 };

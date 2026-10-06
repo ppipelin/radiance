@@ -74,7 +74,6 @@ pub const State = struct {
 pub const Position = struct {
     // Board
     board: [types.board_size2]Piece = @splat(.none),
-    dirty_pieces: [types.max_plies]types.DirtyPiece = @splat(.none),
 
     // Bitboards
     bb_pieces: [PieceType.nb()]Bitboard = @splat(0),
@@ -112,8 +111,6 @@ pub const Position = struct {
             if (i != 0)
                 new_states.items[new_states.items.len - 1].previous = &new_states.items[new_states.items.len - 2];
         }
-
-        @memcpy(&pos.dirty_pieces, &self.dirty_pieces);
 
         pos.state = &new_states.items[new_states.items.len - 1];
         return pos;
@@ -266,7 +263,9 @@ pub const Position = struct {
                         // Remove
                         self.remove(self.state.last_captured_piece, en_passant_sq);
                         if (ss_) |ss| {
-                            nnue.remove(self, &ss[0].accumulator, self.state.last_captured_piece, en_passant_sq);
+                            ss[0].dirty_piece.remove_piece = self.state.last_captured_piece;
+                            ss[0].dirty_piece.remove_square = en_passant_sq;
+                            // nnue.remove(self, &ss[0].accumulator, self.state.last_captured_piece, en_passant_sq);
                         }
                         self.state.material_key ^= tables.hash_psq[self.state.last_captured_piece.index()][en_passant_sq.index()];
 
@@ -278,12 +277,16 @@ pub const Position = struct {
                     from_piece = MoveFlags.promoteType(move.getFlags()).pieceTypeToPiece(self.state.turn);
                     self.remove(PieceType.pawn.pieceTypeToPiece(self.state.turn), from);
                     if (ss_) |ss| {
-                        nnue.remove(self, &ss[0].accumulator, PieceType.pawn.pieceTypeToPiece(self.state.turn), from);
+                        ss[0].dirty_piece.remove_additional_piece = PieceType.pawn.pieceTypeToPiece(self.state.turn);
+                        ss[0].dirty_piece.remove_additional_square = from;
+                        // nnue.remove(self, &ss[0].accumulator, PieceType.pawn.pieceTypeToPiece(self.state.turn), from);
                     }
                     self.state.material_key ^= tables.hash_psq[PieceType.pawn.pieceTypeToPiece(self.state.turn).index()][from.index()];
                     self.add(from_piece, from);
                     if (ss_) |ss| {
-                        nnue.add(self, &ss[0].accumulator, from_piece, from);
+                        ss[0].dirty_piece.add_piece = from_piece;
+                        ss[0].dirty_piece.add_square = from;
+                        // nnue.add(self, &ss[0].accumulator, from_piece, from);
                     }
                     self.state.material_key ^= tables.hash_psq[from_piece.index()][from.index()];
                 }
@@ -322,7 +325,9 @@ pub const Position = struct {
                 // Remove captured
                 self.remove(to_piece, move.getTo());
                 if (ss_) |ss| {
-                    nnue.remove(self, &ss[0].accumulator, to_piece, move.getTo());
+                    ss[0].dirty_piece.remove_piece = to_piece;
+                    ss[0].dirty_piece.remove_square = move.getTo();
+                    // nnue.remove(self, &ss[0].accumulator, to_piece, move.getTo());
                 }
                 self.state.material_key ^= tables.hash_psq[to_piece.index()][to.index()];
 
@@ -338,7 +343,9 @@ pub const Position = struct {
             to_piece = self.board[from_rook.index()];
             self.remove(to_piece, from_rook);
             if (ss_) |ss| {
-                nnue.remove(self, &ss[0].accumulator, to_piece, from_rook);
+                ss[0].dirty_piece.remove_piece = to_piece;
+                ss[0].dirty_piece.remove_square = from_rook;
+                // nnue.remove(self, &ss[0].accumulator, to_piece, from_rook);
             }
             self.state.material_key ^= tables.hash_psq[to_piece.index()][from_rook.index()];
         } else if (move.getFlags() == MoveFlags.ooo) {
@@ -349,7 +356,9 @@ pub const Position = struct {
             self.remove(to_piece, from_rook);
             // Should not trigger with HCE
             if (ss_) |ss| {
-                nnue.remove(self, &ss[0].accumulator, to_piece, from_rook);
+                ss[0].dirty_piece.remove_piece = to_piece;
+                ss[0].dirty_piece.remove_square = from_rook;
+                // nnue.remove(self, &ss[0].accumulator, to_piece, from_rook);
             }
             self.state.material_key ^= tables.hash_psq[to_piece.index()][from_rook.index()];
         }
@@ -358,7 +367,9 @@ pub const Position = struct {
         self.removeAdd(from_piece, from, to);
         // Should not trigger with HCE
         if (ss_) |ss| {
-            nnue.removeAdd(self, &ss[0].accumulator, from_piece, from, to);
+            ss[0].dirty_piece.from = from;
+            ss[0].dirty_piece.to = to;
+            // nnue.removeAdd(self, &ss[0].accumulator, from_piece, from, to);
         }
 
         self.state.material_key ^= tables.hash_psq[from_piece.index()][from.index()];
@@ -369,13 +380,15 @@ pub const Position = struct {
         self.state.turn = self.state.turn.invert();
         self.state.material_key ^= tables.hash_turn;
 
-        // If castling we move the rook as well
+        // If castling we put back in the correct square the rook that was removed
         switch (move.getFlags()) {
             MoveFlags.oo => {
                 const sq: Square = Square.f1.relativeSquare(self.state.turn.invert());
                 self.add(to_piece, sq);
                 if (ss_) |ss| {
-                    nnue.add(self, &ss[0].accumulator, to_piece, sq);
+                    ss[0].dirty_piece.add_piece = to_piece;
+                    ss[0].dirty_piece.add_square = sq;
+                    // nnue.add(self, &ss[0].accumulator, to_piece, sq);
                 }
                 self.state.material_key ^= tables.hash_psq[to_piece.index()][sq.index()];
             },
@@ -383,7 +396,9 @@ pub const Position = struct {
                 const sq: Square = Square.d1.relativeSquare(self.state.turn.invert());
                 self.add(to_piece, sq);
                 if (ss_) |ss| {
-                    nnue.add(self, &ss[0].accumulator, to_piece, sq);
+                    ss[0].dirty_piece.add_piece = to_piece;
+                    ss[0].dirty_piece.add_square = sq;
+                    // nnue.add(self, &ss[0].accumulator, to_piece, sq);
                 }
                 self.state.material_key ^= tables.hash_psq[to_piece.index()][sq.index()];
             },

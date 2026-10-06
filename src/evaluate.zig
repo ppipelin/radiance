@@ -304,19 +304,31 @@ pub fn evaluateTable(pos: *const position.Position, ss_: ?[*]Search.Stack) types
 pub fn evaluateNnue(pos: *const position.Position, ss_: ?[*]Search.Stack) types.Value {
     // Rewind ss to update accumulator
     // (and update precedent accumulators)
-    // if (!ss[0].accumulator_computed) {
-    //     for (ss[0].accumulator_ply..ss[0].ply) |i| {
-    //         // update with dirty piece
-    //         _ = i;
-    //         // nnue.fillAccumulator(&ss[0].accumulator, pos.*);
-    //         // ss[0].accumulator_ply = ss[0].ply;
-    //         // ss[0].accumulator_computed = true;
-    //         // break;
-    //     }
-    // }
+    const ss = ss_ orelse unreachable;
 
-    if (ss_) |ss| {
-        return @intCast(nnue.forward(&ss[0].accumulator, pos));
+    if (!ss[0].accumulator_computed) {
+        for (ss[0].accumulator_ply..ss[0].ply) |i| {
+            // update with dirty piece
+            const ss_to_update: [*]Search.Stack = ss - i + ss[0].ply;
+            const acc: *nnue.Accumulator = &ss_to_update[0].accumulator;
+            @memcpy(acc, &(ss_to_update - 1)[0].accumulator);
+
+            const dp: types.DirtyPiece = ss_to_update[0].dirty_piece;
+
+            // Promotion
+            if (dp.from == .none) {
+                nnue.remove(pos, acc, dp.remove_additional_piece, dp.remove_additional_square);
+            } else {
+                nnue.removeAdd(pos, acc, dp.piece, dp.from, dp.to);
+            }
+            nnue.remove(pos, acc, dp.remove_piece, dp.remove_square);
+            nnue.add(pos, acc, dp.add_piece, dp.add_square);
+            // nnue.fillAccumulator(&ss[0].accumulator, pos.*);
+            // ss[0].accumulator_ply = ss[0].ply;
+            // ss[0].accumulator_computed = true;
+            // break;
+        }
     }
-    unreachable;
+
+    return @intCast(nnue.forward(&ss[0].accumulator, pos));
 }
