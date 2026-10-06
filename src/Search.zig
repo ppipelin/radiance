@@ -62,12 +62,14 @@ const RootMove = struct {
 // Keep the informations between nodes at different depth
 pub const Stack = struct {
     // pv: [types.max_plies]types.Move = @splat(.none),
+    accumulator: Nnue.Accumulator = undefined,
+
     pv: ?*[types.max_plies]types.Move = null,
     killers: [2]?types.Move = [_]?types.Move{ null, null },
-    accumulator: Nnue.Accumulator = undefined,
-    accumulator_ply: u8 = 0, // Last update of accumulator
-    accumulator_computed: bool = false, // Last update of accumulator
+
     ply: u8 = 0,
+    accumulator_ply: u8 = 0, // Last update of accumulator
+    accumulator_computed: bool = false,
 };
 
 pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, depth: types.Depth, comptime is_960: bool, verbose: bool) !u64 {
@@ -95,7 +97,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: 
     for (move_list[0..move_len]) |move| {
         var s: position.State = position.State{};
 
-        try pos.movePiece(move, &s);
+        try pos.movePiece(move, &s, null);
 
         const nodes_number = try (perft(allocator, stdout, pos, depth - 1, is_960, false));
         nodes += nodes_number;
@@ -139,7 +141,7 @@ pub fn perftTest(allocator: std.mem.Allocator, noalias pos: *position.Position, 
         const score_before = [_]types.Value{ pos.score_material_w, pos.score_material_b };
         const key_before = pos.state.material_key;
 
-        try pos.movePiece(move, &s);
+        try pos.movePiece(move, &s, null);
 
         const nodes_number = try (perftTest(allocator, pos, depth - 1, is_960));
         nodes += nodes_number;
@@ -216,8 +218,10 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     }
     ss[0].pv = &pv;
 
+    // Should not trigger with HCE
     Nnue.fillAccumulator(&ss[0].accumulator, pos.*);
     ss[0].accumulator_ply = ss[0].ply;
+    ss[0].accumulator_computed = true;
 
     var move_list: [types.max_moves]types.Move = @splat(.none);
     var move_len: usize = 0;
@@ -460,7 +464,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
         if (!is_null_move and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and pos.state.static_eval > beta) {
             const tapered: types.Depth = @intCast(@min(@divTrunc(pos.state.static_eval -| beta, variable.getValue("null_move_taper")), 6));
             const r: types.Depth = tapered + @divTrunc(depth, 3) + 5;
-            try pos.moveNull(&s);
+            try pos.moveNull(&s, ss + 1);
             const null_score: types.Value = -try self.abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, eval, -beta, -beta + 1, depth -| r, is_960, true);
             try pos.unMoveNull();
             if (depth > 1 and self.outOfTime(io))
@@ -538,7 +542,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
                 break;
         }
 
-        try pos.movePiece(move, &s);
+        try pos.movePiece(move, &s, ss + 1);
 
         ss[1].pv = &pv;
         ss[1].pv.?[0] = types.Move.none;
@@ -744,7 +748,7 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
                 continue;
         }
 
-        try pos.movePiece(move, &s);
+        try pos.movePiece(move, &s, ss + 1);
 
         if (pos.isDraw()) {
             score = types.value_draw;

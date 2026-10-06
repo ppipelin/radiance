@@ -1,5 +1,5 @@
 const position = @import("position.zig");
-const Search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");

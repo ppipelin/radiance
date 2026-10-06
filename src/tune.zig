@@ -1,6 +1,5 @@
 const evaluate = @import("evaluate.zig");
 const position = @import("position.zig");
-const Search = @import("search.zig");
 const std = @import("std");
 const types = @import("types.zig");
 const variable = @import("variable.zig");
@@ -72,10 +71,7 @@ fn eval(book: []const Triplet) !f32 {
         const multiply: types.Value = if (pos.state.turn == .white) 1 else -1;
         // std.debug.print("eval {}, sigm {}, real {}, error^2 {d:.2}, fen {s}\n", .{ multiply * evaluate.evaluateTable(pos), sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(pos))), triplet[1].index(), std.math.pow(f32, sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(pos))) - triplet[1].index(), 2), triplet[0] });
 
-        var stack: [1]Search.Stack = @splat(Search.Stack{});
-        const ss: [*]Search.Stack = &stack;
-
-        difference += std.math.pow(f32, sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(&pos, ss))) - triplet[1].index(), 2);
+        difference += std.math.pow(f32, sigmoid(@floatFromInt(multiply * evaluate.evaluateTable(&pos, null))) - triplet[1].index(), 2);
     }
     // std.debug.print("mean difference {}\n", .{difference / @as(f32, @floatFromInt(book.len))});
     return difference;

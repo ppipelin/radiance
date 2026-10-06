@@ -1,5 +1,6 @@
 const evaluate = @import("evaluate.zig");
 const position = @import("position.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -19,14 +20,14 @@ test "EvaluateFlipAndSymmetry" {
     var s_b: position.State = position.State{};
     var pos_b: position.Position = try position.Position.setFen(&s_b, fen_b);
 
-    var eval_w = evaluate.evaluateTable(&pos_w);
-    var eval_b = evaluate.evaluateTable(&pos_b);
+    var eval_w = evaluate.evaluateTable(&pos_w, null);
+    var eval_b = evaluate.evaluateTable(&pos_b, null);
     pos_w.state.turn = pos_w.state.turn.invert();
     pos_b.state.turn = pos_b.state.turn.invert();
-    var eval_w_symmetry = -evaluate.evaluateTable(&pos_w);
-    var eval_b_symmetry = -evaluate.evaluateTable(&pos_b);
+    var eval_w_symmetry = -evaluate.evaluateTable(&pos_w, null);
+    var eval_b_symmetry = -evaluate.evaluateTable(&pos_b, null);
 
-    try std.testing.expectEqual(evaluate.evaluateShannon(&pos_w), evaluate.evaluateShannon(&pos_b));
+    try std.testing.expectEqual(evaluate.evaluateShannon(&pos_w, null), evaluate.evaluateShannon(&pos_b, null));
     try std.testing.expectEqual(eval_w, eval_b);
     try std.testing.expectEqual(eval_w, eval_w_symmetry);
     try std.testing.expectEqual(eval_b, eval_b_symmetry);
@@ -37,14 +38,14 @@ test "EvaluateFlipAndSymmetry" {
     pos_w = try position.Position.setFen(&s_w, fen_w);
     pos_b = try position.Position.setFen(&s_b, fen_b);
 
-    eval_w = evaluate.evaluateTable(&pos_w);
-    eval_b = evaluate.evaluateTable(&pos_b);
+    eval_w = evaluate.evaluateTable(&pos_w, null);
+    eval_b = evaluate.evaluateTable(&pos_b, null);
     pos_w.state.turn = pos_w.state.turn.invert();
     pos_b.state.turn = pos_b.state.turn.invert();
-    eval_w_symmetry = -evaluate.evaluateTable(&pos_w);
-    eval_b_symmetry = -evaluate.evaluateTable(&pos_b);
+    eval_w_symmetry = -evaluate.evaluateTable(&pos_w, null);
+    eval_b_symmetry = -evaluate.evaluateTable(&pos_b, null);
 
-    try std.testing.expectEqual(evaluate.evaluateShannon(&pos_w), evaluate.evaluateShannon(&pos_b));
+    try std.testing.expectEqual(evaluate.evaluateShannon(&pos_w, null), evaluate.evaluateShannon(&pos_b, null));
     try std.testing.expectEqual(eval_w, eval_b);
     try std.testing.expectEqual(eval_w, eval_w_symmetry);
     try std.testing.expectEqual(eval_b, eval_b_symmetry);
@@ -55,14 +56,14 @@ test "EvaluateFlipAndSymmetry" {
     pos_w = try position.Position.setFen(&s_w, fen_w);
     pos_b = try position.Position.setFen(&s_b, fen_b);
 
-    eval_w = evaluate.evaluateTable(&pos_w);
-    eval_b = evaluate.evaluateTable(&pos_b);
+    eval_w = evaluate.evaluateTable(&pos_w, null);
+    eval_b = evaluate.evaluateTable(&pos_b, null);
     pos_w.state.turn = pos_w.state.turn.invert();
     pos_b.state.turn = pos_b.state.turn.invert();
-    eval_w_symmetry = -evaluate.evaluateTable(&pos_w);
-    eval_b_symmetry = -evaluate.evaluateTable(&pos_b);
+    eval_w_symmetry = -evaluate.evaluateTable(&pos_w, null);
+    eval_b_symmetry = -evaluate.evaluateTable(&pos_b, null);
 
-    try std.testing.expectEqual(evaluate.evaluateShannon(&pos_w), evaluate.evaluateShannon(&pos_b));
+    try std.testing.expectEqual(evaluate.evaluateShannon(&pos_w, null), evaluate.evaluateShannon(&pos_b, null));
     try std.testing.expectEqual(eval_w, eval_b);
     try std.testing.expectEqual(eval_w, eval_w_symmetry);
     try std.testing.expectEqual(eval_b, eval_b_symmetry);
@@ -73,14 +74,14 @@ test "EvaluateFlipAndSymmetry" {
     pos_w = try position.Position.setFen(&s_w, fen_w);
     pos_b = try position.Position.setFen(&s_b, fen_b);
 
-    eval_w = evaluate.evaluateTable(&pos_w);
-    eval_b = evaluate.evaluateTable(&pos_b);
+    eval_w = evaluate.evaluateTable(&pos_w, null);
+    eval_b = evaluate.evaluateTable(&pos_b, null);
     pos_w.state.turn = pos_w.state.turn.invert();
     pos_b.state.turn = pos_b.state.turn.invert();
-    eval_w_symmetry = -evaluate.evaluateTable(&pos_w);
-    eval_b_symmetry = -evaluate.evaluateTable(&pos_b);
+    eval_w_symmetry = -evaluate.evaluateTable(&pos_w, null);
+    eval_b_symmetry = -evaluate.evaluateTable(&pos_b, null);
 
-    try std.testing.expectEqual(evaluate.evaluateShannon(&pos_w), evaluate.evaluateShannon(&pos_b));
+    try std.testing.expectEqual(evaluate.evaluateShannon(&pos_w, null), evaluate.evaluateShannon(&pos_b, null));
     try std.testing.expectEqual(eval_w, eval_b);
     try std.testing.expectEqual(eval_w, eval_w_symmetry);
     try std.testing.expectEqual(eval_b, eval_b_symmetry);
@@ -95,7 +96,7 @@ test "EvaluateTable" {
     var s: position.State = position.State{};
     const pos: position.Position = try position.Position.setFen(&s, fen);
 
-    try std.testing.expectEqual(evaluate.evaluateTable(&pos), evaluate.evaluateTable(&pos));
+    try std.testing.expectEqual(evaluate.evaluateTable(&pos, null), evaluate.evaluateTable(&pos, null));
 }
 
 test "EvaluatePawnHeuristics" {

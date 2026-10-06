@@ -2,7 +2,7 @@ const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
 const Nnue = @import("Nnue.zig");
 const position = @import("position.zig");
-const Search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const types = @import("types.zig");
 const tables = @import("tables.zig");
@@ -57,7 +57,7 @@ pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMa
     try options.put(allocator, "Hash", try Option.initSpin(allocator, "256", 0, 65535));
     try tables.setTranspositionTableCapacity(256);
     try options.put(allocator, "Threads", try Option.initSpin(allocator, "1", 1, 1024));
-    try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "NNUE var NNUE var PSQ var Shannon", "NNUE"));
+    try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "NNUE var NNUE var PSQ var Shannon var Materialist", "NNUE"));
     try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
     try options.put(allocator, "UCI_Chess960", try Option.initCheck(allocator, "false", "false"));
     try options.put(allocator, "Ponder", try Option.initCheck(allocator, "false", "false"));
@@ -251,16 +251,22 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             existing_command = true;
             const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
 
-            var stack: [1]Search.Stack = @splat(Search.Stack{});
-            const ss: [*]Search.Stack = &stack;
-
+            if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "Materialist")) {
+                try stdout.print("Eval Materialist: {}\n", .{evaluate.evaluateMaterialist(&pos, null)});
+            }
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
-                try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(&pos, ss)});
+                try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(&pos, null)});
             }
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
-                try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos, ss)});
+                try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos, null)});
             }
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
+                var stack: [1]Search.Stack = @splat(Search.Stack{});
+                const ss: [*]Search.Stack = &stack;
+
+                Nnue.fillAccumulator(&ss[0].accumulator, pos);
+                ss[0].accumulator_ply = ss[0].ply;
+                ss[0].accumulator_computed = true;
                 try stdout.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos, ss)});
             }
             try stdout.flush();
@@ -416,7 +422,7 @@ fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states
 
         while (token != null) : (token = tokens_rest_iterator.next()) {
             states.appendAssumeCapacity(position.State{});
-            try pos.movePiece(try types.Move.initFromStr(pos, token.?), &states.items[states.items.len - 1]);
+            try pos.movePiece(try types.Move.initFromStr(pos, token.?), &states.items[states.items.len - 1], null);
         }
     }
 }
@@ -593,7 +599,7 @@ fn cmd_genfens(io: std.Io, stdout: *std.Io.Writer, tokens: anytype) !void {
                 position.orderMoves(move_list[0..move_len], &scores);
 
                 const selected_idx: usize = rand.intRangeAtMost(u8, 0, @min(10, move_len - 1));
-                try pos.movePiece(move_list[selected_idx], &states[d + 1]);
+                try pos.movePiece(move_list[selected_idx], &states[d + 1], null);
             }
 
             if (checkmated)

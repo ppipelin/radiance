@@ -1,7 +1,7 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
 const position = @import("position.zig");
-const Search = @import("search.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const thread_pool = @import("thread_pool.zig");
@@ -276,7 +276,7 @@ test "SearchLeakNoInterface" {
     thread_data.eval = evaluate.evaluateTable;
     try thread_pool.startThinking(thread_data);
     try thread_pool.finishSearchs();
-    try pos.moveNull(&states.items[0]);
+    try pos.moveNull(&states.items[0], null);
 
     try thread_pool.deinit();
 }

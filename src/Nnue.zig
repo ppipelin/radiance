@@ -22,7 +22,6 @@ pub const quantization_scale = 400;
 /// 0 is friendly for black perspective while 1 is the friendly for white
 /// When fed into forward be careful to put first friendly then not friendly
 pub const Accumulator = [2][hidden_size]Quantized;
-accumulator: Accumulator = undefined,
 
 pub var l0w: [input_size][hidden_size]Quantized = undefined;
 pub var l0b: [hidden_size]Quantized = undefined;
@@ -98,7 +97,7 @@ fn screlu(in: QuantizedHiddenVec, out: *FullHiddenVec) void {
     }
 }
 
-pub fn forward(acc: Accumulator, pos: *const position.Position) Quantized {
+pub fn forward(noalias acc: *const Accumulator, noalias pos: *const position.Position) Quantized {
     const l1: QuantizedHiddenVec = if (pos.state.turn.isWhite()) acc[1] ++ acc[0] else acc[0] ++ acc[1];
 
     var l1_screlu: FullHiddenVec = undefined;
@@ -130,4 +129,78 @@ pub fn forward(acc: Accumulator, pos: *const position.Position) Quantized {
     o = @divTrunc(o, quantization_a * quantization_b);
 
     return @intCast(o);
+}
+
+pub fn remove(noalias pos: *const position.Position, noalias acc: *Accumulator, p: types.Piece, sq: types.Square) void {
+    const is_friendly: bool = p.pieceToColor() == pos.state.turn;
+    const sq_mirror = sq.index() ^ 56;
+    // Friendly
+    const row_us = featureIndex(is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) sq.index() else sq_mirror);
+    // Not friendly
+    const row_them = featureIndex(!is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) sq_mirror else sq.index());
+
+    var i: usize = 0;
+    while (i < hidden_size) : (i += lanes) {
+        var a: QuantizedVec = acc[pos.state.turn.index()][i..][0..lanes].*;
+        var b: QuantizedVec = acc[pos.state.turn.invert().index()][i..][0..lanes].*;
+        const w: QuantizedVec = l0w[row_us][i..][0..lanes].*;
+        const w2: QuantizedVec = l0w[row_them][i..][0..lanes].*;
+
+        a -= w;
+        b -= w2;
+
+        acc[pos.state.turn.index()][i..][0..lanes].* = a;
+        acc[pos.state.turn.invert().index()][i..][0..lanes].* = b;
+    }
+}
+
+pub fn add(noalias pos: *const position.Position, noalias acc: *Accumulator, p: types.Piece, sq: types.Square) void {
+    const is_friendly: bool = p.pieceToColor() == pos.state.turn;
+    const sq_mirror = sq.index() ^ 56;
+    // Friendly
+    const row_us = featureIndex(is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) sq.index() else sq_mirror);
+    // Not friendly
+    const row_them = featureIndex(!is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) sq_mirror else sq.index());
+
+    var i: usize = 0;
+    while (i < hidden_size) : (i += lanes) {
+        var a: QuantizedVec = acc[pos.state.turn.index()][i..][0..lanes].*;
+        var b: QuantizedVec = acc[pos.state.turn.invert().index()][i..][0..lanes].*;
+        const w: QuantizedVec = l0w[row_us][i..][0..lanes].*;
+        const w2: QuantizedVec = l0w[row_them][i..][0..lanes].*;
+
+        a += w;
+        b += w2;
+
+        acc[pos.state.turn.index()][i..][0..lanes].* = a;
+        acc[pos.state.turn.invert().index()][i..][0..lanes].* = b;
+    }
+}
+
+pub fn removeAdd(noalias pos: *const position.Position, noalias acc: *Accumulator, p: types.Piece, removeSq: types.Square, addSq: types.Square) void {
+    const is_friendly: bool = p.pieceToColor() == pos.state.turn;
+    const addSq_mirror = addSq.index() ^ 56;
+    const removeSq_mirror = removeSq.index() ^ 56;
+    // Friendly
+    const row_us_add = featureIndex(is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) addSq.index() else addSq_mirror);
+    const row_us_rem = featureIndex(is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) removeSq.index() else removeSq_mirror);
+    // Not friendly
+    const row_them_add = featureIndex(!is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) addSq_mirror else addSq.index());
+    const row_them_rem = featureIndex(!is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) removeSq_mirror else removeSq.index());
+
+    var i: usize = 0;
+    while (i < hidden_size) : (i += lanes) {
+        var a: QuantizedVec = acc[pos.state.turn.index()][i..][0..lanes].*;
+        var b: QuantizedVec = acc[pos.state.turn.invert().index()][i..][0..lanes].*;
+        const w1: QuantizedVec = l0w[row_us_add][i..][0..lanes].*;
+        const w11: QuantizedVec = l0w[row_us_rem][i..][0..lanes].*;
+        const w2: QuantizedVec = l0w[row_them_add][i..][0..lanes].*;
+        const w22: QuantizedVec = l0w[row_them_rem][i..][0..lanes].*;
+
+        a += w1 - w11;
+        b += w2 - w22;
+
+        acc[pos.state.turn.index()][i..][0..lanes].* = a;
+        acc[pos.state.turn.invert().index()][i..][0..lanes].* = b;
+    }
 }

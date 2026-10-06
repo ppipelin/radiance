@@ -85,10 +85,10 @@ test "MoveUnmovePiece" {
     var pos: position.Position = try position.Position.setFen(&s, position.start_fen);
 
     var s2: position.State = position.State{};
-    try pos.movePiece(types.Move.init(types.MoveFlags.quiet, types.Square.a2, types.Square.a3), &s2);
+    try pos.movePiece(types.Move.init(types.MoveFlags.quiet, types.Square.a2, types.Square.a3), &s2, null);
 
     var s3: position.State = position.State{};
-    try pos.movePiece(types.Move.init(types.MoveFlags.quiet, types.Square.e7, types.Square.e6), &s3);
+    try pos.movePiece(types.Move.init(types.MoveFlags.quiet, types.Square.e7, types.Square.e6), &s3, null);
 
     try pos.unMovePiece(types.Move.init(types.MoveFlags.quiet, types.Square.e7, types.Square.e6));
 
