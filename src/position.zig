@@ -213,6 +213,7 @@ pub const Position = struct {
 
         if (ss_) |ss| {
             @memcpy(&ss[0].accumulator, &(ss - 1)[0].accumulator);
+            ss[0].dirty_piece = .none;
         }
 
         switch (from_piece.pieceToPieceType()) {
@@ -367,6 +368,7 @@ pub const Position = struct {
         self.removeAdd(from_piece, from, to);
         // Should not trigger with HCE
         if (ss_) |ss| {
+            ss[0].dirty_piece.piece = from_piece;
             ss[0].dirty_piece.from = from;
             ss[0].dirty_piece.to = to;
             // nnue.removeAdd(self, &ss[0].accumulator, from_piece, from, to);
