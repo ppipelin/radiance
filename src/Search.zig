@@ -586,6 +586,8 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
         // Undo move
         try pos.unMovePiece(move);
         ss[1].accumulator_computed = false;
+        ss[1].dirty_piece = .none;
+        ss[1].accumulator_ply = ss[1].ply - 1;
 
         // Useless ?
         if (depth > 1 and self.outOfTime(io))
@@ -761,6 +763,8 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
 
         try pos.unMovePiece(move);
         ss[1].accumulator_computed = false;
+        ss[1].dirty_piece = .none;
+        ss[1].accumulator_ply = ss[1].ply - 1;
 
         if (score > best_score) {
             best_score = score;
