@@ -42,39 +42,38 @@ pub fn loadFromBin(data: []const Quantized) void {
     l1b = data[anchor];
 }
 
-pub inline fn featureIndex(is_friendly: bool, pt: types.PieceType, sq: usize) usize {
+pub inline fn featureIndex(comptime perspective: types.Color, p: types.Piece, sq: types.Square) usize {
+    const is_friendly: bool = p.pieceToColor() == perspective;
     const skip: usize = if (is_friendly) 0 else 1;
-    return (skip * (types.PieceType.nb() - 1) + pt.index() - 1) * types.board_size2 + sq;
+    const sq_oriented: usize = if (perspective == .white) sq.index() else sq.index() ^ 56;
+    return (skip * (types.PieceType.nb() - 1) + p.pieceToPieceType().index() - 1) * types.board_size2 + sq_oriented;
 }
 
 pub fn initAccumulator(acc: *Accumulator) void {
     // Initialize accumulator with bias
-    @memcpy(&acc[0], &l0b);
-    @memcpy(&acc[1], &l0b);
+    @memcpy(&acc[types.Color.white.index()], &l0b);
+    @memcpy(&acc[types.Color.black.index()], &l0b);
 }
 
 pub fn fillAccumulator(acc: *Accumulator, pos: position.Position) void {
     initAccumulator(acc);
 
     for (std.enums.values(types.Color)) |abs_col| {
-        const is_friendly: bool = abs_col == pos.state.turn;
         for (std.enums.values(types.PieceType)) |pt| {
             if (pt == .none)
                 continue;
+
+            const p: types.Piece = pt.pieceTypeToPiece(abs_col);
             for (0..types.board_size2) |sq| {
                 if (pos.bb_colors[abs_col.index()] & pos.bb_pieces[pt.index()] & (@as(u64, 1) << @intCast(sq)) == 0)
                     continue;
 
-                const sq_mirror = sq ^ 56;
-
-                // Friendly
-                const row_us = featureIndex(is_friendly, pt, if (pos.state.turn.isWhite()) sq else sq_mirror);
-                // Not friendly
-                const row_them = featureIndex(!is_friendly, pt, if (pos.state.turn.isWhite()) sq_mirror else sq);
+                const row_white = featureIndex(.white, p, @enumFromInt(sq));
+                const row_black = featureIndex(.black, p, @enumFromInt(sq));
 
                 for (0..hidden_size) |neuron_idx| {
-                    acc[pos.state.turn.index()][neuron_idx] += l0w[row_us][neuron_idx];
-                    acc[pos.state.turn.invert().index()][neuron_idx] += l0w[row_them][neuron_idx];
+                    acc[types.Color.white.index()][neuron_idx] += l0w[row_white][neuron_idx];
+                    acc[types.Color.black.index()][neuron_idx] += l0w[row_black][neuron_idx];
                 }
             }
         }
@@ -131,76 +130,54 @@ pub fn forward(noalias acc: *const Accumulator, noalias pos: *const position.Pos
     return @intCast(o);
 }
 
-pub fn remove(noalias pos: *const position.Position, noalias acc: *Accumulator, p: types.Piece, sq: types.Square) void {
-    const is_friendly: bool = p.pieceToColor() == pos.state.turn;
-    const sq_mirror = sq.index() ^ 56;
-    // Friendly
-    const row_us = featureIndex(is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) sq.index() else sq_mirror);
-    // Not friendly
-    const row_them = featureIndex(!is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) sq_mirror else sq.index());
+pub fn remove(noalias acc: *Accumulator, p: types.Piece, sq: types.Square) void {
+    const row_w = featureIndex(.white, p, sq);
+    const row_b = featureIndex(.black, p, sq);
 
     var i: usize = 0;
     while (i < hidden_size) : (i += lanes) {
-        var a: QuantizedVec = acc[pos.state.turn.index()][i..][0..lanes].*;
-        var b: QuantizedVec = acc[pos.state.turn.invert().index()][i..][0..lanes].*;
-        const w: QuantizedVec = l0w[row_us][i..][0..lanes].*;
-        const w2: QuantizedVec = l0w[row_them][i..][0..lanes].*;
+        const aw: *[lanes]Quantized = acc[types.Color.white.index()][i..][0..lanes];
+        const ab: *[lanes]Quantized = acc[types.Color.black.index()][i..][0..lanes];
+        const ww: QuantizedVec = l0w[row_w][i..][0..lanes].*;
+        const wb: QuantizedVec = l0w[row_b][i..][0..lanes].*;
 
-        a -= w;
-        b -= w2;
-
-        acc[pos.state.turn.index()][i..][0..lanes].* = a;
-        acc[pos.state.turn.invert().index()][i..][0..lanes].* = b;
+        aw.* = @as(QuantizedVec, aw.*) - ww;
+        ab.* = @as(QuantizedVec, ab.*) - wb;
     }
 }
 
-pub fn add(noalias pos: *const position.Position, noalias acc: *Accumulator, p: types.Piece, sq: types.Square) void {
-    const is_friendly: bool = p.pieceToColor() == pos.state.turn;
-    const sq_mirror = sq.index() ^ 56;
-    // Friendly
-    const row_us = featureIndex(is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) sq.index() else sq_mirror);
-    // Not friendly
-    const row_them = featureIndex(!is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) sq_mirror else sq.index());
+pub fn add(noalias acc: *Accumulator, p: types.Piece, sq: types.Square) void {
+    const row_w = featureIndex(.white, p, sq);
+    const row_b = featureIndex(.black, p, sq);
 
     var i: usize = 0;
     while (i < hidden_size) : (i += lanes) {
-        var a: QuantizedVec = acc[pos.state.turn.index()][i..][0..lanes].*;
-        var b: QuantizedVec = acc[pos.state.turn.invert().index()][i..][0..lanes].*;
-        const w: QuantizedVec = l0w[row_us][i..][0..lanes].*;
-        const w2: QuantizedVec = l0w[row_them][i..][0..lanes].*;
+        const aw: *[lanes]Quantized = acc[types.Color.white.index()][i..][0..lanes];
+        const ab: *[lanes]Quantized = acc[types.Color.black.index()][i..][0..lanes];
+        const ww: QuantizedVec = l0w[row_w][i..][0..lanes].*;
+        const wb: QuantizedVec = l0w[row_b][i..][0..lanes].*;
 
-        a += w;
-        b += w2;
-
-        acc[pos.state.turn.index()][i..][0..lanes].* = a;
-        acc[pos.state.turn.invert().index()][i..][0..lanes].* = b;
+        aw.* = @as(QuantizedVec, aw.*) + ww;
+        ab.* = @as(QuantizedVec, ab.*) + wb;
     }
 }
 
-pub fn removeAdd(noalias pos: *const position.Position, noalias acc: *Accumulator, p: types.Piece, removeSq: types.Square, addSq: types.Square) void {
-    const is_friendly: bool = p.pieceToColor() == pos.state.turn;
-    const addSq_mirror = addSq.index() ^ 56;
-    const removeSq_mirror = removeSq.index() ^ 56;
-    // Friendly
-    const row_us_add = featureIndex(is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) addSq.index() else addSq_mirror);
-    const row_us_rem = featureIndex(is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) removeSq.index() else removeSq_mirror);
-    // Not friendly
-    const row_them_add = featureIndex(!is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) addSq_mirror else addSq.index());
-    const row_them_rem = featureIndex(!is_friendly, p.pieceToPieceType(), if (pos.state.turn.isWhite()) removeSq_mirror else removeSq.index());
+pub fn removeAdd(noalias acc: *Accumulator, p: types.Piece, remove_sq: types.Square, add_sq: types.Square) void {
+    const w_add = featureIndex(.white, p, add_sq);
+    const w_rem = featureIndex(.white, p, remove_sq);
+    const b_add = featureIndex(.black, p, add_sq);
+    const b_rem = featureIndex(.black, p, remove_sq);
 
     var i: usize = 0;
     while (i < hidden_size) : (i += lanes) {
-        var a: QuantizedVec = acc[pos.state.turn.index()][i..][0..lanes].*;
-        var b: QuantizedVec = acc[pos.state.turn.invert().index()][i..][0..lanes].*;
-        const w1: QuantizedVec = l0w[row_us_add][i..][0..lanes].*;
-        const w11: QuantizedVec = l0w[row_us_rem][i..][0..lanes].*;
-        const w2: QuantizedVec = l0w[row_them_add][i..][0..lanes].*;
-        const w22: QuantizedVec = l0w[row_them_rem][i..][0..lanes].*;
+        const aw: *[lanes]Quantized = acc[types.Color.white.index()][i..][0..lanes];
+        const ab: *[lanes]Quantized = acc[types.Color.black.index()][i..][0..lanes];
+        const wa: QuantizedVec = l0w[w_add][i..][0..lanes].*;
+        const wr: QuantizedVec = l0w[w_rem][i..][0..lanes].*;
+        const ba: QuantizedVec = l0w[b_add][i..][0..lanes].*;
+        const br: QuantizedVec = l0w[b_rem][i..][0..lanes].*;
 
-        a += w1 - w11;
-        b += w2 - w22;
-
-        acc[pos.state.turn.index()][i..][0..lanes].* = a;
-        acc[pos.state.turn.invert().index()][i..][0..lanes].* = b;
+        aw.* = @as(QuantizedVec, aw.*) +% (wa -% wr);
+        ab.* = @as(QuantizedVec, ab.*) +% (ba -% br);
     }
 }
