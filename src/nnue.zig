@@ -68,12 +68,12 @@ pub fn fillAccumulator(acc: *Accumulator, pos: position.Position) void {
                 if (pos.bb_colors[abs_col.index()] & pos.bb_pieces[pt.index()] & (@as(u64, 1) << @intCast(sq)) == 0)
                     continue;
 
-                const row_white = featureIndex(.white, p, @enumFromInt(sq));
-                const row_black = featureIndex(.black, p, @enumFromInt(sq));
+                const row_w = featureIndex(.white, p, @enumFromInt(sq));
+                const row_b = featureIndex(.black, p, @enumFromInt(sq));
 
                 for (0..hidden_size) |neuron_idx| {
-                    acc[types.Color.white.index()][neuron_idx] += l0w[row_white][neuron_idx];
-                    acc[types.Color.black.index()][neuron_idx] += l0w[row_black][neuron_idx];
+                    acc[types.Color.white.index()][neuron_idx] += l0w[row_w][neuron_idx];
+                    acc[types.Color.black.index()][neuron_idx] += l0w[row_b][neuron_idx];
                 }
             }
         }
@@ -139,11 +139,11 @@ pub fn remove(noalias acc: *Accumulator, p: types.Piece, sq: types.Square) void 
         const target_w: *[lanes]Quantized = acc[types.Color.white.index()][i..][0..lanes];
         const target_b: *[lanes]Quantized = acc[types.Color.black.index()][i..][0..lanes];
 
-        const ww: QuantizedVec = l0w[row_w][i..][0..lanes].*;
-        const wb: QuantizedVec = l0w[row_b][i..][0..lanes].*;
+        const weights_w: QuantizedVec = l0w[row_w][i..][0..lanes].*;
+        const weights_b: QuantizedVec = l0w[row_b][i..][0..lanes].*;
 
-        target_w.* = @as(QuantizedVec, target_w.*) - ww;
-        target_b.* = @as(QuantizedVec, target_b.*) - wb;
+        target_w.* = @as(QuantizedVec, target_w.*) - weights_w;
+        target_b.* = @as(QuantizedVec, target_b.*) - weights_b;
     }
 }
 
@@ -156,11 +156,11 @@ pub fn add(noalias acc: *Accumulator, p: types.Piece, sq: types.Square) void {
         const target_w: *[lanes]Quantized = acc[types.Color.white.index()][i..][0..lanes];
         const target_b: *[lanes]Quantized = acc[types.Color.black.index()][i..][0..lanes];
 
-        const ww: QuantizedVec = l0w[row_w][i..][0..lanes].*;
-        const wb: QuantizedVec = l0w[row_b][i..][0..lanes].*;
+        const weights_w: QuantizedVec = l0w[row_w][i..][0..lanes].*;
+        const weights_b: QuantizedVec = l0w[row_b][i..][0..lanes].*;
 
-        target_w.* = @as(QuantizedVec, target_w.*) + ww;
-        target_b.* = @as(QuantizedVec, target_b.*) + wb;
+        target_w.* = @as(QuantizedVec, target_w.*) + weights_w;
+        target_b.* = @as(QuantizedVec, target_b.*) + weights_b;
     }
 }
 
@@ -175,13 +175,13 @@ pub fn removeAdd(noalias acc: *Accumulator, remove_p: types.Piece, remove_sq: ty
         const target_w: *[lanes]Quantized = acc[types.Color.white.index()][i..][0..lanes];
         const target_b: *[lanes]Quantized = acc[types.Color.black.index()][i..][0..lanes];
 
-        const weights_remove_white: QuantizedVec = l0w[w_rem][i..][0..lanes].*;
-        const weights_remove_black: QuantizedVec = l0w[b_rem][i..][0..lanes].*;
-        const weights_add_white: QuantizedVec = l0w[w_add][i..][0..lanes].*;
-        const weights_add_black: QuantizedVec = l0w[b_add][i..][0..lanes].*;
+        const weights_remove_w: QuantizedVec = l0w[w_rem][i..][0..lanes].*;
+        const weights_remove_b: QuantizedVec = l0w[b_rem][i..][0..lanes].*;
+        const weights_add_w: QuantizedVec = l0w[w_add][i..][0..lanes].*;
+        const weights_add_b: QuantizedVec = l0w[b_add][i..][0..lanes].*;
 
-        target_w.* = @as(QuantizedVec, target_w.*) + (weights_add_white - weights_remove_white);
-        target_b.* = @as(QuantizedVec, target_b.*) + (weights_add_black - weights_remove_black);
+        target_w.* = @as(QuantizedVec, target_w.*) + (weights_add_w - weights_remove_w);
+        target_b.* = @as(QuantizedVec, target_b.*) + (weights_add_b - weights_remove_b);
     }
 }
 
@@ -215,22 +215,22 @@ pub fn removeRemoveAddAdd(
         const target_w: *[lanes]Quantized = acc[types.Color.white.index()][i..][0..lanes];
         const target_b: *[lanes]Quantized = acc[types.Color.black.index()][i..][0..lanes];
 
-        const weights_remove1_white: QuantizedVec = l0w[p1_remove_w][i..][0..lanes].*;
-        const weights_remove1_black: QuantizedVec = l0w[p1_remove_b][i..][0..lanes].*;
-        const weights_remove2_white: QuantizedVec = l0w[p2_remove_w][i..][0..lanes].*;
-        const weights_remove2_black: QuantizedVec = l0w[p2_remove_b][i..][0..lanes].*;
-        const weights_add3_white: QuantizedVec = l0w[p3_add_w][i..][0..lanes].*;
-        const weights_add3_black: QuantizedVec = l0w[p3_add_b][i..][0..lanes].*;
+        const weights_remove1_w: QuantizedVec = l0w[p1_remove_w][i..][0..lanes].*;
+        const weights_remove1_b: QuantizedVec = l0w[p1_remove_b][i..][0..lanes].*;
+        const weights_remove2_w: QuantizedVec = l0w[p2_remove_w][i..][0..lanes].*;
+        const weights_remove2_b: QuantizedVec = l0w[p2_remove_b][i..][0..lanes].*;
+        const weights_add3_w: QuantizedVec = l0w[p3_add_w][i..][0..lanes].*;
+        const weights_add3_b: QuantizedVec = l0w[p3_add_b][i..][0..lanes].*;
 
         if (p4 != .none) {
-            const weights_add4_white: QuantizedVec = l0w[p4_add_w][i..][0..lanes].*;
-            const weights_add4_black: QuantizedVec = l0w[p4_add_b][i..][0..lanes].*;
+            const weights_add4_w: QuantizedVec = l0w[p4_add_w][i..][0..lanes].*;
+            const weights_add4_b: QuantizedVec = l0w[p4_add_b][i..][0..lanes].*;
 
-            target_w.* = @as(QuantizedVec, target_w.*) + (weights_add3_white + weights_add4_white - weights_remove1_white - weights_remove2_white);
-            target_b.* = @as(QuantizedVec, target_b.*) + (weights_add3_black + weights_add4_black - weights_remove1_black - weights_remove2_black);
+            target_w.* = @as(QuantizedVec, target_w.*) + (weights_add3_w + weights_add4_w - weights_remove1_w - weights_remove2_w);
+            target_b.* = @as(QuantizedVec, target_b.*) + (weights_add3_b + weights_add4_b - weights_remove1_b - weights_remove2_b);
         } else {
-            target_w.* = @as(QuantizedVec, target_w.*) + (weights_add3_white - weights_remove1_white - weights_remove2_white);
-            target_b.* = @as(QuantizedVec, target_b.*) + (weights_add3_black - weights_remove1_black - weights_remove2_black);
+            target_w.* = @as(QuantizedVec, target_w.*) + (weights_add3_w - weights_remove1_w - weights_remove2_w);
+            target_b.* = @as(QuantizedVec, target_b.*) + (weights_add3_b - weights_remove1_b - weights_remove2_b);
         }
     }
 }
