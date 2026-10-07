@@ -316,7 +316,7 @@ pub fn evaluateNnue(pos: *const position.Position, ss_: ?[*]Search.Stack) types.
             const dp: types.DirtyPiece = ss_to_update[0].dirty_piece;
 
             // Promotion
-            if (dp.from == .none) {
+            if (dp.piece == .none) {
                 if (dp.remove_additional_piece != .none) {
                     nnue.remove(pos, acc, dp.remove_additional_piece, dp.remove_additional_square);
                 }
@@ -327,6 +327,9 @@ pub fn evaluateNnue(pos: *const position.Position, ss_: ?[*]Search.Stack) types.
                 nnue.remove(pos, acc, dp.remove_piece, dp.remove_square);
             if (dp.add_piece != .none)
                 nnue.add(pos, acc, dp.add_piece, dp.add_square);
+
+            ss_to_update[0].accumulator_computed = true;
+            ss_to_update[0].accumulator_ply = ss_to_update[0].ply;
             // nnue.fillAccumulator(&ss[0].accumulator, pos.*);
             // ss[0].accumulator_ply = ss[0].ply;
             // ss[0].accumulator_computed = true;

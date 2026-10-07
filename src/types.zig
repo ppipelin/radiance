@@ -292,31 +292,32 @@ pub const Piece = enum(u8) {
 };
 
 pub const DirtyPiece = struct {
-    piece: Piece,
-
     // Stay .none for promotion
+    piece: Piece,
     from: Square,
     to: Square,
 
+    remove_piece: Piece,
     remove_square: Square,
-    remove_additional_square: Square, // Used for promo capture
+
+    add_piece: Piece,
     add_square: Square,
 
-    remove_piece: Piece,
+    // Used for promo capture
     remove_additional_piece: Piece,
-    add_piece: Piece,
+    remove_additional_square: Square,
 
     /// A none DirtyPiece
     pub const none: DirtyPiece = .{
         .piece = .none,
         .from = .none,
         .to = .none,
-        .remove_square = .none,
-        .remove_additional_square = .none,
-        .add_square = .none,
         .remove_piece = .none,
-        .remove_additional_piece = .none,
+        .remove_square = .none,
         .add_piece = .none,
+        .add_square = .none,
+        .remove_additional_piece = .none,
+        .remove_additional_square = .none,
     };
 };
 

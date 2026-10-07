@@ -212,7 +212,9 @@ pub const Position = struct {
         }
 
         if (ss_) |ss| {
-            @memcpy(&ss[0].accumulator, &(ss - 1)[0].accumulator);
+            const parent = &(ss - 1)[0];
+            ss[0].accumulator_computed = false;
+            ss[0].accumulator_ply = if (parent.accumulator_computed) parent.ply else parent.accumulator_ply;
             ss[0].dirty_piece = .none;
         }
 
@@ -286,7 +288,7 @@ pub const Position = struct {
                     self.add(from_piece, from);
                     if (ss_) |ss| {
                         ss[0].dirty_piece.add_piece = from_piece;
-                        ss[0].dirty_piece.add_square = from;
+                        ss[0].dirty_piece.add_square = to; // Adding to TO square as later removeAdd is removed
                         // nnue.add(self, &ss[0].accumulator, from_piece, from);
                     }
                     self.state.material_key ^= tables.hash_psq[from_piece.index()][from.index()];
@@ -368,9 +370,11 @@ pub const Position = struct {
         self.removeAdd(from_piece, from, to);
         // Should not trigger with HCE
         if (ss_) |ss| {
-            ss[0].dirty_piece.piece = from_piece;
-            ss[0].dirty_piece.from = from;
-            ss[0].dirty_piece.to = to;
+            if (!move.isPromotion()) {
+                ss[0].dirty_piece.piece = from_piece;
+                ss[0].dirty_piece.from = from;
+                ss[0].dirty_piece.to = to;
+            }
             // nnue.removeAdd(self, &ss[0].accumulator, from_piece, from, to);
         }
 
@@ -487,7 +491,10 @@ pub const Position = struct {
         self.state = state;
 
         if (ss_) |ss| {
-            @memcpy(&ss[0].accumulator, &(ss - 1)[0].accumulator);
+            const parent = &(ss - 1)[0];
+            ss[0].accumulator_computed = false;
+            ss[0].accumulator_ply = if (parent.accumulator_computed) parent.ply else parent.accumulator_ply;
+            ss[0].dirty_piece = .none;
         }
 
         if (self.state.previous != null and self.state.previous.?.en_passant != Square.none) {
