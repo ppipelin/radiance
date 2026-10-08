@@ -360,7 +360,7 @@ fn cmd_setoption(io: std.Io, allocator: std.mem.Allocator, tokens: anytype, opti
         }
         if (std.ascii.eqlIgnoreCase(name, "EvalFile")) {
             const l0_wb = 768 * nnue.hidden_size + nnue.hidden_size;
-            const l1_wb = nnue.hidden_size * 2 + 1;
+            const l1_wb = nnue.hidden_size * 2 * nnue.output_size + 1 * nnue.output_size;
             const buffer: []u8 = try allocator.alloc(u8, (l0_wb + l1_wb) * @sizeOf(nnue.Quantized) + 64);
             defer allocator.free(buffer);
 
