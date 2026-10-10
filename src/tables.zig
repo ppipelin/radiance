@@ -128,7 +128,7 @@ pub fn setTranspositionTableCapacity(size: usize) !void {
 
 // Will store pawn structures once computed
 // Computed every pawn move/capture
-pub var pawn_table: std.AutoHashMapUnmanaged(Key, std.meta.Tuple(&[_]type{Value})) = .empty;
+pub var pawn_table: std.AutoHashMapUnmanaged(Key, @Tuple(&[_]type{Value})) = .empty;
 
 pub var hash_half_move: [256]Key = @splat(0);
 

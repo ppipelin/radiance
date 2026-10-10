@@ -4,8 +4,7 @@ const std = @import("std");
 const types = @import("types.zig");
 const variable = @import("variable.zig");
 
-const Tuple = std.meta.Tuple;
-const Triplet = Tuple(&.{ []const u8, Wdl });
+const Triplet = @Tuple(&.{ []const u8, Wdl });
 
 const Wdl = enum(u2) {
     loss,

@@ -1,8 +1,8 @@
 .{
     .name = .radiance,
-    .version = "4.4.0",
+    .version = "5.0.0",
     .fingerprint = 0x130a8d5a00c02974,
-    .minimum_zig_version = "0.16.0",
+    .minimum_zig_version = "0.17.0",
     .paths = .{
         "build.zig",
         "build.zig.zon",

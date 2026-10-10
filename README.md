@@ -41,7 +41,10 @@
 
 ## Evaluation
 
-- [Tuned](https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function) Piece-square Tables
+- Since [radiance_5.0], default evaluation is via a self-play-trained NNUE with dual perspective.
+  - Current architecture is (768 → 512)*2 → 1 and trained from 6 million games
+
+- [Tuned](https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function) Piece-square Tables with setoption PSQ
 - [_AlphaZero_ Average Piece Values](https://arxiv.org/pdf/2009.04374)
 - Tapered Evaluation
 - Transposition Table Evaluation
@@ -58,20 +61,20 @@ CCRL [blitz benchmark](https://computerchess.org.uk/ccrl/404/cgi/compare_engines
 
 | Rank | Name             | CCRL  |  Elo |  + |  - | games | score | oppo. | draws |
 | ---- | ---------------- | ----- | ---- | -- | -- | ----- | ----- | ----- | ----- |
-|    1 | [radiance_4.4]   |       | 2243 | 14 | 14 |  3456 |   88% |  1834 |   11% |
-|    2 | [radiance_4.3]   |  2071 | 2071 |  9 |  9 |  7008 |   77% |  1816 |   14% |
-|    3 | [radiance_4.2]   |  1803 | 1917 |  8 |  8 |  7008 |   57% |  1861 |   20% |
-|    4 | [radiance_4.1]   |  1674 | 1754 |  8 |  8 |  8283 |   46% |  1762 |   15% |
-|    5 | [radiance_4.0.1] |       | 1596 |  8 |  8 | 15176 |   61% |  1413 |    8% |
-|    6 | [radiance_3.5]   |  1321 | 1338 |  8 |  8 | 10216 |   66% |  1141 |   11% |
-|    7 | [radiance_3.4]   |  1299 | 1314 |  8 |  8 | 10218 |   64% |  1144 |   11% |
-|    8 | [radiance_3.3]   |       | 1262 |  8 |  8 | 10216 |   59% |  1150 |   11% |
-|    9 | [radiance_3.2]   |       | 1251 |  8 |  8 | 10215 |   58% |  1152 |   11% |
-|   10 | [radiance_3.1.1] |  1117 | 1081 |  8 |  8 |  9552 |   45% |  1131 |    9% |
-|   11 | [radiance_3.0.1] |       |  804 |  9 |  9 |  9552 |   20% |  1166 |    9% |
-|   12 | [radiance_2.4]   |       |  763 |  9 |  9 |  9552 |   16% |  1171 |   10% |
-|   13 | [radiance_2.3]   |   872 |  718 |  9 | 10 |  9552 |   13% |  1177 |    9% |
-
+|    1 | [radiance_5.0]   |       | 2839 | 32 | 29 |  7409 |   99% |  1923 |    1% |
+|    2 | [radiance_4.4]   |       | 2243 |  9 |  9 |  9674 |   75% |  1996 |   10% |
+|    3 | [radiance_4.3]   |  2071 | 2075 |  8 |  8 |  9674 |   59% |  2031 |   13% |
+|    4 | [radiance_4.2]   |  1803 | 1926 |  8 |  8 |  9674 |   44% |  2063 |   16% |
+|    5 | [radiance_4.1]   |  1674 | 1764 |  8 |  8 | 10949 |   36% |  1966 |   12% |
+|    6 | [radiance_4.0.1] |       | 1607 |  8 |  8 | 17841 |   52% |  1594 |    7% |
+|    7 | [radiance_3.5]   |  1321 | 1348 |  8 |  8 | 10216 |   66% |  1151 |   11% |
+|    8 | [radiance_3.4]   |  1299 | 1324 |  8 |  8 | 10218 |   64% |  1154 |   11% |
+|    9 | [radiance_3.3]   |       | 1272 |  8 |  8 | 10216 |   59% |  1160 |   11% |
+|   10 | [radiance_3.2]   |       | 1261 |  7 |  8 | 10215 |   58% |  1162 |   11% |
+|   11 | [radiance_3.1.1] |  1117 | 1091 |  8 |  8 |  9552 |   45% |  1141 |    9% |
+|   12 | [radiance_3.0.1] |       |  815 |  9 |  9 |  9552 |   20% |  1176 |    9% |
+|   13 | [radiance_2.4]   |       |  773 |  9 |  9 |  9552 |   16% |  1181 |   10% |
+|   14 | [radiance_2.3]   |   872 |  728 | 10 | 10 |  9552 |   13% |  1187 |    9% |
 
 ## Getting started
 
@@ -113,7 +116,12 @@ zig build test --release=safe
 - `setoption name <string> [value <string>]`
 - `ucinewgame`
 - `position [(fen <string> | startpos | kiwi | lasker) [moves <string>...]]`
-- `go [movetime <int> | wtime <int> | btime <int> | winc <int> | binc <int> | nodes <int> | depth <int> | searchmoves <string>... | infinite | ponder | perft <int>]`
+- `go movetime <int>`
+- `go ([wtime <int> [winc <int>]] [btime <int> [binc <int>]] | nodes <int> | depth <int>) [ponder]`
+- `go searchmoves <string>...`
+- `go perft <int>]`
+- `go infinite`
+- `wait`
 - `stop`
 - `ponderhit`
 - `d`
@@ -136,6 +144,7 @@ This project was originaly written in C++ before 4.0 version and archived under 
 
 _I'm radiant!_
 
+[radiance_5.0]: https://github.com/ppipelin/radiance/releases/tag/5.0
 [radiance_4.4]: https://github.com/ppipelin/radiance/releases/tag/4.4
 [radiance_4.3]: https://github.com/ppipelin/radiance/releases/tag/4.3
 [radiance_4.2]: https://github.com/ppipelin/radiance/releases/tag/4.2

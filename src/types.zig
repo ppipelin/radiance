@@ -4,8 +4,8 @@ const position = @import("position.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 
-pub const major = 4;
-pub const minor = 4;
+pub const major = 5;
+pub const minor = 0;
 pub const patch = 0;
 
 pub fn computeVersion() []const u8 {
@@ -51,24 +51,24 @@ pub const Square = enum(u8) {
     // zig fmt: on
 
     pub inline fn inc(self: *Square) *Square {
-        self.* = @enumFromInt(self.index() + 1);
+        self.* = @fromBackingInt(@intCast(self.index() + 1));
         return self;
     }
 
     pub inline fn add(self: Square, d: Direction) Square {
-        return @enumFromInt(@as(i9, self.index()) + d.index());
+        return @fromBackingInt(@intCast(@as(i9, self.index()) + d.index()));
     }
 
     pub inline fn sub(self: Square, d: Direction) Square {
-        return @enumFromInt(@as(i9, self.index()) - d.index());
+        return @fromBackingInt(@intCast(@as(i9, self.index()) - d.index()));
     }
 
     pub inline fn rank(self: Square) Rank {
-        return @enumFromInt(self.index() >> 3);
+        return @fromBackingInt(@intCast(self.index() >> 3));
     }
 
     pub inline fn file(self: Square) File {
-        return @enumFromInt(self.index() & 0b111);
+        return @fromBackingInt(@intCast(self.index() & 0b111));
     }
 
     pub inline fn diagonal(self: Square) u4 {
@@ -80,7 +80,7 @@ pub const Square = enum(u8) {
     }
 
     pub inline fn index(self: Square) u8 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 
     pub inline fn relativeSquare(self: Square, col: Color) Square {
@@ -88,12 +88,12 @@ pub const Square = enum(u8) {
         if (col.isWhite()) {
             return self;
         } else {
-            return @enumFromInt(@as(u8, self.rank().relativeRank(col).index()) * board_size + @as(u8, self.file().index()));
+            return @fromBackingInt(@intCast(@as(u8, self.rank().relativeRank(col).index()) * board_size + @as(u8, self.file().index())));
         }
     }
 
     pub inline fn sqToBB(self: Square) Bitboard {
-        const sq: u6 = @intCast(@intFromEnum(self));
+        const sq: u6 = @intCast(@backingInt(self));
         return intToBB(sq);
     }
 
@@ -131,11 +131,11 @@ pub const Direction = enum(i8) {
     // south_south = @intFromEnum(Direction.south) * 2,
 
     pub inline fn index(self: Direction) i8 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 
     pub inline fn relativeDir(self: Direction, col: Color) Direction {
-        return if (col.isWhite()) self else @enumFromInt(-self.index());
+        return if (col.isWhite()) self else @fromBackingInt(@intCast(-self.index()));
     }
 };
 
@@ -150,7 +150,7 @@ pub const File = enum(u3) {
     fh,
 
     pub inline fn index(self: File) u3 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 };
 
@@ -165,11 +165,11 @@ pub const Rank = enum(u3) {
     r8,
 
     pub inline fn index(self: Rank) u3 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 
     pub inline fn relativeRank(self: Rank, col: Color) Rank {
-        return if (col.isWhite()) self else @enumFromInt(Rank.r8.index() - self.index());
+        return if (col.isWhite()) self else @fromBackingInt(@intCast(Rank.r8.index() - self.index()));
     }
 };
 
@@ -187,7 +187,7 @@ pub const PieceType = enum(u3) {
     }
 
     pub inline fn index(self: PieceType) u3 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 
     pub inline fn isSliding(self: PieceType) bool {
@@ -242,7 +242,7 @@ pub const Piece = enum(u8) {
     }
 
     pub inline fn index(self: Piece) u8 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 
     pub inline fn value(self: Piece) u8 {
@@ -277,7 +277,7 @@ pub const Piece = enum(u8) {
 
     pub inline fn pieceToColor(self: Piece) Color {
         std.debug.assert(self != Piece.none);
-        return @enumFromInt(@intFromBool(self.value() < 'a'));
+        return @fromBackingInt(@intCast(@intFromBool(self.value() < 'a')));
     }
 
     /// Find char c in arr
@@ -330,11 +330,11 @@ pub const Color = enum(u1) {
     }
 
     pub inline fn index(self: Color) u1 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 
     pub inline fn invert(self: Color) Color {
-        return @enumFromInt(self.index() ^ 1);
+        return @fromBackingInt(@intCast(self.index() ^ 1));
     }
 
     pub inline fn isWhite(self: Color) bool {
@@ -363,8 +363,8 @@ pub const Move = packed struct(u16) {
         if ((str[0] - 'a' >= board_size or str[1] - '1' >= board_size or str[2] - 'a' >= board_size or str[3] - '1' >= board_size))
             return error.MoveBeyondBoard;
 
-        var from: Square = @enumFromInt((str[0] - 'a') + (str[1] - '1') * board_size);
-        var to: Square = @enumFromInt((str[2] - 'a') + (str[3] - '1') * board_size);
+        var from: Square = @fromBackingInt(@intCast((str[0] - 'a') + (str[1] - '1') * board_size));
+        var to: Square = @fromBackingInt(@intCast((str[2] - 'a') + (str[3] - '1') * board_size));
         const from_piece: Piece = pos.board[from.index()];
         const to_piece: Piece = pos.board[to.index()];
 
@@ -408,19 +408,19 @@ pub const Move = packed struct(u16) {
             }
         }
 
-        return Move.init(@enumFromInt(flags), from, to);
+        return Move.init(@fromBackingInt(@intCast(flags)), from, to);
     }
 
     pub inline fn getFlags(self: Move) MoveFlags {
-        return @enumFromInt(self.flags);
+        return @fromBackingInt(@intCast(self.flags));
     }
 
     pub inline fn getFrom(self: Move) Square {
-        return @enumFromInt(self.from);
+        return @fromBackingInt(@intCast(self.from));
     }
 
     pub inline fn getTo(self: Move) Square {
-        return @enumFromInt(self.to);
+        return @fromBackingInt(@intCast(self.to));
     }
 
     pub inline fn getFromTo(self: Move) u12 {
@@ -578,7 +578,7 @@ pub const MoveFlags = enum(u4) {
     }
 
     pub inline fn index(self: MoveFlags) u4 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 };
 
@@ -588,7 +588,7 @@ pub const GenerationType = enum(u3) {
     all,
 
     pub inline fn index(self: GenerationType) u8 {
-        return @intFromEnum(self);
+        return @backingInt(self);
     }
 };
 
@@ -700,5 +700,5 @@ pub inline fn lsb(x: Bitboard) u7 {
 pub inline fn popLsb(noalias x: *Bitboard) Square {
     const l: u7 = lsb(x.*);
     x.* &= x.* - 1;
-    return @enumFromInt(l);
+    return @fromBackingInt(@intCast(l));
 }

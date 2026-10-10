@@ -285,14 +285,21 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 \\  isready
                 \\  setoption name <id> [value <x>]
                 \\  ucinewgame
-                \\  position [fen <string> | startpos | kiwi | lasker] [moves <string>...]
-                \\  go [movetime <int> | [wtime <int>] [btime <int>] [winc <int>] [binc <int>] | depth <int> | infinite | perft <int>]
+                \\  position [(fen <string> | startpos | kiwi | lasker) [moves <string>...]]
+                \\  go movetime <int>
+                \\  go ([wtime <int> [winc <int>]] [btime <int> [binc <int>]] | nodes <int> | depth <int>) [ponder]
+                \\  go searchmoves <string>...
+                \\  go perft <int>]
+                \\  go infinite
+                \\  wait
                 \\  stop
                 \\  ponderhit
                 \\  d
                 \\  bench
                 \\  benchv
+                \\  genfens <int> [seed <int64>]
                 \\  eval
+                \\  evals
                 \\  quit
                 \\
             , .{});

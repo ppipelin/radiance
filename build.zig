@@ -57,9 +57,7 @@ pub fn build(b: *std.Build) void {
 
     // This allows the user to pass arguments to the application in the build
     // command itself, like this: `zig build run -- arg1 arg2 etc`
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
+    run_cmd.addPassthruArgs();
 
     // This creates a build step. It will be visible in the `zig build --help` menu,
     // and can be selected like this: `zig build run`
@@ -175,6 +173,10 @@ pub fn build(b: *std.Build) void {
                 .optimize = .ReleaseFast,
                 .link_libc = true,
             }),
+        });
+
+        deploy_exe.root_module.addAnonymousImport("nnue_data", .{
+            .root_source_file = nnue_zig,
         });
 
         const deploy_cmd = b.addInstallArtifact(deploy_exe, .{});

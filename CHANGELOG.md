@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0] - 2026-10-10
+
 ### Added
 
+- NNUE evaluation
 - `genfens`
 - Lazy SMP
 - Late move pruning
@@ -392,7 +395,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - UCI `position` command
 - `Random` search
 
-[Unreleased]: https://github.com/ppipelin/radiance/compare/4.4...HEAD
+[Unreleased]: https://github.com/ppipelin/radiance/compare/5.0...HEAD
+[5.0]: https://github.com/ppipelin/radiance/compare/4.4...5.5
 [4.4]: https://github.com/ppipelin/radiance/compare/4.3...4.4
 [4.3]: https://github.com/ppipelin/radiance/compare/4.2...4.3
 [4.2]: https://github.com/ppipelin/radiance/compare/4.1...4.2
