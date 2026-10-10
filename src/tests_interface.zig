@@ -1,5 +1,6 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
+const nnue = @import("nnue.zig");
 const position = @import("position.zig");
 const Search = @import("Search.zig");
 const std = @import("std");
@@ -223,10 +224,13 @@ test "SearchLeak" {
 
     try thread_pool.init(io, allocator);
 
+    nnue.initNetwork();
+
     const input =
         \\position kiwi
         \\eval
         \\go depth 8
+        \\wait
     ;
 
     var stdin = std.Io.Reader.fixed(input);
@@ -276,7 +280,7 @@ test "SearchLeakNoInterface" {
     thread_data.eval = evaluate.evaluateTable;
     try thread_pool.startThinking(thread_data);
     try thread_pool.finishSearchs();
-    try pos.moveNull(&states.items[0]);
+    try pos.moveNull(&states.items[0], null);
 
     try thread_pool.deinit();
 }

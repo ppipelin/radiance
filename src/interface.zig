@@ -1,5 +1,6 @@
 const evaluate = @import("evaluate.zig");
 const interface = @import("interface.zig");
+const nnue = @import("nnue.zig");
 const position = @import("position.zig");
 const Search = @import("Search.zig");
 const std = @import("std");
@@ -46,16 +47,21 @@ pub const Option = struct {
     pub inline fn initCheck(allocator: std.mem.Allocator, default: []const u8, current: []const u8) !Option {
         return Option{ .type = "check", .default_value = try allocator.dupe(u8, default), .current_value = try allocator.dupe(u8, current) };
     }
+
+    pub inline fn initString(allocator: std.mem.Allocator, default: []const u8, current: []const u8) !Option {
+        return Option{ .type = "string", .default_value = try allocator.dupe(u8, default), .current_value = try allocator.dupe(u8, current) };
+    }
 };
 
 pub fn initOptions(allocator: std.mem.Allocator, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
     try options.put(allocator, "Hash", try Option.initSpin(allocator, "256", 0, 65535));
     try tables.setTranspositionTableCapacity(256);
     try options.put(allocator, "Threads", try Option.initSpin(allocator, "1", 1, 1024));
-    try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "PSQ var PSQ var Shannon", "PSQ"));
+    try options.put(allocator, "Evaluation", try Option.initCombo(allocator, "NNUE var NNUE var PSQ var Shannon var Materialist", "NNUE"));
     try options.put(allocator, "Search", try Option.initCombo(allocator, "NegamaxAlphaBeta var NegamaxAlphaBeta var Random", "NegamaxAlphaBeta"));
     try options.put(allocator, "UCI_Chess960", try Option.initCheck(allocator, "false", "false"));
     try options.put(allocator, "Ponder", try Option.initCheck(allocator, "false", "false"));
+    try options.put(allocator, "EvalFile", try Option.initString(allocator, "null.nnue", "null.nnue"));
     for (variable.tunables) |tunable| {
         const min: i32 = @intCast(tunable.min);
         const max: i32 = @intCast(tunable.max);
@@ -126,6 +132,11 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
         if (std.ascii.eqlIgnoreCase("stop", primary_token)) {
             existing_command = true;
             try thread_pool.stopSearchs();
+        }
+
+        if (std.ascii.eqlIgnoreCase("wait", primary_token)) {
+            existing_command = true;
+            try thread_pool.finishSearchs();
         }
 
         if (std.ascii.eqlIgnoreCase("license", primary_token) or std.ascii.eqlIgnoreCase("--license", primary_token)) {
@@ -221,7 +232,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             existing_command = true;
             var tmp_options: std.StringArrayHashMapUnmanaged(Option) = try options.clone(allocator);
             defer tmp_options.deinit(allocator);
-            cmd_setoption(allocator, &tokens, &options) catch |err| {
+            cmd_setoption(io, allocator, &tokens, &options) catch |err| {
                 try stdout.print("Command setoption failed with error {}\n", .{err});
                 options.deinit(allocator);
                 options = try tmp_options.clone(allocator);
@@ -240,13 +251,28 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             try stdout.flush();
         }
 
-        if (std.ascii.eqlIgnoreCase("eval", primary_token)) {
+        if (std.ascii.eqlIgnoreCase("eval", primary_token) or std.ascii.eqlIgnoreCase("evals", primary_token)) {
+            const evals: bool = std.ascii.eqlIgnoreCase("evals", primary_token);
             existing_command = true;
             const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
-            if (std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
-                try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(&pos)});
-            } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
-                try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos)});
+
+            if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "Materialist")) {
+                try stdout.print("Eval Materialist: {}\n", .{try evaluate.evaluateMaterialist(&pos, null)});
+            }
+            if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
+                try stdout.print("Eval Shannon: {}\n", .{try evaluate.evaluateShannon(&pos, null)});
+            }
+            if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
+                try stdout.print("Eval Table: {}\n", .{try evaluate.evaluateTable(&pos, null)});
+            }
+            if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
+                var stack: [1]Search.Stack = @splat(Search.Stack{});
+                const ss: [*]Search.Stack = &stack;
+
+                nnue.fillAccumulator(&ss[0].accumulator, pos);
+                ss[0].accumulator_ply = ss[0].ply;
+                ss[0].accumulator_computed = true;
+                try stdout.print("Eval NNUE: {}\n", .{try evaluate.evaluateNnue(&pos, ss)});
             }
             try stdout.flush();
         }
@@ -277,7 +303,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
     try thread_pool.terminateThreads(); // Terminate before options and states are deallocated
 }
 
-fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
+fn cmd_setoption(io: std.Io, allocator: std.mem.Allocator, tokens: anytype, options: *std.StringArrayHashMapUnmanaged(Option)) !void {
     var name: []const u8 = undefined;
     var value: []const u8 = undefined;
 
@@ -337,6 +363,23 @@ fn cmd_setoption(allocator: std.mem.Allocator, tokens: anytype, options: *std.St
                 }
             }
         }
+        if (std.ascii.eqlIgnoreCase(name, "EvalFile")) {
+            const l0_wb = 768 * nnue.hidden_size + nnue.hidden_size;
+            const l1_wb = nnue.hidden_size * 2 + 1;
+            const buffer: []u8 = try allocator.alloc(u8, (l0_wb + l1_wb) * @sizeOf(nnue.Quantized) + 64);
+            defer allocator.free(buffer);
+
+            const nnue_bytes = try std.Io.Dir.readFile(std.Io.Dir.cwd(), io, value, buffer);
+
+            var nnue_content: []nnue.Quantized = try allocator.alloc(nnue.Quantized, nnue_bytes.len / 2);
+            defer allocator.free(nnue_content);
+
+            for (nnue_content, 0..) |*value_content, i| {
+                value_content.* = std.mem.readInt(nnue.Quantized, nnue_bytes[i * 2 ..][0..2], .little);
+            }
+
+            nnue.loadFromBin(nnue_content[0..]);
+        }
         allocator.free(option.current_value);
         option.current_value = try allocator.dupe(u8, value);
     } else {
@@ -384,7 +427,7 @@ fn cmd_position(noalias pos: *position.Position, tokens: anytype, noalias states
 
         while (token != null) : (token = tokens_rest_iterator.next()) {
             states.appendAssumeCapacity(position.State{});
-            try pos.movePiece(try types.Move.initFromStr(pos, token.?), &states.items[states.items.len - 1]);
+            try pos.movePiece(try types.Move.initFromStr(pos, token.?), &states.items[states.items.len - 1], null);
         }
     }
 }
@@ -503,6 +546,8 @@ fn cmd_go(io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noal
                 thread_data.eval = evaluate.evaluateShannon;
             } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
                 thread_data.eval = evaluate.evaluateTable;
+            } else if (std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
+                thread_data.eval = evaluate.evaluateNnue;
             }
             try thread_pool.startThinking(thread_data);
         } else {
@@ -559,7 +604,7 @@ fn cmd_genfens(io: std.Io, stdout: *std.Io.Writer, tokens: anytype) !void {
                 position.orderMoves(move_list[0..move_len], &scores);
 
                 const selected_idx: usize = rand.intRangeAtMost(u8, 0, @min(10, move_len - 1));
-                try pos.movePiece(move_list[selected_idx], &states[d + 1]);
+                try pos.movePiece(move_list[selected_idx], &states[d + 1], null);
             }
 
             if (checkmated)

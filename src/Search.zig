@@ -1,5 +1,6 @@
 const interface = @import("interface.zig");
 const movepick = @import("movepick.zig");
+const nnue = @import("nnue.zig");
 const position = @import("position.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
@@ -59,11 +60,17 @@ const RootMove = struct {
 };
 
 // Keep the informations between nodes at different depth
-const Stack = struct {
+pub const Stack = struct {
     // pv: [types.max_plies]types.Move = @splat(.none),
+    accumulator: nnue.Accumulator = @splat(@splat(0)),
+    dirty_piece: types.DirtyPiece = .none,
+
     pv: ?*[types.max_plies]types.Move = null,
     killers: [2]?types.Move = [_]?types.Move{ null, null },
+
     ply: u8 = 0,
+    accumulator_ply: u8 = 0, // Last update of accumulator
+    accumulator_computed: bool = false,
 };
 
 pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, depth: types.Depth, comptime is_960: bool, verbose: bool) !u64 {
@@ -91,7 +98,7 @@ pub fn perft(allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: 
     for (move_list[0..move_len]) |move| {
         var s: position.State = position.State{};
 
-        try pos.movePiece(move, &s);
+        try pos.movePiece(move, &s, null);
 
         const nodes_number = try (perft(allocator, stdout, pos, depth - 1, is_960, false));
         nodes += nodes_number;
@@ -135,7 +142,7 @@ pub fn perftTest(allocator: std.mem.Allocator, noalias pos: *position.Position, 
         const score_before = [_]types.Value{ pos.score_material_w, pos.score_material_b };
         const key_before = pos.state.material_key;
 
-        try pos.movePiece(move, &s);
+        try pos.movePiece(move, &s, null);
 
         const nodes_number = try (perftTest(allocator, pos, depth - 1, is_960));
         nodes += nodes_number;
@@ -181,7 +188,7 @@ pub fn searchRandom(io: std.Io, noalias pos: *position.Position, comptime is_960
 }
 
 /// Has to be called by thread_pool only
-pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, thread_idx: usize, eval: *const fn (pos: *const position.Position) types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
+pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocator, stdout: *std.Io.Writer, noalias pos: *position.Position, thread_idx: usize, eval: *const fn (pos: *const position.Position, ss: ?[*]Stack) error{TestUnexpectedResult}!types.Value, options: std.StringArrayHashMapUnmanaged(interface.Option)) !void {
     const is_960: bool = std.mem.eql(u8, options.get("UCI_Chess960").?.current_value, "true");
 
     try self.nextSearch();
@@ -212,6 +219,11 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     }
     ss[0].pv = &pv;
 
+    // Should not trigger with HCE
+    nnue.fillAccumulator(&ss[0].accumulator, pos.*);
+    ss[0].accumulator_ply = ss[0].ply;
+    ss[0].accumulator_computed = true;
+
     var move_list: [types.max_moves]types.Move = @splat(.none);
     var move_len: usize = 0;
 
@@ -233,7 +245,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
         const tt_hit: bool = tt_entry.flags.bound != .none and tt_entry.isEqualKey(pos.state.material_key);
 
         // Update the mate score retrieved from the table to consider the current ply
-        const score: types.Value = if (tt_hit) types.valueFromTT(tt_entry.value, ss[0].ply) else eval(pos);
+        const score: types.Value = if (tt_hit) types.valueFromTT(tt_entry.value, ss[0].ply) else try eval(pos, ss);
 
         try stdout.print("info depth 0 score ", .{});
         if (types.isValueMate(score)) {
@@ -346,7 +358,7 @@ pub fn iterativeDeepening(self: *Search, io: std.Io, allocator: std.mem.Allocato
     return;
 }
 
-fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, eval: *const fn (pos: *const position.Position) types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
+fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, eval: *const fn (pos: *const position.Position, ss: ?[*]Stack) error{TestUnexpectedResult}!types.Value, alpha_: types.Value, beta_: types.Value, depth_: types.Depth, comptime is_960: bool, is_null_move: bool) !types.Value {
     const pv_node: bool = nodetype != NodeType.non_pv;
     const root_node: bool = nodetype == NodeType.root;
 
@@ -358,7 +370,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
 
     // 1. Quiescence search at depth 0
     if (depth <= 0) {
-        // return eval(pos);
+        // return eval(pos, ss);
         return self.quiesce(io, allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, eval, alpha, beta, is_null_move);
     }
 
@@ -421,7 +433,8 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
             // }
             pos.state.static_eval = tt_static;
         } else {
-            pos.state.static_eval = eval(pos);
+            // pos.nnue.fillAccumulator(pos.*);
+            pos.state.static_eval = try eval(pos, ss);
             tables.writeTranspositionTable(key, types.value_none, pos.state.static_eval, 0, .none, .none, self.age);
         }
     }
@@ -437,7 +450,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
         const razoring_threshold: types.Value = alpha -| tables.material[types.PieceType.rook.index()] -| tables.material[types.PieceType.pawn.index()] *| depth *| depth;
         const razoring: bool = pos.state.static_eval < razoring_threshold;
         if (!pv_node and razoring) {
-            // return eval(pos);
+            // return eval(pos, ss);
             return self.quiesce(io, allocator, if (pv_node) NodeType.pv else NodeType.non_pv, ss, pos, eval, alpha, beta, is_null_move);
         }
 
@@ -452,7 +465,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
         if (!is_null_move and depth >= 3 and !pos.endgame(pos.state.turn.invert()) and pos.state.static_eval > beta) {
             const tapered: types.Depth = @intCast(@min(@divTrunc(pos.state.static_eval -| beta, variable.getValue("null_move_taper")), 6));
             const r: types.Depth = tapered + @divTrunc(depth, 3) + 5;
-            try pos.moveNull(&s);
+            try pos.moveNull(&s, ss + 1);
             const null_score: types.Value = -try self.abSearch(io, allocator, NodeType.non_pv, ss + 1, pos, eval, -beta, -beta + 1, depth -| r, is_960, true);
             try pos.unMoveNull();
             if (depth > 1 and self.outOfTime(io))
@@ -530,7 +543,8 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
                 break;
         }
 
-        try pos.movePiece(move, &s);
+        // TODO: Pass null search stack for HCE
+        try pos.movePiece(move, &s, ss + 1);
 
         ss[1].pv = &pv;
         ss[1].pv.?[0] = types.Move.none;
@@ -571,6 +585,9 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
 
         // Undo move
         try pos.unMovePiece(move);
+        ss[1].accumulator_computed = false;
+        ss[1].dirty_piece = .none;
+        ss[1].accumulator_ply = ss[1].ply - 1;
 
         // Useless ?
         if (depth > 1 and self.outOfTime(io))
@@ -649,7 +666,7 @@ fn abSearch(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime no
     return best_score;
 }
 
-fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, eval: *const fn (pos: *const position.Position) types.Value, alpha_: types.Value, beta: types.Value, is_null_move: bool) !types.Value {
+fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nodetype: NodeType, noalias ss: [*]Stack, noalias pos: *position.Position, eval: *const fn (pos: *const position.Position, ss: ?[*]Stack) error{TestUnexpectedResult}!types.Value, alpha_: types.Value, beta: types.Value, is_null_move: bool) !types.Value {
     const pv_node: bool = nodetype == NodeType.pv;
 
     var alpha = alpha_;
@@ -673,7 +690,9 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
 
     // In order to get the quiescence search to terminate, plies are usually restricted to moves that deal directly with the threat,
     // such as moves that capture and recapture (often called a 'capture search') in chess
-    const stand_pat: types.Value = if (tt_static != types.value_none) tt_static else eval(pos);
+    // if (tt_static == types.value_none)
+    //     pos.nnue.fillAccumulator(pos.*);
+    const stand_pat: types.Value = if (tt_static != types.value_none) tt_static else try eval(pos, ss);
     if (stand_pat >= beta)
         return beta;
 
@@ -733,7 +752,8 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
                 continue;
         }
 
-        try pos.movePiece(move, &s);
+        // TODO: Pass null search stack for HCE
+        try pos.movePiece(move, &s, ss + 1);
 
         if (pos.isDraw()) {
             score = types.value_draw;
@@ -742,6 +762,9 @@ fn quiesce(self: *Search, io: std.Io, allocator: std.mem.Allocator, comptime nod
         }
 
         try pos.unMovePiece(move);
+        ss[1].accumulator_computed = false;
+        ss[1].dirty_piece = .none;
+        ss[1].accumulator_ply = ss[1].ply - 1;
 
         if (score > best_score) {
             best_score = score;

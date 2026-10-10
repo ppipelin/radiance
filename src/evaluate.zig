@@ -1,4 +1,6 @@
+const nnue = @import("nnue.zig");
 const position = @import("position.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -103,11 +105,13 @@ fn evaluateShannonColor(pos: *const position.Position, comptime col: types.Color
         50 * (malus_doubled_pawn + malus_blocked_pawn + malus_isolated_pawn);
 }
 
-pub fn evaluateMaterialist(pos: *const position.Position) types.Value {
+pub fn evaluateMaterialist(pos: *const position.Position, ss_: ?[*]Search.Stack) error{TestUnexpectedResult}!types.Value {
+    _ = ss_;
     return (if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w);
 }
 
-pub fn evaluateShannon(pos: *const position.Position) types.Value {
+pub fn evaluateShannon(pos: *const position.Position, ss_: ?[*]Search.Stack) error{TestUnexpectedResult}!types.Value {
+    _ = ss_;
     switch (pos.state.turn) {
         inline else => |turn| return evaluateShannonColor(pos, turn) - evaluateShannonColor(pos, turn.invert()),
     }
@@ -204,7 +208,9 @@ pub fn bishopOppositePawnBonus(bishops: types.Bitboard, pawns: types.Bitboard) t
 }
 
 // TODO: Add pawn structure hash
-pub fn evaluateTable(pos: *const position.Position) types.Value {
+pub fn evaluateTable(pos: *const position.Position, ss_: ?[*]Search.Stack) error{TestUnexpectedResult}!types.Value {
+    _ = ss_;
+
     var score: types.Value = pos.score_material_w - pos.score_material_b;
     const endgame: bool = pos.endgame(pos.state.turn);
 
@@ -293,4 +299,58 @@ pub fn evaluateTable(pos: *const position.Position) types.Value {
     score +|= @truncate(@divTrunc((10_000 - tapered) * pos.score_eg, 10_000));
 
     return if (pos.state.turn.isWhite()) score else -score;
+}
+
+pub fn evaluateNnue(pos: *const position.Position, ss_: ?[*]Search.Stack) error{TestUnexpectedResult}!types.Value {
+    // Rewind ss to update accumulator
+    // (and update precedent accumulators)
+    const ss = ss_ orelse unreachable;
+
+    if (!ss[0].accumulator_computed) {
+        for (ss[0].accumulator_ply..ss[0].ply) |i| {
+            // update with dirty piece
+            const ss_to_update: [*]Search.Stack = ss - ss[0].ply + i + 1;
+            const acc: *nnue.Accumulator = &ss_to_update[0].accumulator;
+            @memcpy(acc, &(ss_to_update - 1)[0].accumulator);
+
+            const dp: types.DirtyPiece = ss_to_update[0].dirty_piece;
+
+            // Promotion
+            if (dp.piece == .none) {
+                // Guard from null move
+                if (dp.add_piece != .none) {
+                    // Promotion with capture
+                    if (dp.remove_piece != .none) {
+                        nnue.removeRemoveAddAdd(acc, dp.remove_piece, dp.remove_square, dp.remove_additional_piece, dp.remove_additional_square, dp.add_piece, dp.add_square, .none, .none);
+                    } else {
+                        nnue.removeAdd(acc, dp.remove_additional_piece, dp.remove_additional_square, dp.add_piece, dp.add_square);
+                    }
+                }
+            }
+            // Castle
+            else if (dp.add_piece != .none) {
+                nnue.removeRemoveAddAdd(acc, dp.piece, dp.from, dp.remove_piece, dp.remove_square, dp.piece, dp.to, dp.add_piece, dp.add_square);
+            }
+            // Capture
+            else if (dp.remove_piece != .none) {
+                nnue.removeRemoveAddAdd(acc, dp.piece, dp.from, dp.remove_piece, dp.remove_square, dp.piece, dp.to, .none, .none);
+            }
+            // Quiet move
+            else {
+                nnue.removeAdd(acc, dp.piece, dp.from, dp.piece, dp.to);
+            }
+
+            ss_to_update[0].accumulator_computed = true;
+            ss_to_update[0].accumulator_ply = ss_to_update[0].ply;
+        }
+    }
+
+    if (@import("builtin").is_test) {
+        var ref: nnue.Accumulator = @splat(@splat(0));
+        nnue.fillAccumulator(&ref, pos.*);
+        try std.testing.expect(std.mem.eql(nnue.Quantized, &ref[0], &ss[0].accumulator[0]));
+        try std.testing.expect(std.mem.eql(nnue.Quantized, &ref[1], &ss[0].accumulator[1]));
+    }
+
+    return @intCast(nnue.forward(&ss[0].accumulator, pos));
 }

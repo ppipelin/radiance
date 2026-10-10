@@ -24,7 +24,7 @@ pub const ThreadData = struct {
     pos: *position.Position,
     states: interface.StateList,
     limits: interface.Limits = .{},
-    eval: *const fn (pos: *const position.Position) types.Value = evaluate.evaluateTable,
+    eval: *const fn (pos: *const position.Position, ss: ?[*]Search.Stack) error{TestUnexpectedResult}!types.Value = evaluate.evaluateTable,
     options: std.StringArrayHashMapUnmanaged(interface.Option) = .empty,
 };
 

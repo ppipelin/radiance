@@ -25,6 +25,20 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const evalfile = b.option([]const u8, "evalfile", "Path to NNUE file") orelse "radiance-net/network.nnue";
+
+    const wf = b.addWriteFiles();
+    _ = wf.addCopyFile(.{ .cwd_relative = evalfile }, "network.bin");
+
+    const nnue_zig = wf.add("nnue_data.zig",
+        \\pub const bytes align(64) = @embedFile("network.bin").*;
+        \\
+    );
+
+    exe.root_module.addAnonymousImport("nnue_data", .{
+        .root_source_file = nnue_zig,
+    });
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
@@ -55,7 +69,7 @@ pub fn build(b: *std.Build) void {
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
-    const exe_tests = b.addTest(.{
+    const exe_tests_position = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tests_position.zig"),
             .target = target,
@@ -103,7 +117,11 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    const run_exe_tests = b.addRunArtifact(exe_tests);
+    exe_tests_interface.root_module.addAnonymousImport("nnue_data", .{
+        .root_source_file = nnue_zig,
+    });
+
+    const run_exe_tests = b.addRunArtifact(exe_tests_position);
     const run_exe_tests_movegen = b.addRunArtifact(exe_tests_movegen);
     const run_exe_tests_960 = b.addRunArtifact(exe_tests_960);
     const run_exe_tests_interface = b.addRunArtifact(exe_tests_interface);

@@ -1,4 +1,6 @@
 const interface = @import("interface.zig");
+const nnue = @import("nnue.zig");
+const Search = @import("Search.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const types = @import("types.zig");
@@ -179,7 +181,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn movePiece(noalias self: *Position, move: Move, noalias state: *State) !void {
+    pub fn movePiece(noalias self: *Position, move: Move, noalias state: *State, noalias ss_: ?[*]Search.Stack) !void {
         // Reset data and set as previous
         state.turn = self.state.turn;
         state.castle_info = self.state.castle_info;
@@ -207,6 +209,13 @@ pub const Position = struct {
         // Remove last en_passant
         if (self.state.previous != null and self.state.previous.?.en_passant != Square.none) {
             self.state.material_key ^= tables.hash_en_passant[self.state.previous.?.en_passant.file().index()];
+        }
+
+        if (ss_) |ss| {
+            const parent = &(ss - 1)[0];
+            ss[0].accumulator_computed = false;
+            ss[0].accumulator_ply = if (parent.accumulator_computed) parent.ply else parent.accumulator_ply;
+            ss[0].dirty_piece = .none;
         }
 
         switch (from_piece.pieceToPieceType()) {
@@ -256,6 +265,11 @@ pub const Position = struct {
 
                         // Remove
                         self.remove(self.state.last_captured_piece, en_passant_sq);
+                        if (ss_) |ss| {
+                            ss[0].dirty_piece.remove_piece = self.state.last_captured_piece;
+                            ss[0].dirty_piece.remove_square = en_passant_sq;
+                            // nnue.remove(self, &ss[0].accumulator, self.state.last_captured_piece, en_passant_sq);
+                        }
                         self.state.material_key ^= tables.hash_psq[self.state.last_captured_piece.index()][en_passant_sq.index()];
 
                         self.board[en_passant_sq.index()] = Piece.none;
@@ -265,8 +279,18 @@ pub const Position = struct {
                 if (move.isPromotion()) {
                     from_piece = MoveFlags.promoteType(move.getFlags()).pieceTypeToPiece(self.state.turn);
                     self.remove(PieceType.pawn.pieceTypeToPiece(self.state.turn), from);
+                    if (ss_) |ss| {
+                        ss[0].dirty_piece.remove_additional_piece = PieceType.pawn.pieceTypeToPiece(self.state.turn);
+                        ss[0].dirty_piece.remove_additional_square = from;
+                        // nnue.remove(self, &ss[0].accumulator, PieceType.pawn.pieceTypeToPiece(self.state.turn), from);
+                    }
                     self.state.material_key ^= tables.hash_psq[PieceType.pawn.pieceTypeToPiece(self.state.turn).index()][from.index()];
                     self.add(from_piece, from);
+                    if (ss_) |ss| {
+                        ss[0].dirty_piece.add_piece = from_piece;
+                        ss[0].dirty_piece.add_square = to; // Adding to TO square as later removeAdd is removed
+                        // nnue.add(self, &ss[0].accumulator, from_piece, from);
+                    }
                     self.state.material_key ^= tables.hash_psq[from_piece.index()][from.index()];
                 }
                 // Reset rule 50 counter
@@ -303,6 +327,11 @@ pub const Position = struct {
 
                 // Remove captured
                 self.remove(to_piece, move.getTo());
+                if (ss_) |ss| {
+                    ss[0].dirty_piece.remove_piece = to_piece;
+                    ss[0].dirty_piece.remove_square = move.getTo();
+                    // nnue.remove(self, &ss[0].accumulator, to_piece, move.getTo());
+                }
                 self.state.material_key ^= tables.hash_psq[to_piece.index()][to.index()];
 
                 // Reset rule 50 counter
@@ -316,6 +345,11 @@ pub const Position = struct {
             const from_rook: Square = self.rook_initial[1 + @as(usize, self.state.turn.invert().index()) * 2];
             to_piece = self.board[from_rook.index()];
             self.remove(to_piece, from_rook);
+            if (ss_) |ss| {
+                ss[0].dirty_piece.remove_piece = to_piece;
+                ss[0].dirty_piece.remove_square = from_rook;
+                // nnue.remove(self, &ss[0].accumulator, to_piece, from_rook);
+            }
             self.state.material_key ^= tables.hash_psq[to_piece.index()][from_rook.index()];
         } else if (move.getFlags() == MoveFlags.ooo) {
             to = Square.c1.relativeSquare(self.state.turn); // Needed for 960 UCI
@@ -323,11 +357,25 @@ pub const Position = struct {
             const from_rook: Square = self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2];
             to_piece = self.board[from_rook.index()];
             self.remove(to_piece, from_rook);
+            if (ss_) |ss| {
+                ss[0].dirty_piece.remove_piece = to_piece;
+                ss[0].dirty_piece.remove_square = from_rook;
+                // nnue.remove(self, &ss[0].accumulator, to_piece, from_rook);
+            }
             self.state.material_key ^= tables.hash_psq[to_piece.index()][from_rook.index()];
         }
 
         // Remove/Add
         self.removeAdd(from_piece, from, to);
+        if (ss_) |ss| {
+            if (!move.isPromotion()) {
+                ss[0].dirty_piece.piece = from_piece;
+                ss[0].dirty_piece.from = from;
+                ss[0].dirty_piece.to = to;
+            }
+            // nnue.removeAdd(self, &ss[0].accumulator, from_piece, from, to);
+        }
+
         self.state.material_key ^= tables.hash_psq[from_piece.index()][from.index()];
         self.state.material_key ^= tables.hash_psq[from_piece.index()][to.index()];
 
@@ -336,16 +384,26 @@ pub const Position = struct {
         self.state.turn = self.state.turn.invert();
         self.state.material_key ^= tables.hash_turn;
 
-        // If castling we move the rook as well
+        // If castling we put back in the correct square the rook that was removed
         switch (move.getFlags()) {
             MoveFlags.oo => {
                 const sq: Square = Square.f1.relativeSquare(self.state.turn.invert());
                 self.add(to_piece, sq);
+                if (ss_) |ss| {
+                    ss[0].dirty_piece.add_piece = to_piece;
+                    ss[0].dirty_piece.add_square = sq;
+                    // nnue.add(self, &ss[0].accumulator, to_piece, sq);
+                }
                 self.state.material_key ^= tables.hash_psq[to_piece.index()][sq.index()];
             },
             MoveFlags.ooo => {
                 const sq: Square = Square.d1.relativeSquare(self.state.turn.invert());
                 self.add(to_piece, sq);
+                if (ss_) |ss| {
+                    ss[0].dirty_piece.add_piece = to_piece;
+                    ss[0].dirty_piece.add_square = sq;
+                    // nnue.add(self, &ss[0].accumulator, to_piece, sq);
+                }
                 self.state.material_key ^= tables.hash_psq[to_piece.index()][sq.index()];
             },
             else => {},
@@ -414,7 +472,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn moveNull(noalias self: *Position, noalias state: *State) !void {
+    pub fn moveNull(noalias self: *Position, noalias state: *State, noalias ss_: ?[*]Search.Stack) !void {
         // Reset data and set as previous
         state.turn = self.state.turn;
         state.castle_info = self.state.castle_info;
@@ -429,6 +487,13 @@ pub const Position = struct {
         state.material_key = self.state.material_key;
         state.previous = self.state;
         self.state = state;
+
+        if (ss_) |ss| {
+            const parent = &(ss - 1)[0];
+            ss[0].accumulator_computed = false;
+            ss[0].accumulator_ply = if (parent.accumulator_computed) parent.ply else parent.accumulator_ply;
+            ss[0].dirty_piece = .none;
+        }
 
         if (self.state.previous != null and self.state.previous.?.en_passant != Square.none) {
             self.state.material_key ^= tables.hash_en_passant[self.state.previous.?.en_passant.file().index()];
@@ -1083,6 +1148,8 @@ pub const Position = struct {
         writer.print("fen: {s}\n", .{fen}) catch unreachable;
 
         writer.print("zobrist: {}\n", .{self.state.material_key}) catch unreachable;
+
+        writer.flush() catch unreachable;
     }
 
     pub fn drawByMaterial(pos: Position) bool {

@@ -1,0 +1,3 @@
+[submodule "radiance-net"]
+	path = radiance-net
+	url = https://github.com/ppipelin/radiance-net.git

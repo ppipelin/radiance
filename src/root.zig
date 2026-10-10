@@ -1,5 +1,6 @@
 const interface = @import("interface.zig");
 const magic = @import("magic.zig");
+const nnue = @import("nnue.zig");
 const std = @import("std");
 const tables = @import("tables.zig");
 const thread_pool = @import("thread_pool.zig");
@@ -24,6 +25,8 @@ pub fn main(init: std.process.Init) !void {
     const args = try init.minimal.args.toSlice(init.arena.allocator());
 
     var args_iter = try init.minimal.args.iterateAllocator(allocator);
+
+    nnue.initNetwork();
 
     if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "compute")) {
         var iterations: u64 = 1;
