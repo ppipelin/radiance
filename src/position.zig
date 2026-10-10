@@ -357,7 +357,6 @@ pub const Position = struct {
             const from_rook: Square = self.rook_initial[@as(usize, self.state.turn.invert().index()) * 2];
             to_piece = self.board[from_rook.index()];
             self.remove(to_piece, from_rook);
-            // Should not trigger with HCE
             if (ss_) |ss| {
                 ss[0].dirty_piece.remove_piece = to_piece;
                 ss[0].dirty_piece.remove_square = from_rook;
@@ -368,7 +367,6 @@ pub const Position = struct {
 
         // Remove/Add
         self.removeAdd(from_piece, from, to);
-        // Should not trigger with HCE
         if (ss_) |ss| {
             if (!move.isPromotion()) {
                 ss[0].dirty_piece.piece = from_piece;
