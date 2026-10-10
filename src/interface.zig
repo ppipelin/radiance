@@ -134,6 +134,11 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             try thread_pool.stopSearchs();
         }
 
+        if (std.ascii.eqlIgnoreCase("wait", primary_token)) {
+            existing_command = true;
+            try thread_pool.finishSearchs();
+        }
+
         if (std.ascii.eqlIgnoreCase("license", primary_token) or std.ascii.eqlIgnoreCase("--license", primary_token)) {
             existing_command = true;
             try stdout.print(
@@ -252,13 +257,13 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
             const evaluation_mode: []const u8 = options.get("Evaluation").?.current_value;
 
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "Materialist")) {
-                try stdout.print("Eval Materialist: {}\n", .{evaluate.evaluateMaterialist(&pos, null)});
+                try stdout.print("Eval Materialist: {}\n", .{try evaluate.evaluateMaterialist(&pos, null)});
             }
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "Shannon")) {
-                try stdout.print("Eval Shannon: {}\n", .{evaluate.evaluateShannon(&pos, null)});
+                try stdout.print("Eval Shannon: {}\n", .{try evaluate.evaluateShannon(&pos, null)});
             }
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "PSQ")) {
-                try stdout.print("Eval Table: {}\n", .{evaluate.evaluateTable(&pos, null)});
+                try stdout.print("Eval Table: {}\n", .{try evaluate.evaluateTable(&pos, null)});
             }
             if (evals or std.ascii.eqlIgnoreCase(evaluation_mode, "NNUE")) {
                 var stack: [1]Search.Stack = @splat(Search.Stack{});
@@ -267,7 +272,7 @@ pub fn loop(io: std.Io, allocator: std.mem.Allocator, stdin: *std.Io.Reader, std
                 nnue.fillAccumulator(&ss[0].accumulator, pos);
                 ss[0].accumulator_ply = ss[0].ply;
                 ss[0].accumulator_computed = true;
-                try stdout.print("Eval NNUE: {}\n", .{evaluate.evaluateNnue(&pos, ss)});
+                try stdout.print("Eval NNUE: {}\n", .{try evaluate.evaluateNnue(&pos, ss)});
             }
             try stdout.flush();
         }

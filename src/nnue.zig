@@ -28,6 +28,18 @@ pub var l0b: [hidden_size]Quantized = undefined;
 pub var l1w: [hidden_size * 2]Quantized = undefined; // Transposed for cache
 pub var l1b: Full = undefined;
 
+pub fn initNetwork() void {
+    const nnue_bytes = @import("nnue_data").bytes;
+
+    var nnue_content: [nnue_bytes.len / 2]Quantized = undefined;
+
+    for (&nnue_content, 0..) |*value, i| {
+        value.* = std.mem.readInt(Quantized, nnue_bytes[i * 2 ..][0..2], .little);
+    }
+
+    loadFromBin(nnue_content[0..]);
+}
+
 pub fn loadFromBin(data: []const Quantized) void {
     for (0..hidden_size) |col| {
         for (0..input_size) |row| {
@@ -49,6 +61,7 @@ pub inline fn featureIndex(comptime perspective: types.Color, p: types.Piece, sq
     return (skip * (types.PieceType.nb() - 1) + p.pieceToPieceType().index() - 1) * types.board_size2 + sq_oriented;
 }
 
+/// Should be called after weights and bias are loaded
 pub fn initAccumulator(acc: *Accumulator) void {
     // Initialize accumulator with bias
     @memcpy(&acc[types.Color.white.index()], &l0b);

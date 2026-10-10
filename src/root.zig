@@ -26,15 +26,7 @@ pub fn main(init: std.process.Init) !void {
 
     var args_iter = try init.minimal.args.iterateAllocator(allocator);
 
-    const nnue_bytes = @import("nnue_data").bytes;
-
-    var nnue_content: [nnue_bytes.len / 2]nnue.Quantized = undefined;
-
-    for (&nnue_content, 0..) |*value, i| {
-        value.* = std.mem.readInt(nnue.Quantized, nnue_bytes[i * 2 ..][0..2], .little);
-    }
-
-    nnue.loadFromBin(nnue_content[0..]);
+    nnue.initNetwork();
 
     if (args.len > 1 and std.ascii.eqlIgnoreCase(args[1], "compute")) {
         var iterations: u64 = 1;

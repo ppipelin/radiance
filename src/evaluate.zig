@@ -105,12 +105,12 @@ fn evaluateShannonColor(pos: *const position.Position, comptime col: types.Color
         50 * (malus_doubled_pawn + malus_blocked_pawn + malus_isolated_pawn);
 }
 
-pub fn evaluateMaterialist(pos: *const position.Position, ss_: ?[*]Search.Stack) types.Value {
+pub fn evaluateMaterialist(pos: *const position.Position, ss_: ?[*]Search.Stack) error{TestUnexpectedResult}!types.Value {
     _ = ss_;
     return (if (pos.state.turn.isWhite()) pos.score_material_w - pos.score_material_b else pos.score_material_b - pos.score_material_w);
 }
 
-pub fn evaluateShannon(pos: *const position.Position, ss_: ?[*]Search.Stack) types.Value {
+pub fn evaluateShannon(pos: *const position.Position, ss_: ?[*]Search.Stack) error{TestUnexpectedResult}!types.Value {
     _ = ss_;
     switch (pos.state.turn) {
         inline else => |turn| return evaluateShannonColor(pos, turn) - evaluateShannonColor(pos, turn.invert()),
@@ -208,7 +208,7 @@ pub fn bishopOppositePawnBonus(bishops: types.Bitboard, pawns: types.Bitboard) t
 }
 
 // TODO: Add pawn structure hash
-pub fn evaluateTable(pos: *const position.Position, ss_: ?[*]Search.Stack) types.Value {
+pub fn evaluateTable(pos: *const position.Position, ss_: ?[*]Search.Stack) error{TestUnexpectedResult}!types.Value {
     _ = ss_;
 
     var score: types.Value = pos.score_material_w - pos.score_material_b;
@@ -301,7 +301,7 @@ pub fn evaluateTable(pos: *const position.Position, ss_: ?[*]Search.Stack) types
     return if (pos.state.turn.isWhite()) score else -score;
 }
 
-pub fn evaluateNnue(pos: *const position.Position, ss_: ?[*]Search.Stack) types.Value {
+pub fn evaluateNnue(pos: *const position.Position, ss_: ?[*]Search.Stack) error{TestUnexpectedResult}!types.Value {
     // Rewind ss to update accumulator
     // (and update precedent accumulators)
     const ss = ss_ orelse unreachable;
@@ -345,11 +345,11 @@ pub fn evaluateNnue(pos: *const position.Position, ss_: ?[*]Search.Stack) types.
         }
     }
 
-    if (@import("builtin").mode == .Debug or @import("builtin").mode == .ReleaseSafe) {
-        var ref: nnue.Accumulator = undefined;
+    if (@import("builtin").is_test) {
+        var ref: nnue.Accumulator = @splat(@splat(0));
         nnue.fillAccumulator(&ref, pos.*);
-        std.debug.assert(std.mem.eql(nnue.Quantized, &ref[0], &ss[0].accumulator[0]));
-        std.debug.assert(std.mem.eql(nnue.Quantized, &ref[1], &ss[0].accumulator[1]));
+        try std.testing.expect(std.mem.eql(nnue.Quantized, &ref[0], &ss[0].accumulator[0]));
+        try std.testing.expect(std.mem.eql(nnue.Quantized, &ref[1], &ss[0].accumulator[1]));
     }
 
     return @intCast(nnue.forward(&ss[0].accumulator, pos));
