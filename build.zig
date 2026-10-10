@@ -25,7 +25,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    const evalfile = b.option([]const u8, "evalfile", "Path to NNUE file") orelse "src/quantised.bin";
+    const evalfile = b.option([]const u8, "evalfile", "Path to NNUE file") orelse "radiance-net/network.nnue";
 
     const wf = b.addWriteFiles();
     _ = wf.addCopyFile(.{ .cwd_relative = evalfile }, "network.bin");
