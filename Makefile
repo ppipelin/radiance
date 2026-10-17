@@ -24,7 +24,12 @@ endif
 print-os:
 	$(info OS = $(OS))
 
-default:
+net:
+	wget https://github.com/ppipelin/radiance-net/raw/refs/heads/main/network.nnue
+	mkdir -p radiance-net
+	mv network.nnue radiance-net/network.nnue
+
+default: net
 	zig build --release=fast $(evalfile_param)
 	@echo $(MV)
 	@$(MV)
